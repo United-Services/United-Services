@@ -1,6 +1,7 @@
+'use client'
 import { useState } from 'react'
 import { palette } from '../theme'
-import navLogo from '../imports/logo-nav-future-energy.png'
+const navLogo = '/images/logo-nav-future-energy.png'
 
 interface Props {
   current: string

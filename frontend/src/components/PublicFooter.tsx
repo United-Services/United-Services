@@ -1,5 +1,6 @@
+'use client'
 import { palette } from '../theme'
-import footerLogo from '../imports/logo-footer.png'
+const footerLogo = '/images/logo-footer.png'
 
 interface Props { onNavigate: (page: string) => void }
 

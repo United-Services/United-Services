@@ -1,41 +1,42 @@
-# figma-make-app
+# United Services Egypt — Frontend
 
-React + Vite + Tailwind CSS project running inside Figma Make.
-
-## Development Server
-
-A Vite development server is **already running** on `$PORT` (default 8443). You don't need to start it manually.
-
-- Preview URL: The user can access the running app through the preview panel
-- Hot reload: Changes to source files are reflected immediately
+Next.js (App Router) + React + Tailwind CSS project. A `backend/` service will
+be added alongside this app later.
 
 ## Project Structure
 
-This is the canonical project structure. Start with task-relevant files below. Only follow imports or inspect other files when required, when a documented path is missing, or when the repository contradicts this guide.
+- `src/app/` — Next.js App Router routes. Each route folder holds a thin
+  `page.tsx` that wires a shared navigation hook (and, for `/projects`, the
+  `?company=` search param) into the corresponding view under `src/views/`.
+- `src/views/` — the actual page implementations (Home, About, Services,
+  Projects, Contact, Careers, client/admin portal screens, etc.). Named
+  `views` rather than `pages` so Next's file-system router doesn't pick up
+  this directory as routes of its own.
+- `src/components/` — shared UI (`PublicNav`, `PublicFooter`).
+- `src/lib/navigate.ts` — `useAppNavigate()`, a client hook that maps the
+  legacy `onNavigate(page, param?)` calls used throughout `src/views/*` to
+  real `next/navigation` route pushes (`ROUTES` table + optional
+  `?company=` query param for the projects page).
+- `src/hooks/useReveal.ts` — scroll-reveal IntersectionObserver hook.
+- `src/theme.tsx` — shared color palette and style constants.
+- `src/app/layout.tsx` / `src/app/globals.css` — root layout and Tailwind v4
+  entrypoint (`@import 'tailwindcss'`).
+- `public/images/` — static image assets referenced by plain `/images/...`
+  paths (not `next/image`, to keep the original inline-style-driven layouts
+  unchanged).
 
-- `src/main.tsx` - React entrypoint; imports `src/index.css` and mounts `src/App.tsx` into the `#root` element
-- `src/App.tsx` - Primary application component and the usual starting point for UI work
-- `src/index.css` - Global CSS entrypoint and Tailwind CSS v4 import
-- `index.html` - Vite HTML shell containing the `#root` element and loading `src/main.tsx`
-- `package.json` - Project dependencies and the Vite build, development, preview, and formatting scripts
-- `vite.config.ts` - Vite configuration with React, Tailwind CSS v4, and Figma Make plugins plus the `@` alias for `src`
-- `.mise.toml` - Toolchain versions for Node.js and pnpm
+## Conventions
 
-## Dependencies
+- Every view/component that uses state, effects, or event handlers is a
+  Client Component (`'use client'` at the top of the file).
+- Navigation between views/pages goes through `useAppNavigate()`, not
+  `next/link`/`useRouter` directly, so the existing `onNavigate` prop
+  contract in `src/views/*` doesn't need to change.
+- Use double quotes for strings containing apostrophes, or escape them in
+  single-quoted strings — an unescaped apostrophe breaks the build.
 
-- Runtime: React 19 and React DOM 19
-- Styling: Tailwind CSS v4 with the `@tailwindcss/vite` plugin
-- Build tooling: Vite 8, TypeScript 5.7, and `@vitejs/plugin-react`
-- Formatting: oxfmt
+## Commands
 
-## Styling
-
-This project uses **Tailwind CSS v4** through the `@tailwindcss/vite` plugin configured in `vite.config.ts`. `src/index.css` imports Tailwind with `@import 'tailwindcss';`. Use Tailwind utility classes directly in JSX and put global CSS or Tailwind v4 theme customization in `src/index.css`. This scaffold does not need a Tailwind config file or PostCSS config.
-
-`src/main.tsx` imports `src/index.css`, so global font wiring belongs in `src/index.css`. Keep CSS `@import` statements first, then add any `@font-face` rules and font-family defaults there.
-
-## Code quality
-
-- Use double quotes for strings containing apostrophes (`"We're here to help"`), or escape them in single-quoted strings. An unescaped apostrophe in a single-quoted string breaks the build.
-- Ensure JSX tags are closed and braces are balanced.
-- Export components as default exports.
+- `pnpm dev` — start the Next.js dev server (`next dev`).
+- `pnpm build` — production build (`next build`).
+- `pnpm start` — run the production build (`next start`).
