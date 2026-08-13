@@ -12,12 +12,17 @@
 # does NOT hardcode any secret values.
 
 services:
+  # Both local containers are opt-in via the "local-db" profile
+  # (`docker compose --profile local-db up`) — when DATABASE_URL/
+  # DIRECT_URL/REDIS_URL point at managed services (Supabase/Upstash, as
+  # in .env.prod), these never start and backend never waits on them.
   postgres:
     image: postgres:16
     restart: unless-stopped
+    profiles: ["local-db"]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-united_services}
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -31,6 +36,7 @@ services:
   redis:
     image: redis:7
     restart: unless-stopped
+    profiles: ["local-db"]
     volumes:
       - redis-data:/data
     healthcheck:
@@ -45,11 +51,6 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     environment:
       PORT: 3001
       DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-united_services}}
@@ -65,8 +66,7 @@ services:
       S3_BUCKET_NAME: ${S3_BUCKET_NAME}
       BETTERSTACK_SOURCE_TOKEN: ${BETTERSTACK_SOURCE_TOKEN}
       WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-localhost}
-      WEBAUTHN_RP_NAME: "United Services Egypt"
-      WEBAUTHN_ORIGIN: ${WEBAUTHN_ORIGIN:-http://localhost}
+      WEBAUTHN_RP_ORIGIN: ${WEBAUTHN_RP_ORIGIN:-http://localhost}
       TOTP_KEK_PROVIDER: local
       KEK_KEYS_DIR: /app/secrets/kek
     volumes:
