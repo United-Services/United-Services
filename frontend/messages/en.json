@@ -111,5 +111,51 @@
       "title": "Ready to protect your infrastructure?",
       "body": "Speak with a USE engineer about your specific application and operating conditions."
     }
+  },
+  "about": {
+    "eyebrow": "USE · SHEET 03 · COMPANY PROFILE",
+    "title": "About United Services Egypt",
+    "story": {
+      "eyebrow": "Founded 2005 · Cairo, Egypt",
+      "title": "Built on the premise that corrosion is an engineering problem — not an inevitability.",
+      "p1": "United Services Egypt was established in 2005 by a group of petroleum engineers who had spent their careers watching preventable corrosion failures drain resources from major oil & gas operators across the MENA region.",
+      "p2": "Their conviction: that international-standard corrosion-control solutions — GRE lining, FBE coating, RTP systems — were available globally but applied inconsistently in Egypt and the broader region, largely due to a lack of local engineering expertise and certified manufacturing capacity.",
+      "p3": "USE was built to close that gap. Today, from our 6,000 m² integrated manufacturing and application facility in Cairo, we serve EGPC, ADNOC, BP, Shell, and more than fifteen other major operators across Egypt, Iraq, Saudi Arabia, and the UAE."
+    },
+    "certs": {
+      "eyebrow": "QUALITY CREDENTIALS",
+      "title": "Certified to international standards.",
+      "apiQ1": { "body": "American Petroleum Institute", "detail": "Quality Management System for petroleum equipment manufacturers" },
+      "iso9001": { "body": "DNV · Quality Management", "detail": "International quality management standard, certified by DNV GL" },
+      "iso14001": { "body": "Environmental Management", "detail": "Environmental management system conformance" },
+      "iso45001": { "body": "Occupational H&S", "detail": "Occupational health and safety management system" },
+      "egpc": { "body": "Egyptian General Petroleum", "detail": "Registered vendor to the Egyptian General Petroleum Corporation" }
+    },
+    "facility": {
+      "eyebrow": "OUR FACILITY",
+      "title": "6,000 m² integrated manufacturing and application facility.",
+      "body": "The USE facility in Cairo houses factory lining and coating lines, pipe preparation and blast-cleaning equipment, quality control laboratory, and a field operations staging area — all on a single site.",
+      "stat1Value": "6,000 m²", "stat1Label": "Facility footprint",
+      "stat2Value": "Factory + Field", "stat2Label": "Integrated capability",
+      "stat3Value": "Egypt · Iraq · KSA · UAE", "stat3Label": "Operating regions",
+      "stat4Value": "15+ majors", "stat4Label": "Client portfolio"
+    }
+  },
+  "vision": {
+    "eyebrow": "USE · SHEET 04 · STRATEGIC DIRECTION",
+    "title": "Vision & Mission",
+    "visionLabel": "OUR VISION",
+    "visionTitle": "To be the MENA region's most trusted corrosion engineering partner.",
+    "visionBody": "We envision a region where energy infrastructure operates at its engineered design life — where no pipeline fails prematurely because the right corrosion-control system was unavailable, unaffordable, or poorly applied.",
+    "missionLabel": "OUR MISSION",
+    "missionTitle": "Deliver certified corrosion-control solutions with zero compromise on quality.",
+    "missionBody": "Our mission is to protect the infrastructure that powers the region — by applying rigorous engineering, qualified materials, and certified workmanship to every project, regardless of scale or location.",
+    "pillarsLabel": "STRATEGIC PILLARS",
+    "pillars": {
+      "technical": { "title": "Technical Excellence", "desc": "Every engineer, inspector, and applicator at USE is trained to international standards. We do not compromise on competence." },
+      "regional": { "title": "Regional Presence", "desc": "Local engineering knowledge combined with international standards — deployed across Egypt, Iraq, KSA, and UAE." },
+      "integrated": { "title": "Integrated Capability", "desc": "Factory manufacturing and field application under one management system, ensuring quality continuity from mill to installed asset." },
+      "partnership": { "title": "Client Partnership", "desc": "We embed in our clients' project teams, offering engineering support from concept through commissioning and beyond." }
+    }
   }
 }
