@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@clerk/nextjs'
+import { useTranslations } from 'next-intl'
 import { palette, inputStyle } from '../theme'
 import { api, authHeader } from '../lib/api'
 
@@ -27,16 +28,17 @@ interface Slot { id: string; date: string; startTime: string; endTime: string }
 interface MyAppointment { id: string; slot: Slot }
 interface Me { firstName: string; lastName: string; email: string; companyName: string | null; role: string }
 
-const NAV_ITEMS = [
-  { id: 'services', label: 'Services', icon: '⚙️' },
-  { id: 'rfq', label: 'Request for Quotation', icon: '📋' },
-  { id: 'appointments', label: 'Book Appointment', icon: '📅' },
-  { id: 'profile', label: 'My Profile', icon: '👤' },
-]
-
 export default function ClientDashboard({ onLogout, onNavigate }: Props) {
   const { getToken } = useAuth()
+  const t = useTranslations('clientDashboard')
   const [section, setSection] = useState('services')
+
+  const NAV_ITEMS = [
+    { id: 'services', label: t('nav.services'), icon: '⚙️' },
+    { id: 'rfq', label: t('nav.rfq'), icon: '📋' },
+    { id: 'appointments', label: t('nav.appointments'), icon: '📅' },
+    { id: 'profile', label: t('nav.profile'), icon: '👤' },
+  ]
 
   const [me, setMe] = useState<Me | null>(null)
   const [services, setServices] = useState<Service[]>([])
@@ -141,7 +143,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
       await api.post('/appointments/book', { slotId: selectedSlotId }, { headers })
       setApptSent(true)
     } catch (err: any) {
-      setApptError(err?.response?.data?.message ?? 'This slot may have just been booked — please pick another.')
+      setApptError(err?.response?.data?.message ?? t('appointments.slotTakenError'))
       const headers = await authed()
       const { data } = await api.get('/appointments/slots', { headers })
       setSlots(data)
@@ -158,7 +160,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
           <button onClick={() => onNavigate('home')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 32, height: 32, borderRadius: 9, background: palette.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 12 }}>USE</div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Client Portal</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{t('portalLabel')}</div>
               <div style={{ fontSize: 10, color: '#475569' }}>United Services Egypt</div>
             </div>
           </button>
@@ -178,13 +180,13 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
             </div>
             <div style={{ overflow: 'hidden' }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {me ? `${me.firstName} ${me.lastName}` : 'Loading…'}
+                {me ? `${me.firstName} ${me.lastName}` : t('loading')}
               </div>
               <div style={{ fontSize: 11, color: '#475569' }}>{me?.companyName ?? ''}</div>
             </div>
           </div>
           <button onClick={onLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderRadius: 10, border: 'none', background: 'transparent', color: '#EF4444', fontSize: 13, fontWeight: 500, cursor: 'pointer', width: '100%', fontFamily: 'Poppins, sans-serif' }}>
-            🚪 Log Out
+            {t('logOut')}
           </button>
         </div>
       </aside>
@@ -193,7 +195,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <header style={{ height: 68, background: '#fff', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', padding: '0 32px' }}>
           <h1 style={{ fontSize: 18, fontWeight: 700, color: palette.navy }}>
-            {NAV_ITEMS.find((n) => n.id === section)?.label ?? 'Portal'}
+            {NAV_ITEMS.find((n) => n.id === section)?.label ?? t('headerFallback')}
           </h1>
         </header>
 
@@ -202,7 +204,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
           {section === 'services' && (
             <div>
               <p style={{ fontSize: 14, color: palette.muted, marginBottom: 28 }}>
-                Browse our service systems. Request access to download certified specification files. Approved requests unlock the download immediately.
+                {t('services.intro')}
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
                 {services.map((s) => {
@@ -218,27 +220,27 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                         <div style={{ fontSize: 12, color: palette.muted, marginBottom: 14 }}>{s.shortDescription}</div>
                         {!hasFile && (
                           <div style={{ textAlign: 'center', fontSize: 12, color: palette.muted, fontWeight: 600, padding: '9px', background: '#F8FAFC', borderRadius: 9999 }}>
-                            No spec file yet
+                            {t('services.noFile')}
                           </div>
                         )}
                         {hasFile && status === 'none' && (
                           <button onClick={() => requestSpec(s.id)} disabled={requestingId === s.id} style={{ width: '100%', padding: '9px', background: '#4B5563', color: '#fff', border: 'none', borderRadius: 9999, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-                            {requestingId === s.id ? 'Requesting…' : 'Request Spec File'}
+                            {requestingId === s.id ? t('services.requesting') : t('services.requestSpecFile')}
                           </button>
                         )}
                         {hasFile && status === 'pending' && (
                           <div style={{ textAlign: 'center', fontSize: 12, color: '#F59E0B', fontWeight: 600, padding: '9px', background: '#FFFBEB', borderRadius: 9999, border: '1px solid #FCD34D' }}>
-                            ⏳ Awaiting Admin Approval
+                            {t('services.awaitingApproval')}
                           </div>
                         )}
                         {hasFile && status === 'denied' && (
                           <div style={{ textAlign: 'center', fontSize: 12, color: '#DC2626', fontWeight: 600, padding: '9px', background: '#FEF2F2', borderRadius: 9999, border: '1px solid #FECACA' }}>
-                            Request Denied
+                            {t('services.requestDenied')}
                           </div>
                         )}
                         {hasFile && status === 'approved' && (
                           <button onClick={() => downloadSpec(s.id)} style={{ width: '100%', padding: '9px', background: palette.accent, color: '#fff', border: 'none', borderRadius: 9999, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-                            ⬇ Download Spec File
+                            {t('services.downloadSpecFile')}
                           </button>
                         )}
                       </div>
@@ -255,36 +257,36 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
               {rfqSent ? (
                 <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 20, padding: '48px', textAlign: 'center' }}>
                   <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
-                  <h2 style={{ fontSize: 22, fontWeight: 800, color: '#166534', marginBottom: 10 }}>RFQ Submitted</h2>
-                  <p style={{ fontSize: 14, color: '#15803D', lineHeight: 1.7 }}>A USE engineer will review your request and respond within two business days.</p>
+                  <h2 style={{ fontSize: 22, fontWeight: 800, color: '#166534', marginBottom: 10 }}>{t('rfq.sentTitle')}</h2>
+                  <p style={{ fontSize: 14, color: '#15803D', lineHeight: 1.7 }}>{t('rfq.sentBody')}</p>
                 </div>
               ) : (
                 <form onSubmit={submitRfq} style={{ background: '#fff', borderRadius: 20, padding: '36px', border: '1px solid #E2E8F0' }}>
                   <div style={{ marginBottom: 18 }}>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Service Required</label>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>{t('rfq.serviceRequired')}</label>
                     <select value={rfq.serviceId} onChange={(e) => setRfq((f) => ({ ...f, serviceId: e.target.value }))} required style={{ ...inputStyle, appearance: 'none' }}
                       onFocus={(e) => { (e.target as HTMLSelectElement).style.borderColor = palette.accent }} onBlur={(e) => { (e.target as HTMLSelectElement).style.borderColor = '#E2E8F0' }}>
-                      <option value="">Select the service you need</option>
+                      <option value="">{t('rfq.selectService')}</option>
                       {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   </div>
                   <div style={{ marginBottom: 18 }}>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Project Description</label>
-                    <textarea value={rfq.description} onChange={(e) => setRfq((f) => ({ ...f, description: e.target.value }))} placeholder="Describe your pipeline system, diameter, length, operating medium, pressure, and temperature" required rows={4} style={{ ...inputStyle, resize: 'vertical' }}
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>{t('rfq.projectDescription')}</label>
+                    <textarea value={rfq.description} onChange={(e) => setRfq((f) => ({ ...f, description: e.target.value }))} placeholder={t('rfq.projectDescriptionPlaceholder')} required rows={4} style={{ ...inputStyle, resize: 'vertical' }}
                       onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = palette.accent }} onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = '#E2E8F0' }} />
                   </div>
                   <div style={{ marginBottom: 18 }}>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Required Timeline</label>
-                    <input value={rfq.timeline} onChange={(e) => setRfq((f) => ({ ...f, timeline: e.target.value }))} placeholder="e.g. Mobilization required within 6 weeks" style={inputStyle}
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>{t('rfq.requiredTimeline')}</label>
+                    <input value={rfq.timeline} onChange={(e) => setRfq((f) => ({ ...f, timeline: e.target.value }))} placeholder={t('rfq.timelinePlaceholder')} style={inputStyle}
                       onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
                   </div>
                   <div style={{ marginBottom: 28 }}>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Additional Notes</label>
-                    <textarea value={rfq.message} onChange={(e) => setRfq((f) => ({ ...f, message: e.target.value }))} placeholder="Any specific standards, certifications, or access constraints to note" rows={3} style={{ ...inputStyle, resize: 'vertical' }}
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>{t('rfq.additionalNotes')}</label>
+                    <textarea value={rfq.message} onChange={(e) => setRfq((f) => ({ ...f, message: e.target.value }))} placeholder={t('rfq.notesPlaceholder')} rows={3} style={{ ...inputStyle, resize: 'vertical' }}
                       onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = palette.accent }} onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = '#E2E8F0' }} />
                   </div>
                   <button type="submit" disabled={rfqLoading} style={{ width: '100%', padding: '13px', borderRadius: 9999, border: 'none', background: rfqLoading ? '#9CA3AF' : palette.accent, color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-                    {rfqLoading ? 'Submitting…' : 'Submit RFQ to USE Engineering'}
+                    {rfqLoading ? t('rfq.submitting') : t('rfq.submit')}
                   </button>
                 </form>
               )}
@@ -297,18 +299,18 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
               {apptSent ? (
                 <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 20, padding: '48px', textAlign: 'center' }}>
                   <div style={{ fontSize: 48, marginBottom: 16 }}>📅</div>
-                  <h2 style={{ fontSize: 22, fontWeight: 800, color: '#166534', marginBottom: 10 }}>Appointment Booked</h2>
-                  <p style={{ fontSize: 14, color: '#15803D', lineHeight: 1.7 }}>You'll receive a confirmation at your registered email address.</p>
+                  <h2 style={{ fontSize: 22, fontWeight: 800, color: '#166534', marginBottom: 10 }}>{t('appointments.sentTitle')}</h2>
+                  <p style={{ fontSize: 14, color: '#15803D', lineHeight: 1.7 }}>{t('appointments.sentBody')}</p>
                 </div>
               ) : (
                 <form onSubmit={bookAppointment} style={{ background: '#fff', borderRadius: 20, padding: '36px', border: '1px solid #E2E8F0' }}>
                   <p style={{ fontSize: 14, color: palette.muted, marginBottom: 28 }}>
-                    Book an office visit to the USE facility in Cairo to meet our engineering team, tour our manufacturing lines, or discuss your project.
+                    {t('appointments.intro')}
                   </p>
 
                   {myAppointments.length > 0 && (
                     <div style={{ marginBottom: 24, padding: '14px 16px', background: '#F8FAFC', borderRadius: 12 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: palette.navy, marginBottom: 8 }}>Your upcoming appointments</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: palette.navy, marginBottom: 8 }}>{t('appointments.upcoming')}</div>
                       {myAppointments.map((a) => (
                         <div key={a.id} style={{ fontSize: 13, color: palette.slate }}>
                           {new Date(a.slot.date).toLocaleDateString()} · {new Date(a.slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}–{new Date(a.slot.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -318,13 +320,13 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                   )}
 
                   <div style={{ marginBottom: 18 }}>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Available Time Slots</label>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>{t('appointments.availableSlots')}</label>
                     {slots.length === 0 ? (
-                      <p style={{ fontSize: 13, color: palette.muted }}>No open slots right now — check back soon.</p>
+                      <p style={{ fontSize: 13, color: palette.muted }}>{t('appointments.noSlots')}</p>
                     ) : (
                       <select value={selectedSlotId} onChange={(e) => setSelectedSlotId(e.target.value)} required style={{ ...inputStyle, appearance: 'none' }}
                         onFocus={(e) => { (e.target as HTMLSelectElement).style.borderColor = palette.accent }} onBlur={(e) => { (e.target as HTMLSelectElement).style.borderColor = '#E2E8F0' }}>
-                        <option value="">Select an open slot</option>
+                        <option value="">{t('appointments.selectSlot')}</option>
                         {slots.map((s) => (
                           <option key={s.id} value={s.id}>
                             {new Date(s.date).toLocaleDateString()} · {new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}–{new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -337,7 +339,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                   {apptError && <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 16 }}>{apptError}</p>}
 
                   <button type="submit" disabled={apptLoading || !selectedSlotId} style={{ width: '100%', padding: '13px', borderRadius: 9999, border: 'none', background: apptLoading ? '#9CA3AF' : '#4B5563', color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-                    {apptLoading ? 'Booking…' : 'Book Appointment'}
+                    {apptLoading ? t('appointments.booking') : t('appointments.book')}
                   </button>
                 </form>
               )}
@@ -353,11 +355,11 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                     {me?.firstName?.[0] ?? '·'}
                   </div>
                   <div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: palette.navy }}>{me ? `${me.firstName} ${me.lastName}` : 'Loading…'}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: palette.navy }}>{me ? `${me.firstName} ${me.lastName}` : t('loading')}</div>
                     <div style={{ fontSize: 13, color: palette.muted }}>{me?.companyName ?? ''}</div>
                   </div>
                 </div>
-                {me && [['Email', me.email], ['Company', me.companyName ?? '—'], ['Account Type', 'Client']].map(([k, v]) => (
+                {me && [[t('profile.email'), me.email], [t('profile.company'), me.companyName ?? '—'], [t('profile.accountType'), t('profile.client')]].map(([k, v]) => (
                   <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid #F1F5F9' }}>
                     <span style={{ fontSize: 13, color: palette.muted, fontWeight: 500 }}>{k}</span>
                     <span style={{ fontSize: 13, color: palette.navy, fontWeight: 600 }}>{v}</span>

@@ -672,5 +672,183 @@
       "invalidCode": "Invalid verification code. Please try again.",
       "finalizeFailed": "Could not complete sign-up. Please try again."
     }
+  },
+  "clientDashboard": {
+    "portalLabel": "Client Portal",
+    "loading": "Loading…",
+    "logOut": "🚪 Log Out",
+    "nav": {
+      "services": "Services",
+      "rfq": "Request for Quotation",
+      "appointments": "Book Appointment",
+      "profile": "My Profile"
+    },
+    "headerFallback": "Portal",
+    "services": {
+      "intro": "Browse our service systems. Request access to download certified specification files. Approved requests unlock the download immediately.",
+      "noFile": "No spec file yet",
+      "requesting": "Requesting…",
+      "requestSpecFile": "Request Spec File",
+      "awaitingApproval": "⏳ Awaiting Admin Approval",
+      "requestDenied": "Request Denied",
+      "downloadSpecFile": "⬇ Download Spec File"
+    },
+    "rfq": {
+      "sentTitle": "RFQ Submitted",
+      "sentBody": "A USE engineer will review your request and respond within two business days.",
+      "serviceRequired": "Service Required",
+      "selectService": "Select the service you need",
+      "projectDescription": "Project Description",
+      "projectDescriptionPlaceholder": "Describe your pipeline system, diameter, length, operating medium, pressure, and temperature",
+      "requiredTimeline": "Required Timeline",
+      "timelinePlaceholder": "e.g. Mobilization required within 6 weeks",
+      "additionalNotes": "Additional Notes",
+      "notesPlaceholder": "Any specific standards, certifications, or access constraints to note",
+      "submitting": "Submitting…",
+      "submit": "Submit RFQ to USE Engineering"
+    },
+    "appointments": {
+      "sentTitle": "Appointment Booked",
+      "sentBody": "You'll receive a confirmation at your registered email address.",
+      "intro": "Book an office visit to the USE facility in Cairo to meet our engineering team, tour our manufacturing lines, or discuss your project.",
+      "upcoming": "Your upcoming appointments",
+      "availableSlots": "Available Time Slots",
+      "noSlots": "No open slots right now — check back soon.",
+      "selectSlot": "Select an open slot",
+      "slotTakenError": "This slot may have just been booked — please pick another.",
+      "booking": "Booking…",
+      "book": "Book Appointment"
+    },
+    "profile": {
+      "email": "Email",
+      "company": "Company",
+      "accountType": "Account Type",
+      "client": "Client"
+    }
+  },
+  "adminDashboard": {
+    "panelLabel": "Admin Panel",
+    "restrictedAccess": "USE · ADMIN · RESTRICTED ACCESS",
+    "logOut": "🚪 Log Out",
+    "headerFallback": "Dashboard",
+    "nav": {
+      "overview": "Overview",
+      "clients": "Clients",
+      "specs": "Spec Files",
+      "requests": "File Requests",
+      "candidates": "Candidates",
+      "rfqs": "RFQs",
+      "bookings": "Bookings",
+      "audit": "Audit Log",
+      "security": "Security"
+    },
+    "status": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "denied": "Denied",
+      "in_review": "In Review",
+      "quoted": "Quoted",
+      "closed": "Closed"
+    },
+    "approve": "Approve",
+    "deny": "Deny",
+    "search": "Search",
+    "yes": "Yes",
+    "no": "No",
+    "overview": {
+      "clients": "Clients",
+      "companiesSub": "{count} companies",
+      "fileRequests": "File Requests",
+      "approvedSub": "{count} approved",
+      "rfqs": "RFQs",
+      "totalSubmitted": "Total submitted",
+      "appointments": "Appointments",
+      "totalBooked": "Total booked",
+      "recentActivity": "Recent Audit Activity",
+      "noActivity": "No activity yet.",
+      "viewFullLog": "View full audit log →"
+    },
+    "clients": {
+      "searchPlaceholder": "Search clients by name, email, or company",
+      "cols": [
+        "Name",
+        "Company",
+        "Email",
+        "Joined",
+        "MFA",
+        "Status",
+        "Action"
+      ],
+      "none": "No clients found.",
+      "enable": "Enable",
+      "disable": "Disable"
+    },
+    "specs": {
+      "noFile": "No spec file uploaded yet",
+      "uploading": "Uploading…",
+      "replaceFile": "Replace File",
+      "uploadFile": "Upload Spec File"
+    },
+    "requests": {
+      "searchPlaceholder": "Search requests by client, company, or file",
+      "cols": [
+        "Client",
+        "Company",
+        "File",
+        "Requested",
+        "Action"
+      ],
+      "none": "No requests found."
+    },
+    "candidates": {
+      "searchPlaceholder": "Search candidates by name or email",
+      "cols": [
+        "Name",
+        "Role Applied",
+        "Email",
+        "DOB",
+        "Documents",
+        "Decision"
+      ],
+      "none": "No applications found.",
+      "viewDocs": "View ID + CV"
+    },
+    "rfqs": {
+      "searchPlaceholder": "Search RFQs by client, company, or details",
+      "cols": [
+        "Client",
+        "Company",
+        "Service",
+        "Submitted",
+        "Status"
+      ],
+      "none": "No RFQs found.",
+      "general": "General"
+    },
+    "bookings": {
+      "date": "Date",
+      "startTime": "Start Time",
+      "endTime": "End Time",
+      "addSlot": "Add Slot",
+      "searchPlaceholder": "Search bookings by client or company",
+      "cols": [
+        "Client",
+        "Company",
+        "Date",
+        "Time",
+        "Booked"
+      ],
+      "none": "No bookings found."
+    },
+    "audit": {
+      "searchPlaceholder": "Search audit log by action or target",
+      "cols": [
+        "Actor",
+        "Action",
+        "Target",
+        "When"
+      ],
+      "none": "No audit log entries found."
+    }
   }
 }

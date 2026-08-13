@@ -672,5 +672,183 @@
       "invalidCode": "验证码无效，请重试。",
       "finalizeFailed": "无法完成注册，请重试。"
     }
+  },
+  "clientDashboard": {
+    "portalLabel": "客户门户",
+    "loading": "加载中…",
+    "logOut": "🚪 退出登录",
+    "nav": {
+      "services": "服务",
+      "rfq": "询价申请",
+      "appointments": "预约",
+      "profile": "我的资料"
+    },
+    "headerFallback": "门户",
+    "services": {
+      "intro": "浏览我们的服务系统。申请访问权限以下载认证规格文件。已批准的申请可立即解锁下载。",
+      "noFile": "暂无规格文件",
+      "requesting": "申请中…",
+      "requestSpecFile": "申请规格文件",
+      "awaitingApproval": "⏳ 等待管理员审批",
+      "requestDenied": "申请已被拒绝",
+      "downloadSpecFile": "⬇ 下载规格文件"
+    },
+    "rfq": {
+      "sentTitle": "询价单已提交",
+      "sentBody": "USE 工程师将审核您的请求，并在两个工作日内回复。",
+      "serviceRequired": "所需服务",
+      "selectService": "选择您所需的服务",
+      "projectDescription": "项目描述",
+      "projectDescriptionPlaceholder": "请描述您的管道系统、直径、长度、介质、压力和温度",
+      "requiredTimeline": "所需时间表",
+      "timelinePlaceholder": "例如：需在 6 周内动员进场",
+      "additionalNotes": "补充说明",
+      "notesPlaceholder": "任何特定标准、认证或访问限制的说明",
+      "submitting": "提交中…",
+      "submit": "向 USE 工程部提交询价单"
+    },
+    "appointments": {
+      "sentTitle": "预约已确认",
+      "sentBody": "您将收到发送至注册邮箱的确认信息。",
+      "intro": "预约到访开罗的 USE 工厂，与我们的工程团队见面、参观生产线，或商讨您的项目。",
+      "upcoming": "您即将到来的预约",
+      "availableSlots": "可预约时段",
+      "noSlots": "目前暂无空闲时段 — 请稍后再查看。",
+      "selectSlot": "选择一个空闲时段",
+      "slotTakenError": "该时段可能刚被预订 — 请选择其他时段。",
+      "booking": "预约中…",
+      "book": "预约"
+    },
+    "profile": {
+      "email": "电子邮箱",
+      "company": "公司",
+      "accountType": "账户类型",
+      "client": "客户"
+    }
+  },
+  "adminDashboard": {
+    "panelLabel": "管理面板",
+    "restrictedAccess": "USE · 管理员 · 权限受限",
+    "logOut": "🚪 退出登录",
+    "headerFallback": "仪表盘",
+    "nav": {
+      "overview": "概览",
+      "clients": "客户",
+      "specs": "规格文件",
+      "requests": "文件申请",
+      "candidates": "候选人",
+      "rfqs": "询价单",
+      "bookings": "预约",
+      "audit": "审计日志",
+      "security": "安全"
+    },
+    "status": {
+      "pending": "待处理",
+      "approved": "已批准",
+      "denied": "已拒绝",
+      "in_review": "审核中",
+      "quoted": "已报价",
+      "closed": "已关闭"
+    },
+    "approve": "批准",
+    "deny": "拒绝",
+    "search": "搜索",
+    "yes": "是",
+    "no": "否",
+    "overview": {
+      "clients": "客户",
+      "companiesSub": "{count} 家公司",
+      "fileRequests": "文件申请",
+      "approvedSub": "已批准 {count} 项",
+      "rfqs": "询价单",
+      "totalSubmitted": "累计提交",
+      "appointments": "预约",
+      "totalBooked": "累计预订",
+      "recentActivity": "近期审计活动",
+      "noActivity": "暂无活动记录。",
+      "viewFullLog": "查看完整审计日志 →"
+    },
+    "clients": {
+      "searchPlaceholder": "按姓名、邮箱或公司搜索客户",
+      "cols": [
+        "姓名",
+        "公司",
+        "电子邮箱",
+        "加入时间",
+        "多因素认证",
+        "状态",
+        "操作"
+      ],
+      "none": "未找到客户。",
+      "enable": "启用",
+      "disable": "禁用"
+    },
+    "specs": {
+      "noFile": "尚未上传规格文件",
+      "uploading": "上传中…",
+      "replaceFile": "替换文件",
+      "uploadFile": "上传规格文件"
+    },
+    "requests": {
+      "searchPlaceholder": "按客户、公司或文件搜索申请",
+      "cols": [
+        "客户",
+        "公司",
+        "文件",
+        "申请时间",
+        "操作"
+      ],
+      "none": "未找到申请记录。"
+    },
+    "candidates": {
+      "searchPlaceholder": "按姓名或邮箱搜索候选人",
+      "cols": [
+        "姓名",
+        "申请职位",
+        "电子邮箱",
+        "出生日期",
+        "文件",
+        "决定"
+      ],
+      "none": "未找到申请记录。",
+      "viewDocs": "查看身份证与简历"
+    },
+    "rfqs": {
+      "searchPlaceholder": "按客户、公司或详情搜索询价单",
+      "cols": [
+        "客户",
+        "公司",
+        "服务",
+        "提交时间",
+        "状态"
+      ],
+      "none": "未找到询价单。",
+      "general": "一般咨询"
+    },
+    "bookings": {
+      "date": "日期",
+      "startTime": "开始时间",
+      "endTime": "结束时间",
+      "addSlot": "添加时段",
+      "searchPlaceholder": "按客户或公司搜索预约",
+      "cols": [
+        "客户",
+        "公司",
+        "日期",
+        "时间",
+        "预订时间"
+      ],
+      "none": "未找到预约记录。"
+    },
+    "audit": {
+      "searchPlaceholder": "按操作或对象搜索审计日志",
+      "cols": [
+        "操作者",
+        "操作",
+        "对象",
+        "时间"
+      ],
+      "none": "未找到审计日志记录。"
+    }
   }
 }
