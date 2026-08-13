@@ -35,8 +35,9 @@ export default function Contact({ onNavigate }: Props) {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {[
-                { icon: '📍', label: 'Headquarters', value: 'Cairo, Egypt · 6,000 m² Facility' },
-                { icon: '✉️', label: 'Email', value: 'info@use-eg.com' },
+                { icon: '📍', label: 'Headquarters', value: '14S Building, El Oroba Street Extension, New Maadi, Cairo' },
+                { icon: '✉️', label: 'Email', value: 'info@use-eg.com', href: 'mailto:info@use-eg.com' },
+                { icon: '📞', label: 'Tel', value: '(+2) 0227033656', href: 'tel:+20227033656' },
                 { icon: '🌍', label: 'Operations', value: 'Egypt · Iraq · Saudi Arabia · UAE' },
               ].map((c) => (
                 <div key={c.label} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
@@ -45,11 +46,36 @@ export default function Contact({ onNavigate }: Props) {
                   </div>
                   <div>
                     <div style={{ fontSize: 12, color: palette.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{c.label}</div>
-                    <div style={{ fontSize: 14, color: palette.navy, fontWeight: 600, marginTop: 2 }}>{c.value}</div>
+                    {c.href ? (
+                      <a href={c.href} style={{ fontSize: 14, color: palette.navy, fontWeight: 600, marginTop: 2, display: 'block', textDecoration: 'none' }}>{c.value}</a>
+                    ) : (
+                      <div style={{ fontSize: 14, color: palette.navy, fontWeight: 600, marginTop: 2 }}>{c.value}</div>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* Map */}
+            <a
+              href="https://maps.app.goo.gl/hfusekSTTf62MYTb9?g_st=ic"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: 'block', marginTop: 32, borderRadius: 20, overflow: 'hidden', border: `1px solid ${palette.border}`, position: 'relative' }}
+            >
+              <iframe
+                title="USE Cairo facility location"
+                src="https://maps.google.com/maps?q=29.982695,31.272598&z=16&output=embed"
+                width="100%"
+                height="260"
+                style={{ border: 0, display: 'block', pointerEvents: 'none' }}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+              <div style={{ position: 'absolute', bottom: 12, right: 12, background: '#fff', borderRadius: 9999, padding: '8px 16px', fontSize: 12, fontWeight: 700, color: palette.accent, boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
+                Open in Google Maps ↗
+              </div>
+            </a>
           </div>
 
           {/* Form */}

@@ -1,0 +1,10 @@
+node_modules
+# Keep environment variables out of version control
+.env
+
+# Contains a live MaxMind license key — credentials belong in .env, not a
+# tracked config file
+GeoIP.conf
+/geoip-db
+
+/generated/prisma

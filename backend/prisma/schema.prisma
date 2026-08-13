@@ -1,0 +1,248 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────────────────
+
+enum Role {
+  client
+  candidate
+  admin
+}
+
+enum FileAccessStatus {
+  pending
+  approved
+  denied
+}
+
+enum ServiceRequestStatus {
+  pending
+  in_review
+  quoted
+  closed
+}
+
+enum ApplicationStatus {
+  pending
+  approved
+  denied
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Users & auth
+// ─────────────────────────────────────────────────────────────────────────
+
+// Mirrors Clerk's user record. clerkId is the source of identity; role and
+// authorization decisions are always re-checked against this table, never
+// trusted from a client-supplied claim.
+model User {
+  id          String    @id @default(cuid())
+  clerkId     String    @unique
+  role        Role
+  email       String    @unique
+  firstName   String
+  lastName    String
+  phone       String?
+  companyName String? // clients only
+  mfaEnrolled Boolean   @default(false) // admins only
+  createdAt   DateTime  @default(now())
+  disabledAt  DateTime?
+
+  updatedServices      Service[]              @relation("ServiceUpdatedBy")
+  uploadedServiceFiles ServiceFile[]          @relation("ServiceFileUploadedBy")
+  fileAccessRequests   FileAccessRequest[]    @relation("FileAccessRequestClient")
+  decidedFileRequests  FileAccessRequest[]    @relation("FileAccessRequestDecidedBy")
+  serviceRequests      ServiceRequest[]       @relation("ServiceRequestClient")
+  createdSlots         AppointmentSlot[]      @relation("AppointmentSlotCreatedBy")
+  appointments         Appointment[]          @relation("AppointmentClient")
+  createdPositions     OpenPosition[]         @relation("OpenPositionCreatedBy")
+  candidateApplication CandidateApplication?  @relation("CandidateApplicationUser")
+  reviewedApplications CandidateApplication[] @relation("CandidateApplicationReviewedBy")
+  auditLogEntries      AuditLog[]             @relation("AuditLogActor")
+
+  @@index([role])
+  @@index([companyName])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Services (admin-editable content) & spec files (private S3 objects)
+// ─────────────────────────────────────────────────────────────────────────
+
+model Service {
+  id               String   @id @default(cuid())
+  slug             String   @unique
+  name             String
+  shortDescription String
+  longDescription  String
+  iconKey          String
+  order            Int      @default(0)
+  updatedAt        DateTime @updatedAt
+  updatedByAdminId String?
+  updatedByAdmin   User?    @relation("ServiceUpdatedBy", fields: [updatedByAdminId], references: [id])
+
+  files           ServiceFile[]
+  serviceRequests ServiceRequest[]
+
+  @@index([order])
+}
+
+// Always private; never publicly resolvable. Only ever reachable through
+// the request → admin approval → short-lived presigned URL flow.
+model ServiceFile {
+  id                String   @id @default(cuid())
+  serviceId         String
+  service           Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  s3Key             String
+  originalFilename  String
+  version           Int      @default(1)
+  uploadedByAdminId String
+  uploadedByAdmin   User     @relation("ServiceFileUploadedBy", fields: [uploadedByAdminId], references: [id])
+  uploadedAt        DateTime @default(now())
+
+  accessRequests FileAccessRequest[]
+
+  @@index([serviceId])
+}
+
+model FileAccessRequest {
+  id                     String           @id @default(cuid())
+  clientId               String
+  client                 User             @relation("FileAccessRequestClient", fields: [clientId], references: [id])
+  serviceFileId          String
+  serviceFile            ServiceFile      @relation(fields: [serviceFileId], references: [id])
+  status                 FileAccessStatus @default(pending)
+  requestedAt            DateTime         @default(now())
+  decidedAt              DateTime?
+  decidedByAdminId       String?
+  decidedByAdmin         User?            @relation("FileAccessRequestDecidedBy", fields: [decidedByAdminId], references: [id])
+  downloadTokenExpiresAt DateTime?
+
+  @@index([clientId])
+  @@index([serviceFileId])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Service requests / RFQs
+// ─────────────────────────────────────────────────────────────────────────
+
+model ServiceRequest {
+  id             String               @id @default(cuid())
+  clientId       String
+  client         User                 @relation("ServiceRequestClient", fields: [clientId], references: [id])
+  serviceId      String?
+  service        Service?             @relation(fields: [serviceId], references: [id])
+  projectDetails String
+  status         ServiceRequestStatus @default(pending)
+  createdAt      DateTime             @default(now())
+
+  @@index([clientId])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Appointments
+// ─────────────────────────────────────────────────────────────────────────
+
+model AppointmentSlot {
+  id               String   @id @default(cuid())
+  date             DateTime @db.Date
+  startTime        DateTime
+  endTime          DateTime
+  isBooked         Boolean  @default(false)
+  createdByAdminId String
+  createdByAdmin   User     @relation("AppointmentSlotCreatedBy", fields: [createdByAdminId], references: [id])
+
+  appointment Appointment?
+
+  @@index([date])
+  @@index([isBooked])
+}
+
+model Appointment {
+  id        String          @id @default(cuid())
+  slotId    String          @unique
+  slot      AppointmentSlot @relation(fields: [slotId], references: [id])
+  clientId  String
+  client    User            @relation("AppointmentClient", fields: [clientId], references: [id])
+  createdAt DateTime        @default(now())
+
+  @@index([clientId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Careers / candidates
+// ─────────────────────────────────────────────────────────────────────────
+
+model OpenPosition {
+  id               String   @id @default(cuid())
+  title            String
+  description      String
+  department       String
+  isOpen           Boolean  @default(true)
+  createdByAdminId String
+  createdByAdmin   User     @relation("OpenPositionCreatedBy", fields: [createdByAdminId], references: [id])
+  createdAt        DateTime @default(now())
+
+  applications CandidateApplication[]
+
+  @@index([isOpen])
+}
+
+model CandidateApplication {
+  id                String            @id @default(cuid())
+  candidateUserId   String            @unique
+  candidateUser     User              @relation("CandidateApplicationUser", fields: [candidateUserId], references: [id])
+  positionId        String?
+  position          OpenPosition?     @relation(fields: [positionId], references: [id])
+  idPhotoS3Key      String
+  cvS3Key           String
+  dateOfBirth       DateTime          @db.Date
+  status            ApplicationStatus @default(pending)
+  reviewedByAdminId String?
+  reviewedByAdmin   User?             @relation("CandidateApplicationReviewedBy", fields: [reviewedByAdminId], references: [id])
+  reviewedAt        DateTime?
+
+  @@index([positionId])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Audit log & analytics
+// ─────────────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String
+  actor       User     @relation("AuditLogActor", fields: [actorUserId], references: [id])
+  action      String
+  targetType  String
+  targetId    String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([actorUserId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(cuid())
+  eventType  String
+  metadata   Json?
+  occurredAt DateTime @default(now())
+
+  @@index([eventType])
+  @@index([occurredAt])
+}

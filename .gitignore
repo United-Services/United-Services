@@ -26,5 +26,14 @@ yarn-error.log*
 !.vscode/extensions.json
 .idea/
 
+# AI agent tooling (local skills/config, not project source)
+.agents/
+.claude/
+.windsurf/
+skills-lock.json
+
+# Docs
+docs/
+
 # TypeScript build info
 *.tsbuildinfo

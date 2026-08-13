@@ -52,9 +52,11 @@ export default function PublicFooter({ onNavigate }: Props) {
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 16 }}>Contact</div>
             <div style={{ fontSize: 13, color: '#CBD5E1', lineHeight: 1.8 }}>
-              <div>Cairo, Egypt (HQ)</div>
-              <div style={{ color: '#94A3B8', fontSize: 12, marginBottom: 8 }}>6,000 m² Facility</div>
-              <div style={{ color: palette.accent }}>info@use-eg.com</div>
+              <div>14S Building, El Oroba Street Extension</div>
+              <div style={{ color: '#94A3B8', fontSize: 12, marginBottom: 8 }}>New Maadi, Cairo, Egypt</div>
+              <a href="tel:+20227033656" style={{ display: 'block', color: '#CBD5E1', textDecoration: 'none' }}>Tel: (+2) 0227033656</a>
+              <div style={{ color: '#94A3B8', fontSize: 12, marginBottom: 8 }}>Fax: (+2) 0227033656</div>
+              <a href="mailto:info@use-eg.com" style={{ color: palette.accent, textDecoration: 'none' }}>info@use-eg.com</a>
               <div style={{ marginTop: 16, fontSize: 12, color: '#64748B' }}>Also operating in:</div>
               <div style={{ fontSize: 12, color: '#94A3B8' }}>Iraq · Saudi Arabia · UAE</div>
             </div>
