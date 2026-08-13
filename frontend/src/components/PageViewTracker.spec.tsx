@@ -8,7 +8,7 @@ vi.mock("@/i18n/navigation", () => ({
 
 const post = vi.fn()
 vi.mock("@/lib/api", () => ({
-  api: { post: (...args: unknown[]) => post(...args) },
+  axios: { post: (...args: unknown[]) => post(...args) },
 }))
 
 import PageViewTracker from "./PageViewTracker"

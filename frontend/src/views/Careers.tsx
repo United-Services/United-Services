@@ -5,7 +5,7 @@ import { palette } from "../theme"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { useReveal } from "../hooks/useReveal"
-import { api } from "../lib/api"
+import { axios } from "../lib/api"
 
 interface Props {
   onNavigate: (page: string, param?: string) => void
@@ -28,7 +28,7 @@ export default function Careers({ onNavigate }: Props) {
   const [filter, setFilter] = useState<string>(ALL)
 
   useEffect(() => {
-    api
+    axios
       .get("/positions")
       .then(({ data }) => setPositions(data))
       .finally(() => setLoading(false))

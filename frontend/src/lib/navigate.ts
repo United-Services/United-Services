@@ -21,6 +21,8 @@ export const ROUTES: Record<string, string> = {
   "candidate-signup": "/candidate-signup",
   "admin-dashboard": "/admin-dashboard",
   "admin-mfa-setup": "/admin-mfa-setup",
+  privacy: "/privacy",
+  terms: "/terms",
 }
 const PARAM_KEY: Record<string, string> = {
   projects: "company",

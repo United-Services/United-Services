@@ -34,13 +34,25 @@ async function bootstrap() {
   app.use(cookieParser());
   app.use(
     helmet({
+      // This process only ever serves JSON — no HTML, no inline scripts —
+      // so the CSP can be maximally restrictive; there's nothing here that
+      // needs 'unsafe-inline' or a third-party script/style source.
       contentSecurityPolicy: {
         directives: {
-          defaultSrc: ["'self'"],
+          defaultSrc: ["'none'"],
           frameAncestors: ["'none'"],
+          baseUri: ["'none'"],
+          formAction: ["'none'"],
         },
       },
       frameguard: { action: 'deny' },
+      // Force HTTPS on every subsequent request for a year, including
+      // subdomains; safe in production (always served over TLS via nginx)
+      // and a no-op in local dev since browsers ignore HSTS over plain
+      // HTTP anyway.
+      hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+      crossOriginResourcePolicy: { policy: 'same-site' },
     }),
   );
 

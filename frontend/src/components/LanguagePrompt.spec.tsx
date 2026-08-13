@@ -10,7 +10,7 @@ vi.mock("@/i18n/navigation", () => ({
 
 const get = vi.fn()
 vi.mock("@/lib/api", () => ({
-  api: { get: (...args: unknown[]) => get(...args) },
+  axios: { get: (...args: unknown[]) => get(...args) },
 }))
 
 import LanguagePrompt from "./LanguagePrompt"

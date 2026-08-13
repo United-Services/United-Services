@@ -946,5 +946,111 @@
     "eyebrow": "USE · CANDIDATE PORTAL",
     "title": "Application received",
     "body": "Thank you for applying to United Services Egypt. Our HR team reviews every application by hand — we'll reach out by email once a decision has been made. There's no candidate dashboard to check back on; you're all set."
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "lastUpdated": "Last updated: August 2026",
+    "intro": "United Services Egypt (\"USE\", \"we\", \"us\") respects your privacy. This policy explains what personal data we collect through use-eg.com and our client/candidate portals, why we collect it, and the choices you have.",
+    "sections": {
+      "dataCollected": {
+        "title": "1. Data we collect",
+        "body": "Account data (name, email, phone, company name) you provide at sign-up; candidate application data (date of birth, ID photo, CV) if you apply for a position; service requests, RFQs, and appointment bookings you submit; and technical data such as your IP-derived country, browser, and pages visited, used only in aggregate for site analytics."
+      },
+      "howWeUseIt": {
+        "title": "2. How we use it",
+        "body": "To operate your account and the client/candidate portals, to process service requests, RFQs, and job applications, to communicate with you about those requests, to secure your account (including multi-factor authentication), and to understand aggregate site usage (e.g. which countries visit us) so we can improve the service."
+      },
+      "legalBasis": {
+        "title": "3. Legal basis for processing",
+        "body": "We process your data to perform the contract between you and USE (e.g. fulfilling a service request), to comply with legal obligations, and on the basis of our legitimate interest in operating and securing our website and portals."
+      },
+      "sharing": {
+        "title": "4. Sharing your data",
+        "body": "We do not sell personal data. We share it only with service providers who process it on our behalf under contract (cloud hosting, file storage, authentication, and logging providers), and only to the extent needed to provide the service."
+      },
+      "cookies": {
+        "title": "5. Cookies and similar technologies",
+        "body": "We use strictly necessary cookies for authentication and session management. We do not use third-party advertising cookies."
+      },
+      "retention": {
+        "title": "6. Data retention",
+        "body": "We retain account and application data for as long as your account is active or as needed to provide the service, and for a reasonable period afterward to meet legal, accounting, or audit-trail obligations, after which it is deleted or anonymized."
+      },
+      "security": {
+        "title": "7. Security",
+        "body": "We apply technical safeguards including encrypted TOTP secrets, private file storage accessed only via short-lived signed URLs, role-based access control so each user only ever sees their own data, and multi-factor authentication for administrator accounts."
+      },
+      "yourRights": {
+        "title": "8. Your rights",
+        "body": "You may request access to, correction of, or deletion of your personal data by contacting us at info@use-eg.com. We will respond within a reasonable timeframe."
+      },
+      "children": {
+        "title": "9. Children's privacy",
+        "body": "Our services are intended for business use and job applicants of legal working age. We do not knowingly collect data from children."
+      },
+      "changes": {
+        "title": "10. Changes to this policy",
+        "body": "We may update this policy from time to time. Material changes will be reflected by an updated \"last updated\" date above."
+      },
+      "contact": {
+        "title": "11. Contact us",
+        "body": "For any privacy-related question, contact us at info@use-eg.com or 14S Building, El Oroba Street Extension, New Maadi, Cairo, Egypt."
+      }
+    }
+  },
+  "terms": {
+    "title": "Terms of Use",
+    "lastUpdated": "Last updated: August 2026",
+    "intro": "These Terms of Use govern your access to and use of use-eg.com and the United Services Egypt (\"USE\") client and candidate portals. By using this site, you agree to these terms.",
+    "sections": {
+      "acceptance": {
+        "title": "1. Acceptance of terms",
+        "body": "By creating an account, submitting a service request, or applying for a position through this site, you agree to be bound by these terms and our Privacy Policy."
+      },
+      "accounts": {
+        "title": "2. Accounts",
+        "body": "You are responsible for maintaining the confidentiality of your account credentials and for all activity under your account. Notify us immediately of any unauthorized use."
+      },
+      "acceptableUse": {
+        "title": "3. Acceptable use",
+        "body": "You agree not to misuse the site, including attempting to access another user's data, uploading malicious or disguised files, interfering with site security, or using the site for any unlawful purpose."
+      },
+      "intellectualProperty": {
+        "title": "4. Intellectual property",
+        "body": "All content on this site — including text, graphics, logos, and the site design — is the property of United Services Egypt or its licensors and is protected by copyright and other intellectual property laws. See LICENSE and IMAGE_LICENSE for full terms."
+      },
+      "imageLicense": {
+        "title": "5. Image usage license",
+        "body": "All photographs and images on this site, including photographs of our facilities, equipment, and completed projects, are the exclusive property of United Services Egypt. No image on this site may be copied, downloaded, reproduced, distributed, or used in any way, for any purpose, commercial or non-commercial, without our prior written consent. This restriction applies in full to any project photography added to the site in the future."
+      },
+      "portalContent": {
+        "title": "6. Content you submit",
+        "body": "You are responsible for the accuracy of information and files you submit (service requests, candidate applications, documents). We may reject or remove content that violates these terms, including files that fail our security screening."
+      },
+      "disclaimer": {
+        "title": "7. Disclaimer",
+        "body": "This site and its content are provided \"as is\" without warranties of any kind, express or implied, to the fullest extent permitted by law."
+      },
+      "liability": {
+        "title": "8. Limitation of liability",
+        "body": "To the fullest extent permitted by law, United Services Egypt shall not be liable for any indirect, incidental, or consequential damages arising from your use of this site."
+      },
+      "termination": {
+        "title": "9. Termination",
+        "body": "We may suspend or terminate your account at our discretion if you violate these terms, including attempting to access data that does not belong to you or uploading malicious content."
+      },
+      "governingLaw": {
+        "title": "10. Governing law",
+        "body": "These terms are governed by the laws of the Arab Republic of Egypt."
+      },
+      "changes": {
+        "title": "11. Changes to these terms",
+        "body": "We may update these terms from time to time. Continued use of the site after changes take effect constitutes acceptance of the revised terms."
+      },
+      "contact": {
+        "title": "12. Contact us",
+        "body": "For any question about these terms, contact us at info@use-eg.com or 14S Building, El Oroba Street Extension, New Maadi, Cairo, Egypt."
+      }
+    }
   }
 }

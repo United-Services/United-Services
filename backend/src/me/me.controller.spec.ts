@@ -2,6 +2,10 @@ import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { MeController } from './me.controller';
 import { Role, type User } from '../generated/prisma';
 import type { PrismaService } from '../prisma/prisma.service';
+import type { S3Service } from '../s3/s3.service';
+
+const JPEG_BYTES = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
+const PDF_BYTES = Buffer.from('%PDF-1.4', 'latin1');
 
 // /me/become-candidate is the only self-service role transition in the
 // app (client -> candidate) — it must be unreachable for any other role,
@@ -25,7 +29,13 @@ describe('MeController', () => {
       candidateApplication: { create: jest.fn() },
       $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
     } as unknown as PrismaService;
-    return { controller: new MeController(prisma), prisma };
+    const s3 = {
+      readLeadingBytes: jest.fn((key: string) =>
+        Promise.resolve(key.includes('id-photo') ? JPEG_BYTES : PDF_BYTES),
+      ),
+      deleteObject: jest.fn().mockResolvedValue(undefined),
+    } as unknown as S3Service;
+    return { controller: new MeController(prisma, s3), prisma, s3 };
   }
 
   describe('me / toDto', () => {
@@ -90,8 +100,8 @@ describe('MeController', () => {
 
       const result = await controller.becomeCandidate(client, {
         dateOfBirth: '1990-01-01',
-        idPhotoS3Key: 'k1',
-        cvS3Key: 'k2',
+        idPhotoS3Key: 'candidates/u1/candidate-id-photo-1.jpg',
+        cvS3Key: 'candidates/u1/candidate-cv-1.pdf',
         positionId: 'pos-1',
       });
 
@@ -111,8 +121,8 @@ describe('MeController', () => {
       await expect(
         controller.becomeCandidate(client, {
           dateOfBirth: '1990-01-01',
-          idPhotoS3Key: 'k1',
-          cvS3Key: 'k2',
+          idPhotoS3Key: 'candidates/u1/candidate-id-photo-1.jpg',
+          cvS3Key: 'candidates/u1/candidate-cv-1.pdf',
         }),
       ).rejects.toThrow(ConflictException);
     });

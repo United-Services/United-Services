@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -15,9 +23,23 @@ import {
   type Service,
   type Prisma,
 } from '../generated/prisma';
+import {
+  assertNoDisguisedExtension,
+  assertSafeFilename,
+  matchesContentType,
+} from '../common/utils/file-security';
 
 const SERVICES_LIST_CACHE_KEY = 'cache:services:list';
 const CACHE_TTL_SECONDS = 300;
+
+// Admin-only, but still enforced server-side: a spec file must actually be
+// one of these document types. Never trust the client-reported
+// `contentType` beyond this lookup.
+const ALLOWED_SERVICE_FILE_TYPES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+]);
 
 @Controller('services')
 export class ServicesController {
@@ -86,7 +108,11 @@ export class ServicesController {
     @Param('id') serviceId: string,
     @Body() dto: PresignServiceFileDto,
   ) {
+    if (!ALLOWED_SERVICE_FILE_TYPES.has(dto.contentType)) {
+      throw new BadRequestException('Unsupported contentType for spec files');
+    }
     const safeName = dto.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    assertNoDisguisedExtension(safeName);
     const key = `service-specs/${serviceId}/${Date.now()}-${safeName}`;
     const url = await this.s3.createUploadUrl(key, dto.contentType);
     return { url, key };
@@ -99,6 +125,21 @@ export class ServicesController {
     @Param('id') serviceId: string,
     @Body() dto: ConfirmServiceFileDto,
   ) {
+    assertSafeFilename(dto.originalFilename);
+    if (!dto.s3Key.startsWith(`service-specs/${serviceId}/`)) {
+      throw new BadRequestException('s3Key does not belong to this service');
+    }
+    const bytes = await this.s3.readLeadingBytes(dto.s3Key);
+    const matchesAny = [...ALLOWED_SERVICE_FILE_TYPES].some((type) =>
+      matchesContentType(bytes, type),
+    );
+    if (!matchesAny) {
+      await this.s3.deleteObject(dto.s3Key).catch(() => undefined);
+      throw new BadRequestException(
+        'Uploaded file content does not match an accepted document type',
+      );
+    }
+
     const existingCount = await this.prisma.serviceFile.count({
       where: { serviceId },
     });

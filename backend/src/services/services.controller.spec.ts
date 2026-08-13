@@ -20,6 +20,10 @@ describe('ServicesController', () => {
     } as unknown as PrismaService;
     const s3 = {
       createUploadUrl: jest.fn().mockResolvedValue('https://s3.example/put'),
+      readLeadingBytes: jest
+        .fn()
+        .mockResolvedValue(Buffer.from('%PDF-1.4', 'latin1')),
+      deleteObject: jest.fn().mockResolvedValue(undefined),
     } as unknown as S3Service;
     const auditLog = {
       record: jest.fn().mockResolvedValue(undefined),
@@ -112,7 +116,7 @@ describe('ServicesController', () => {
       );
 
       const result = await controller.confirmFile(admin, 'svc-1', {
-        s3Key: 'key',
+        s3Key: 'service-specs/svc-1/spec.pdf',
         originalFilename: 'spec.pdf',
       });
 

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   ConflictException,
   Controller,
@@ -9,9 +10,47 @@ import {
 } from '@nestjs/common';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
+import { S3Service } from '../s3/s3.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { BecomeCandidateDto } from './dto/become-candidate.dto';
 import { Role, type User } from '../generated/prisma';
+import { matchesContentType } from '../common/utils/file-security';
+
+// Mirrors the extension the server picked in UploadsController for each
+// upload kind — used both to enforce the key belongs to this user/kind and
+// to know which magic-byte signature to expect.
+const CANDIDATE_UPLOAD_TYPES: Record<
+  'candidate-id-photo' | 'candidate-cv',
+  string[]
+> = {
+  'candidate-id-photo': ['image/jpeg', 'image/png'],
+  'candidate-cv': [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ],
+};
+
+async function assertOwnedCandidateUpload(
+  s3: S3Service,
+  userId: string,
+  kind: 'candidate-id-photo' | 'candidate-cv',
+  key: string,
+): Promise<void> {
+  if (!key.startsWith(`candidates/${userId}/${kind}-`)) {
+    throw new BadRequestException('Uploaded file does not belong to you');
+  }
+  const bytes = await s3.readLeadingBytes(key);
+  const matches = CANDIDATE_UPLOAD_TYPES[kind].some((type) =>
+    matchesContentType(bytes, type),
+  );
+  if (!matches) {
+    await s3.deleteObject(key).catch(() => undefined);
+    throw new BadRequestException(
+      'Uploaded file content does not match an accepted format',
+    );
+  }
+}
 
 // The only source of truth the frontend's post-sign-in redirect relies on —
 // req.user was populated by ClerkAuthGuard from our own User table, not a
@@ -19,7 +58,10 @@ import { Role, type User } from '../generated/prisma';
 // docs/BUSINESS_RULES.md.
 @Controller('me')
 export class MeController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly s3: S3Service,
+  ) {}
 
   @Get()
   me(@CurrentUser() user: User) {
@@ -55,6 +97,16 @@ export class MeController {
         'Only client accounts can apply as a candidate',
       );
     }
+
+    await Promise.all([
+      assertOwnedCandidateUpload(
+        this.s3,
+        user.id,
+        'candidate-id-photo',
+        dto.idPhotoS3Key,
+      ),
+      assertOwnedCandidateUpload(this.s3, user.id, 'candidate-cv', dto.cvS3Key),
+    ]);
 
     try {
       const [updatedUser, application] = await this.prisma.$transaction([

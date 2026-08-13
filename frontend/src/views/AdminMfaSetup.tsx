@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl"
 import { startRegistration } from "@simplewebauthn/browser"
 import { palette, inputStyle } from "../theme"
 import Spinner, { InlineSpinner } from "../components/Spinner"
-import { api, authHeader } from "../lib/api"
+import { axios, authHeader } from "../lib/api"
 
 interface Props {
   onNavigate: (page: string) => void
@@ -27,7 +27,7 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
     setError(null)
     try {
       const token = await getToken()
-      const { data } = await api.post("/mfa/totp/enroll", {}, {
+      const { data } = await axios.post("/mfa/totp/enroll", {}, {
         headers: authHeader(token),
       })
       setQrCodeDataUrl(data.qrCodeDataUrl)
@@ -46,7 +46,7 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
     setError(null)
     try {
       const token = await getToken()
-      await api.post("/mfa/totp/confirm", { code }, {
+      await axios.post("/mfa/totp/confirm", { code }, {
         headers: authHeader(token),
       })
       setDone(true)
@@ -63,13 +63,13 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
     setMethod("webauthn")
     try {
       const token = await getToken()
-      const { data: options } = await api.post(
+      const { data: options } = await axios.post(
         "/mfa/webauthn/register-options",
         {},
         { headers: authHeader(token) },
       )
       const response = await startRegistration({ optionsJSON: options })
-      await api.post(
+      await axios.post(
         "/mfa/webauthn/register-verify",
         { response, label: "Biometric credential" },
         { headers: authHeader(token) },

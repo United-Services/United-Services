@@ -1,7 +1,8 @@
 import { redirect } from "@/i18n/navigation"
 import { auth } from "@clerk/nextjs/server"
-import { api, authHeader } from "@/lib/api"
+import { axios, authHeader } from "@/lib/api"
 import type { AppLocale } from "@/i18n/routing"
+import { Role } from "@/enums/status.enums"
 
 // The single post-sign-in landing route for every role. Deliberately does
 // not trust Clerk's session claims for the routing decision — it calls our
@@ -20,13 +21,14 @@ export default async function DashboardRedirectPage({
   const token = await getToken()
 
   try {
-    const { data: me } = await api.get("/me", { headers: authHeader(token) })
-    if (me.role === "admin")
+    const { data: me } = await axios.get("/me", { headers: authHeader(token) })
+    if (me.role === Role.Admin)
       redirect({
         href: me.mfaEnrolled ? "/admin-dashboard" : "/admin-mfa-setup",
         locale,
       })
-    if (me.role === "client") redirect({ href: "/client-dashboard", locale })
+    if (me.role === Role.Client)
+      redirect({ href: "/client-dashboard", locale })
     redirect({ href: "/application-status", locale })
   } catch (error) {
     if (error && typeof error === "object" && "digest" in error) throw error // Next.js redirect() control-flow signal

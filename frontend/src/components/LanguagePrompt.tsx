@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "@/i18n/navigation"
-import { api } from "@/lib/api"
+import { axios } from "@/lib/api"
 import { palette } from "../theme"
 
 const DISMISSED_KEY = "use_lang_prompt_dismissed"
@@ -43,7 +43,7 @@ export default function LanguagePrompt() {
     if (window.localStorage.getItem(DISMISSED_KEY)) return
 
     let cancelled = false
-    api
+    axios
       .get("/geo/locale")
       .then(({ data }) => {
         if (cancelled) return

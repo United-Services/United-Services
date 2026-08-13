@@ -1,6 +1,6 @@
 import { redirect } from "@/i18n/navigation"
 import { auth } from "@clerk/nextjs/server"
-import { api, authHeader } from "@/lib/api"
+import { axios, authHeader } from "@/lib/api"
 import type { AppLocale } from "@/i18n/routing"
 import AdminDashboardClient from "./AdminDashboardClient"
 
@@ -19,7 +19,7 @@ export default async function AdminDashboardPage({
 
   const token = await getToken()
   try {
-    const { data: me } = await api.get("/me", { headers: authHeader(token) })
+    const { data: me } = await axios.get("/me", { headers: authHeader(token) })
     if (me.role !== "admin") redirect({ href: "/dashboard", locale })
     if (!me.mfaEnrolled) redirect({ href: "/admin-mfa-setup", locale })
   } catch (error) {

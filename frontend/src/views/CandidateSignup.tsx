@@ -4,7 +4,7 @@ import { useSignUp, useAuth } from "@clerk/nextjs"
 import { useTranslations } from "next-intl"
 import { palette, inputStyle } from "../theme"
 import { InlineSpinner } from "../components/Spinner"
-import { api, authHeader } from "../lib/api"
+import { axios, authHeader } from "../lib/api"
 
 interface Props {
   onNavigate: (page: string) => void
@@ -41,7 +41,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
     kind: "candidate-id-photo" | "candidate-cv",
     token: string | null,
   ) => {
-    const { data } = await api.post(
+    const { data } = await axios.post(
       "/uploads/presign",
       { kind, contentType: file.type },
       { headers: authHeader(token) },
@@ -105,7 +105,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
         uploadFile(idFile, "candidate-id-photo", token),
         uploadFile(cvFile, "candidate-cv", token),
       ])
-      await api.post(
+      await axios.post(
         "/me/become-candidate",
         {
           dateOfBirth: form.dob,

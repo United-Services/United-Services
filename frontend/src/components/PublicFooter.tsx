@@ -210,12 +210,34 @@ export default function PublicFooter({ onNavigate }: Props) {
         >
           <div style={{ fontSize: 13, color: "#475569" }}>{t("copyright")}</div>
           <div style={{ display: "flex", gap: 24 }}>
-            <span style={{ fontSize: 13, color: "#475569", cursor: "pointer" }}>
+            <button
+              onClick={() => onNavigate("privacy")}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontSize: 13,
+                color: "#475569",
+                fontFamily: "Poppins, sans-serif",
+                padding: 0,
+              }}
+            >
               {t("privacyPolicy")}
-            </span>
-            <span style={{ fontSize: 13, color: "#475569", cursor: "pointer" }}>
+            </button>
+            <button
+              onClick={() => onNavigate("terms")}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontSize: 13,
+                color: "#475569",
+                fontFamily: "Poppins, sans-serif",
+                padding: 0,
+              }}
+            >
               {t("termsOfService")}
-            </span>
+            </button>
           </div>
         </div>
       </div>

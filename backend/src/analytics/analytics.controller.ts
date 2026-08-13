@@ -7,7 +7,11 @@ import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { extractIp } from '../common/utils/extract-ip';
 import { TrackEventDto } from './dto/track-event.dto';
-import { Role, type Prisma } from '../generated/prisma';
+import { Role, FileAccessStatus, type Prisma } from '../generated/prisma';
+import {
+  AnalyticsEventType,
+  AnalyticsEventTypePrefix,
+} from './analytics-event-type.enums';
 
 @Controller('analytics')
 export class AnalyticsController {
@@ -57,7 +61,9 @@ export class AnalyticsController {
         select: { companyName: true },
       }),
       this.prisma.fileAccessRequest.count(),
-      this.prisma.fileAccessRequest.count({ where: { status: 'approved' } }),
+      this.prisma.fileAccessRequest.count({
+        where: { status: FileAccessStatus.approved },
+      }),
       this.prisma.serviceRequest.count(),
       this.prisma.appointment.count(),
       this.prisma.candidateApplication.groupBy({
@@ -66,14 +72,16 @@ export class AnalyticsController {
       }),
       this.prisma.analyticsEvent.groupBy({
         by: ['eventType'],
-        where: { eventType: { startsWith: 'cta_click' } },
+        where: { eventType: { startsWith: AnalyticsEventTypePrefix.CtaClick } },
         _count: true,
       }),
     ]);
 
     const serviceViews = await this.prisma.analyticsEvent.groupBy({
       by: ['eventType'],
-      where: { eventType: { startsWith: 'service_page_view' } },
+      where: {
+        eventType: { startsWith: AnalyticsEventTypePrefix.ServicePageView },
+      },
       _count: true,
     });
 
@@ -108,7 +116,7 @@ export class AnalyticsController {
     const grouped = await this.prisma.analyticsEvent.groupBy({
       by: ['country'],
       where: {
-        eventType: 'page_view',
+        eventType: AnalyticsEventType.PageView,
         country: { not: null },
         occurredAt: { gte: since },
       },

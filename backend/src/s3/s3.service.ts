@@ -3,6 +3,7 @@ import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
+  DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -34,5 +35,32 @@ export class S3Service {
   ): Promise<string> {
     const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
     return getSignedUrl(this.client, command, { expiresIn: expiresInSeconds });
+  }
+
+  // Reads only the first `maxBytes` of an object — enough to check a file
+  // signature (magic bytes) against its declared content type without
+  // pulling the whole object through the app server.
+  async readLeadingBytes(key: string, maxBytes = 4096): Promise<Buffer> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      Range: `bytes=0-${maxBytes - 1}`,
+    });
+    const { Body } = await this.client.send(command);
+    if (!Body) return Buffer.alloc(0);
+    const chunks: Buffer[] = [];
+    for await (const chunk of Body as AsyncIterable<Buffer>) {
+      chunks.push(Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
+  }
+
+  // Used to remove an object that failed post-upload validation (e.g. its
+  // content doesn't match the declared type) so it never lingers in the
+  // bucket referenced by nothing.
+  async deleteObject(key: string): Promise<void> {
+    await this.client.send(
+      new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
+    );
   }
 }

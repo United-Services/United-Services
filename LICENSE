@@ -4,3 +4,10 @@ This source code and its associated assets are proprietary and confidential.
 No part of this repository may be copied, modified, distributed, sublicensed,
 or used in any form without the prior written permission of United Services
 Egypt.
+
+## Images
+
+All images under `frontend/public/images/` are subject to the additional,
+stricter terms in `frontend/public/images/LICENSE.md` — in short: no use of
+any kind, under any conditions, without prior written permission. This
+includes all project photography added to that directory in the future.

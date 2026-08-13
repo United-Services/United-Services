@@ -1,6 +1,6 @@
 import { redirect } from "@/i18n/navigation"
 import { auth } from "@clerk/nextjs/server"
-import { api, authHeader } from "@/lib/api"
+import { axios, authHeader } from "@/lib/api"
 import type { AppLocale } from "@/i18n/routing"
 import ClientDashboardClient from "./ClientDashboardClient"
 
@@ -18,7 +18,7 @@ export default async function ClientDashboardPage({
 
   const token = await getToken()
   try {
-    const { data: me } = await api.get("/me", { headers: authHeader(token) })
+    const { data: me } = await axios.get("/me", { headers: authHeader(token) })
     if (me.role !== "client") redirect({ href: "/dashboard", locale })
   } catch (error) {
     if (error && typeof error === "object" && "digest" in error) throw error

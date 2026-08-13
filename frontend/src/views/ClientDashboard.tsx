@@ -13,7 +13,8 @@ import {
   IconUser,
   IconLogout,
 } from "../components/NavIcons"
-import { api, authHeader } from "../lib/api"
+import { axios, authHeader } from "../lib/api"
+import { FileAccessStatus } from "../enums/status.enums"
 
 const FALLBACK_IMG = "/images/bp-valves.jpg"
 const SVC_IMG_BY_SLUG: Record<string, string> = {
@@ -43,7 +44,7 @@ interface Service {
 type LatestFile = { id: string; originalFilename: string } | null
 interface FileAccessRequest {
   id: string
-  status: "pending" | "approved" | "denied"
+  status: FileAccessStatus
   serviceFile: { id: string; service: { name: string; slug: string } }
 }
 interface Slot {
@@ -108,11 +109,11 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
     const headers = await authed()
     const [meRes, servicesRes, requestsRes, slotsRes, myApptsRes] =
       await Promise.all([
-        api.get("/me", { headers }),
-        api.get("/services", { headers }),
-        api.get("/file-access-requests/mine", { headers }),
-        api.get("/appointments/slots", { headers }),
-        api.get("/appointments/mine", { headers }),
+        axios.get("/me", { headers }),
+        axios.get("/services", { headers }),
+        axios.get("/file-access-requests/mine", { headers }),
+        axios.get("/appointments/slots", { headers }),
+        axios.get("/appointments/mine", { headers }),
       ])
     setMe(meRes.data)
     setServices(servicesRes.data)
@@ -122,7 +123,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
 
     const filePairs = await Promise.all(
       servicesRes.data.map(async (s: Service) => {
-        const { data } = await api.get(`/services/${s.id}/latest-file`, {
+        const { data } = await axios.get(`/services/${s.id}/latest-file`, {
           headers,
         })
         return [s.id, data] as const
@@ -137,7 +138,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
 
   const statusForService = (
     serviceId: string,
-  ): "none" | "pending" | "approved" | "denied" => {
+  ): "none" | FileAccessStatus => {
     const file = latestFiles[serviceId]
     if (!file) return "none"
     const req = myRequests.find((r) => r.serviceFile.id === file.id)
@@ -150,10 +151,10 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
     setRequestingId(serviceId)
     try {
       const headers = await authed()
-      await api.post("/file-access-requests", { serviceFileId: file.id }, {
+      await axios.post("/file-access-requests", { serviceFileId: file.id }, {
         headers,
       })
-      const { data } = await api.get("/file-access-requests/mine", { headers })
+      const { data } = await axios.get("/file-access-requests/mine", { headers })
       setMyRequests(data)
     } finally {
       setRequestingId(null)
@@ -165,7 +166,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
     const req = myRequests.find((r) => r.serviceFile.id === file?.id)
     if (!req) return
     const headers = await authed()
-    const { data } = await api.get(`/file-access-requests/${req.id}/download`, {
+    const { data } = await axios.get(`/file-access-requests/${req.id}/download`, {
       headers,
     })
     window.open(data.url, "_blank")
@@ -183,7 +184,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
       ]
         .filter(Boolean)
         .join("\n\n")
-      await api.post(
+      await axios.post(
         "/rfqs",
         { serviceId: rfq.serviceId || undefined, projectDetails },
         { headers },
@@ -201,7 +202,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
     setApptError(null)
     try {
       const headers = await authed()
-      await api.post("/appointments/book", { slotId: selectedSlotId }, {
+      await axios.post("/appointments/book", { slotId: selectedSlotId }, {
         headers,
       })
       setApptSent(true)
@@ -210,7 +211,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
         err?.response?.data?.message ?? t("appointments.slotTakenError"),
       )
       const headers = await authed()
-      const { data } = await api.get("/appointments/slots", { headers })
+      const { data } = await axios.get("/appointments/slots", { headers })
       setSlots(data)
     } finally {
       setApptLoading(false)
@@ -523,7 +524,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                             )}
                           </button>
                         )}
-                        {hasFile && status === "pending" && (
+                        {hasFile && status === FileAccessStatus.Pending && (
                           <div
                             style={{
                               textAlign: "center",
@@ -539,7 +540,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                             {t("services.awaitingApproval")}
                           </div>
                         )}
-                        {hasFile && status === "denied" && (
+                        {hasFile && status === FileAccessStatus.Denied && (
                           <div
                             style={{
                               textAlign: "center",
@@ -555,7 +556,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                             {t("services.requestDenied")}
                           </div>
                         )}
-                        {hasFile && status === "approved" && (
+                        {hasFile && status === FileAccessStatus.Approved && (
                           <button
                             onClick={() => downloadSpec(s.id)}
                             style={{

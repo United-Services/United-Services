@@ -13,7 +13,7 @@ import { useTranslations } from "next-intl"
 import { startAuthentication, startRegistration } from "@simplewebauthn/browser"
 import { palette, inputStyle } from "../theme"
 import Spinner from "../components/Spinner"
-import { api, authHeader } from "../lib/api"
+import { axios, authHeader } from "../lib/api"
 
 interface WebAuthnCredentialSummary {
   id: string
@@ -47,7 +47,7 @@ export default function AdminSecuritySection() {
 
   const loadStatus = async () => {
     const token = await getToken()
-    const { data } = await api.get("/mfa/status", {
+    const { data } = await axios.get("/mfa/status", {
       headers: authHeader(token),
     })
     setStatus(data)
@@ -62,7 +62,7 @@ export default function AdminSecuritySection() {
     setMessage(null)
     try {
       const token = await getToken()
-      const { data } = await api.post("/mfa/totp/enroll", {}, {
+      const { data } = await axios.post("/mfa/totp/enroll", {}, {
         headers: authHeader(token),
       })
       setTotpQr(data.qrCodeDataUrl)
@@ -80,7 +80,7 @@ export default function AdminSecuritySection() {
     setMessage(null)
     try {
       const token = await getToken()
-      await api.post("/mfa/totp/confirm", { code: totpCode }, {
+      await axios.post("/mfa/totp/confirm", { code: totpCode }, {
         headers: authHeader(token),
       })
       setTotpQr(null)
@@ -103,14 +103,14 @@ export default function AdminSecuritySection() {
     setMessage(null)
     try {
       const token = await getToken()
-      const { data: options } = await api.post(
+      const { data: options } = await axios.post(
         "/mfa/webauthn/register-options",
         {},
         { headers: authHeader(token) },
       )
       const response = await startRegistration({ optionsJSON: options })
       const label = window.prompt(t("credentialLabelPrompt")) ?? undefined
-      await api.post("/mfa/webauthn/register-verify", { response, label }, {
+      await axios.post("/mfa/webauthn/register-verify", { response, label }, {
         headers: authHeader(token),
       })
       setMessage({ type: "ok", text: t("messages.credentialRegistered") })
@@ -129,19 +129,19 @@ export default function AdminSecuritySection() {
     try {
       const token = await getToken()
       if (resetMethod === "totp") {
-        await api.post(
+        await axios.post(
           "/mfa/admin-password-reset",
           { method: "totp", totpCode: resetTotpCode, newPassword },
           { headers: authHeader(token) },
         )
       } else {
-        const { data: options } = await api.post(
+        const { data: options } = await axios.post(
           "/mfa/webauthn/auth-options",
           {},
           { headers: authHeader(token) },
         )
         const response = await startAuthentication({ optionsJSON: options })
-        await api.post(
+        await axios.post(
           "/mfa/admin-password-reset",
           { method: "webauthn", webauthnResponse: response, newPassword },
           { headers: authHeader(token) },

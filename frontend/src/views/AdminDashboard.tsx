@@ -39,8 +39,9 @@ import {
   IconLogout,
 } from "../components/NavIcons"
 import WorldMap from "../components/WorldMap"
-import { api, authHeader } from "../lib/api"
+import { axios, authHeader } from "../lib/api"
 import AdminSecuritySection from "./AdminSecuritySection"
+import { FileAccessStatus, ApplicationStatus, Role } from "../enums/status.enums"
 
 interface Props {
   onLogout: () => void
@@ -71,7 +72,7 @@ interface AdminUser {
 }
 interface FileRequestRow {
   id: string
-  status: "pending" | "approved" | "denied"
+  status: FileAccessStatus
   requestedAt: string
   client: {
     firstName: string
@@ -95,7 +96,7 @@ interface PositionRow {
 }
 interface CandidateRow {
   id: string
-  status: "pending" | "approved" | "denied"
+  status: ApplicationStatus
   dateOfBirth: string
   candidateUser: { firstName: string; lastName: string; email: string }
   position: { title: string; department: string } | null
@@ -194,20 +195,20 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
 
   const loadOverview = async () => {
     const headers = await authed()
-    const { data } = await api.get("/analytics/overview", { headers })
+    const { data } = await axios.get("/analytics/overview", { headers })
     setOverview(data)
   }
   const loadGeoOverview = async () => {
     const headers = await authed()
-    const { data } = await api.get("/analytics/geo-overview", { headers })
+    const { data } = await axios.get("/analytics/geo-overview", { headers })
     setGeoOverview(data.countries)
   }
   const loadClients = async (q = "") => {
     const headers = await authed()
-    const { data } = await api.get("/admin/users", {
+    const { data } = await axios.get("/admin/users", {
       headers,
       params: {
-        role: "client",
+        role: Role.Client,
         q: q || undefined,
       },
     })
@@ -215,11 +216,11 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   }
   const loadServices = async () => {
     const headers = await authed()
-    const { data } = await api.get("/services", { headers })
+    const { data } = await axios.get("/services", { headers })
     setServices(data)
     const pairs = await Promise.all(
       data.map(async (s: Service) => {
-        const res = await api.get(`/services/${s.id}/files`, { headers })
+        const res = await axios.get(`/services/${s.id}/files`, { headers })
         return [s.id, res.data] as const
       }),
     )
@@ -227,7 +228,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   }
   const loadRequests = async (q = "") => {
     const headers = await authed()
-    const { data } = await api.get("/file-access-requests", {
+    const { data } = await axios.get("/file-access-requests", {
       headers,
       params: {
         q: q || undefined,
@@ -237,12 +238,12 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   }
   const loadPositions = async () => {
     const headers = await authed()
-    const { data } = await api.get("/positions/all", { headers })
+    const { data } = await axios.get("/positions/all", { headers })
     setPositions(data)
   }
   const loadCandidates = async (q = "") => {
     const headers = await authed()
-    const { data } = await api.get("/candidate-applications", {
+    const { data } = await axios.get("/candidate-applications", {
       headers,
       params: {
         q: q || undefined,
@@ -252,7 +253,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   }
   const loadRfqs = async (q = "") => {
     const headers = await authed()
-    const { data } = await api.get("/rfqs", {
+    const { data } = await axios.get("/rfqs", {
       headers,
       params: {
         q: q || undefined,
@@ -262,7 +263,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   }
   const loadAppointments = async (q = "") => {
     const headers = await authed()
-    const { data } = await api.get("/appointments", {
+    const { data } = await axios.get("/appointments", {
       headers,
       params: {
         q: q || undefined,
@@ -272,7 +273,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   }
   const loadAuditLog = async (q = "") => {
     const headers = await authed()
-    const { data } = await api.get("/audit-log", {
+    const { data } = await axios.get("/audit-log", {
       headers,
       params: {
         q: q || undefined,
@@ -296,7 +297,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
 
   const toggleClientStatus = async (c: AdminUser) => {
     const headers = await authed()
-    await api.patch(
+    await axios.patch(
       `/admin/users/${c.id}/${c.disabledAt ? "enable" : "disable"}`,
       {},
       { headers },
@@ -311,7 +312,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
     setUploadingId(serviceId)
     try {
       const headers = await authed()
-      const { data: presign } = await api.post(
+      const { data: presign } = await axios.post(
         `/services/${serviceId}/files/presign`,
         {
           filename: file.name,
@@ -324,12 +325,12 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
         body: file,
         headers: { "Content-Type": file.type || "application/octet-stream" },
       })
-      await api.post(
+      await axios.post(
         `/services/${serviceId}/files`,
         { s3Key: presign.key, originalFilename: file.name },
         { headers },
       )
-      const { data: files } = await api.get(`/services/${serviceId}/files`, {
+      const { data: files } = await axios.get(`/services/${serviceId}/files`, {
         headers,
       })
       setServiceFiles((prev) => ({ ...prev, [serviceId]: files }))
@@ -340,7 +341,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
 
   const decideRequest = async (id: string, approve: boolean) => {
     const headers = await authed()
-    await api.post(`/file-access-requests/${id}/decide`, { approve }, {
+    await axios.post(`/file-access-requests/${id}/decide`, { approve }, {
       headers,
     })
     loadRequests(requestQuery)
@@ -349,7 +350,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
 
   const decideCandidate = async (id: string, approve: boolean) => {
     const headers = await authed()
-    await api.patch(`/candidate-applications/${id}/decide`, { approve }, {
+    await axios.patch(`/candidate-applications/${id}/decide`, { approve }, {
       headers,
     })
     loadCandidates(candidateQuery)
@@ -357,7 +358,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
 
   const viewCandidateDocs = async (id: string) => {
     const headers = await authed()
-    const { data } = await api.get(`/candidate-applications/${id}/documents`, {
+    const { data } = await axios.get(`/candidate-applications/${id}/documents`, {
       headers,
     })
     window.open(data.idPhotoUrl, "_blank")
@@ -388,11 +389,11 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
     try {
       const headers = await authed()
       if (editingPositionId) {
-        await api.patch(`/positions/${editingPositionId}`, positionForm, {
+        await axios.patch(`/positions/${editingPositionId}`, positionForm, {
           headers,
         })
       } else {
-        await api.post("/positions", positionForm, { headers })
+        await axios.post("/positions", positionForm, { headers })
       }
       cancelEditPosition()
       loadPositions()
@@ -402,7 +403,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   }
   const togglePositionOpen = async (p: PositionRow) => {
     const headers = await authed()
-    await api.patch(`/positions/${p.id}`, { isOpen: !p.isOpen }, { headers })
+    await axios.patch(`/positions/${p.id}`, { isOpen: !p.isOpen }, { headers })
     loadPositions()
   }
 
@@ -410,7 +411,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
     e.preventDefault()
     if (!newSlot.date || !newSlot.startTime || !newSlot.endTime) return
     const headers = await authed()
-    await api.post(
+    await axios.post(
       "/appointments/slots",
       {
         date: new Date(newSlot.date).toISOString(),

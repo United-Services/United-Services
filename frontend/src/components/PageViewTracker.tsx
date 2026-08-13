@@ -10,12 +10,16 @@
 
 import { useEffect } from "react"
 import { usePathname } from "@/i18n/navigation"
-import { api } from "@/lib/api"
+import { axios } from "@/lib/api"
+import { AnalyticsEventType } from "@/enums/analytics-event-type.enums"
+
 export default function PageViewTracker() {
   const pathname = usePathname()
 
   useEffect(() => {
-    api.post("/analytics/track", { eventType: "page_view" }).catch(() => {})
+    axios
+      .post("/analytics/track", { eventType: AnalyticsEventType.PageView })
+      .catch(() => {})
   }, [pathname])
 
   return null
