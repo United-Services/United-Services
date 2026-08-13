@@ -1,0 +1,81 @@
+name: Load test
+
+# Manual only — load tests are slow/noisy compared to the required CI gate
+# (typecheck/build/unit/integration in ci.yml) and shouldn't block every
+# push. Run from the Actions tab when you want a fresh baseline, e.g.
+# before/after a change to caching, rate limiting, or a hot-path query.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  load-test:
+    name: k6 load test (public endpoints + rate limiter)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: use_loadtest
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/use_loadtest
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/use_loadtest
+      REDIS_URL: redis://localhost:6379
+      ENCRYPTION_KEY: ci-placeholder-encryption-key
+      CLERK_SECRET_KEY: sk_test_ci-placeholder-key
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ci-placeholder
+      AWS_SECRET_ACCESS_KEY: ci-placeholder
+      S3_BUCKET_NAME: ci-placeholder-bucket
+      WEBAUTHN_RP_ID: localhost
+      WEBAUTHN_RP_ORIGIN: http://localhost:3000
+      CORS_ORIGINS: http://localhost:3000
+      PORT: 3001
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: backend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma generate
+      - run: pnpm exec prisma migrate deploy
+      - run: pnpm run build
+      - name: Boot the app in the background
+        run: |
+          node dist/main.js &
+          echo $! > app.pid
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:3001/api/v1/health && break
+            sleep 1
+          done
+      - uses: grafana/setup-k6-action@v1
+      - name: Baseline (public endpoints)
+        run: k6 run loadtest/public-endpoints.js
+      - name: Rate limiter enforcement
+        run: k6 run loadtest/rate-limit-enforcement.js
+      - name: Stop the app
+        if: always()
+        run: kill "$(cat app.pid)" || true
