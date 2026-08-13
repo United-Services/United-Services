@@ -23,6 +23,7 @@ import { AppointmentsModule } from './appointments/appointments.module';
 import { CandidatesModule } from './candidates/candidates.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { AdminUsersModule } from './admin-users/admin-users.module';
+import { GeoModule } from './geo/geo.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { AdminUsersModule } from './admin-users/admin-users.module';
     CandidatesModule,
     AnalyticsModule,
     AdminUsersModule,
+    GeoModule,
   ],
   controllers: [HealthController, MeController, UploadsController],
   providers: [

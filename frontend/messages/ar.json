@@ -1,0 +1,20 @@
+{
+  "nav": {
+    "about": "من نحن",
+    "vision": "رؤيتنا",
+    "services": "خدماتنا",
+    "projects": "مشاريعنا",
+    "careers": "وظائف",
+    "contact": "اتصل بنا",
+    "clientPortal": "بوابة العملاء",
+    "requestConsultation": "طلب استشارة",
+    "brand": "يونايتد سيرفيسز",
+    "brandSub": "مصر · تأسست عام 2005"
+  },
+  "language": {
+    "label": "اللغة",
+    "en": "English",
+    "ar": "العربية",
+    "zh": "中文"
+  }
+}

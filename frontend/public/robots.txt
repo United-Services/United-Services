@@ -1,8 +1,9 @@
 User-agent: *
 Allow: /
 Disallow: /api/
-Disallow: /dashboard/
-Disallow: /client-dashboard
-Disallow: /admin-dashboard
+Disallow: /*/dashboard
+Disallow: /*/client-dashboard
+Disallow: /*/admin-dashboard
+Disallow: /*/admin-mfa-setup
 
 Sitemap: https://use-eg.com/sitemap.xml

@@ -1,6 +1,8 @@
 'use client'
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { palette } from '../theme'
+import LanguageSwitcher from './LanguageSwitcher'
 const navLogo = '/images/logo-nav-future-energy.png'
 
 interface Props {
@@ -8,16 +10,10 @@ interface Props {
   onNavigate: (page: string, param?: string) => void
 }
 
-const LINKS = [
-  { id: 'about', label: 'About' },
-  { id: 'vision', label: 'Vision' },
-  { id: 'services', label: 'Services' },
-  { id: 'projects', label: 'Projects' },
-  { id: 'careers', label: 'Careers' },
-  { id: 'contact', label: 'Contact' },
-]
+const LINK_IDS = ['about', 'vision', 'services', 'projects', 'careers', 'contact'] as const
 
 export default function PublicNav({ current, onNavigate }: Props) {
+  const t = useTranslations('nav')
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
@@ -54,30 +50,31 @@ export default function PublicNav({ current, onNavigate }: Props) {
 
         {/* Desktop links */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          {LINKS.map((l) => (
+          {LINK_IDS.map((id) => (
             <button
-              key={l.id}
-              onClick={() => onNavigate(l.id)}
+              key={id}
+              onClick={() => onNavigate(id)}
               style={{
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
                 padding: '8px 14px',
                 fontSize: 14,
-                fontWeight: current === l.id ? 700 : 500,
-                color: current === l.id ? palette.accent : palette.slate,
+                fontWeight: current === id ? 700 : 500,
+                color: current === id ? palette.accent : palette.slate,
                 borderRadius: 8,
                 fontFamily: 'Poppins, sans-serif',
                 transition: 'color 0.15s',
               }}
             >
-              {l.label}
+              {t(id)}
             </button>
           ))}
         </div>
 
         {/* Portal button */}
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <LanguageSwitcher />
           <button
             onClick={() => onNavigate('client-login')}
             style={{
@@ -92,7 +89,7 @@ export default function PublicNav({ current, onNavigate }: Props) {
               fontFamily: 'Poppins, sans-serif',
             }}
           >
-            Client Portal
+            {t('clientPortal')}
           </button>
           <button
             onClick={() => onNavigate('contact')}
@@ -111,7 +108,7 @@ export default function PublicNav({ current, onNavigate }: Props) {
             onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = palette.accentDark }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = palette.accent }}
           >
-            Request Consultation
+            {t('requestConsultation')}
           </button>
         </div>
       </div>

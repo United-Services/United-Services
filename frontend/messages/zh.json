@@ -1,0 +1,20 @@
+{
+  "nav": {
+    "about": "关于我们",
+    "vision": "愿景",
+    "services": "服务",
+    "projects": "项目",
+    "careers": "招聘",
+    "contact": "联系我们",
+    "clientPortal": "客户门户",
+    "requestConsultation": "申请咨询",
+    "brand": "United Services",
+    "brandSub": "埃及 · 成立于 2005 年"
+  },
+  "language": {
+    "label": "语言",
+    "en": "English",
+    "ar": "العربية",
+    "zh": "中文"
+  }
+}

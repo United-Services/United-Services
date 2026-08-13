@@ -1,14 +1,22 @@
 import type { MetadataRoute } from 'next'
+import { routing } from '@/i18n/routing'
 
 const BASE_URL = 'https://use-eg.com'
 
 const STATIC_ROUTES = ['/', '/about', '/vision', '/services', '/projects', '/careers', '/contact']
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const entries: MetadataRoute.Sitemap = STATIC_ROUTES.map((route) => ({
-    url: `${BASE_URL}${route}`,
-    lastModified: new Date(),
-  }))
+  const entries: MetadataRoute.Sitemap = STATIC_ROUTES.flatMap((route) =>
+    routing.locales.map((locale) => ({
+      url: `${BASE_URL}/${locale}${route === '/' ? '' : route}`,
+      lastModified: new Date(),
+      alternates: {
+        languages: Object.fromEntries(
+          routing.locales.map((l) => [l, `${BASE_URL}/${l}${route === '/' ? '' : route}`]),
+        ),
+      },
+    })),
+  )
 
   // Best-effort: if the API isn't reachable at build time, the sitemap still
   // ships with the static marketing routes above.
@@ -18,7 +26,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (res.ok) {
       const services: { slug: string; updatedAt: string }[] = await res.json()
       for (const s of services) {
-        entries.push({ url: `${BASE_URL}/services#${s.slug}`, lastModified: new Date(s.updatedAt) })
+        for (const locale of routing.locales) {
+          entries.push({ url: `${BASE_URL}/${locale}/services#${s.slug}`, lastModified: new Date(s.updatedAt) })
+        }
       }
     }
   } catch {

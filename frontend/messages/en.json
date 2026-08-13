@@ -1,0 +1,20 @@
+{
+  "nav": {
+    "about": "About",
+    "vision": "Vision",
+    "services": "Services",
+    "projects": "Projects",
+    "careers": "Careers",
+    "contact": "Contact",
+    "clientPortal": "Client Portal",
+    "requestConsultation": "Request Consultation",
+    "brand": "United Services",
+    "brandSub": "Egypt · Est. 2005"
+  },
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "ar": "العربية",
+    "zh": "中文"
+  }
+}
