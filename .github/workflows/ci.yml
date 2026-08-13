@@ -36,6 +36,66 @@ jobs:
       - run: pnpm run build
       - run: pnpm audit --audit-level=high || true
 
+  backend-integration:
+    name: Backend — integration tests (real Postgres + Redis)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: use_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/use_ci
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/use_ci
+      REDIS_URL: redis://localhost:6379
+      ENCRYPTION_KEY: ci-placeholder-encryption-key
+      CLERK_SECRET_KEY: sk_test_ci-placeholder-key
+      AWS_REGION: us-east-1
+      # Dummy static credentials — without them the AWS SDK's credential
+      # provider chain falls through to an IMDS lookup that hangs for a
+      # long time on a non-EC2 runner and can make the whole job time out.
+      AWS_ACCESS_KEY_ID: ci-placeholder
+      AWS_SECRET_ACCESS_KEY: ci-placeholder
+      S3_BUCKET_NAME: ci-placeholder-bucket
+      WEBAUTHN_RP_ID: localhost
+      WEBAUTHN_RP_ORIGIN: http://localhost:3000
+      CORS_ORIGINS: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: backend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma generate
+      - run: pnpm exec prisma migrate deploy
+      # Nest's Redis/Postgres client handles stay open at test-process
+      # exit by design (they're app-lifetime singletons) — --forceExit is
+      # expected here, not masking a real leak the unit-test job would fail.
+      - name: Integration tests (e2e)
+        run: pnpm exec jest --config ./test/jest-e2e.json --forceExit
+
   frontend:
     name: Frontend — typecheck & build
     runs-on: ubuntu-latest
