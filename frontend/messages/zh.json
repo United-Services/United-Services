@@ -16,5 +16,100 @@
     "en": "English",
     "ar": "العربية",
     "zh": "中文"
+  },
+  "footer": {
+    "tagline": "为埃及、伊拉克、沙特阿拉伯和阿联酋的石油天然气行业提供防腐与管道完整性解决方案。",
+    "companyHeading": "公司",
+    "servicesHeading": "服务",
+    "contactHeading": "联系方式",
+    "tel": "电话",
+    "fax": "传真",
+    "alsoOperatingIn": "其他业务地区：",
+    "operatingRegions": "伊拉克 · 沙特阿拉伯 · 阿联酋",
+    "copyright": "© 2026 United Services Egypt。保留所有权利。· 埃及石油总公司注册企业",
+    "privacyPolicy": "隐私政策",
+    "termsOfService": "服务条款"
+  },
+  "services": {
+    "names": {
+      "gre": "GRE 玻璃纤维增强环氧树脂内衬",
+      "wrap": "外部防护包覆",
+      "coating": "工业涂层",
+      "hdpe": "高密度聚乙烯内衬（HDPE）",
+      "rtp": "增强热塑性管道系统（RTP）",
+      "rtv": "RTV 绝缘子硅橡胶涂层"
+    },
+    "specs": {
+      "gre": "API 15CLT · 内部防护层",
+      "wrap": "ISO 21809 · 多层胶带",
+      "coating": "FBE / NACE · 熔结环氧",
+      "hdpe": "PE100 / ASTM · 注水管线",
+      "rtp": "DN40–200 · 0.6–32 兆帕",
+      "rtv": "IEC 62073 · 高压应用"
+    }
+  },
+  "home": {
+    "loading": {
+      "portal": "USE · 门户 · 版本 01",
+      "calibrating": "系统校准中"
+    },
+    "hero": {
+      "eyebrow": "United Services Egypt · 成立于 2005 年",
+      "titleLine1": "时间",
+      "titleLine2": "留下痕迹。",
+      "bodyLine1": "高温、高压、潮湿、腐蚀。",
+      "bodyLine2": "United Services Egypt 为您阻止它们。",
+      "ctaServices": "查看服务",
+      "ctaConsultation": "申请咨询",
+      "scroll": "向下滚动"
+    },
+    "certs": {
+      "apiQ1": "美国石油学会",
+      "iso9001": "质量管理体系 · DNV 认证",
+      "iso14001": "环境管理体系",
+      "iso45001": "职业健康与安全",
+      "egpc": "埃及石油总公司"
+    },
+    "world": {
+      "eyebrow": "01 — 世界",
+      "title": "跨越国界的基础设施，需要经久数十年的防护。",
+      "body": "从尼罗河三角洲到阿拉伯湾，支撑现代文明运转的管道与设施正面临持续不断的侵蚀。每一处接口、每一道焊缝、每一寸外露表面都是防线的最前沿。"
+    },
+    "problem": {
+      "eyebrow": "02 — 问题",
+      "title": "腐蚀从不会提前预警。",
+      "body1": "它悄然发生——在输送原油和水的管道内部，在保温层之下，在深埋的基础设施沿线。等到它显现出来时，结构性损害往往早已开始。",
+      "body2": "问题从来不是<em>是否</em>会发生腐蚀，而是您的系统是否经过工程设计，能在它伤害您之前先阻止它。"
+    },
+    "methodology": {
+      "eyebrow": "03 — 方法论",
+      "title": "三阶段作业体系。",
+      "subtitle": "USE 的每一次项目实施都遵循同样严谨的流程——不走捷径，绝不妥协。",
+      "assess": { "title": "评估", "desc": "采用符合 API 标准的检测流程，进行详细的管道检查、腐蚀测绘和状态评估。我们在提出解决方案之前先量化风险。" },
+      "engineer": { "title": "工程设计", "desc": "根据运行压力、温度、介质特性和法规要求，进行材料选型、系统设计和施工工艺工程。" },
+      "execute": { "title": "实施", "desc": "由 USE 认证技术人员完成工厂施工与现场安装，并提供完整的质量保证文件、第三方检验及全生命周期支持。" }
+    },
+    "servicesPreview": {
+      "eyebrow": "04 — 我们的服务",
+      "title": "六大专业系统，一家综合型企业。",
+      "viewAll": "查看全部服务"
+    },
+    "proof": {
+      "eyebrow": "05 — 实力见证",
+      "yearFoundedLabel": "成立年份",
+      "facilityLabel": "综合生产基地",
+      "countriesLabel": "运营国家数量",
+      "clientsLabel": "主要客户"
+    },
+    "clients": {
+      "eyebrow": "06 — 我们的客户",
+      "title": "深受区域领先运营商信赖",
+      "viewProjectsWith": "查看与{name}的合作项目"
+    },
+    "cta": {
+      "eyebrow": "USE · 合作洽谈",
+      "title": "准备好保护您的基础设施了吗？",
+      "body": "与 USE 工程师沟通您的具体应用场景与运行工况。"
+    }
   }
 }

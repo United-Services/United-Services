@@ -16,5 +16,100 @@
     "en": "English",
     "ar": "العربية",
     "zh": "中文"
+  },
+  "footer": {
+    "tagline": "Corrosion control and pipeline integrity solutions for the oil & gas industry across Egypt, Iraq, Saudi Arabia, and the UAE.",
+    "companyHeading": "Company",
+    "servicesHeading": "Services",
+    "contactHeading": "Contact",
+    "tel": "Tel",
+    "fax": "Fax",
+    "alsoOperatingIn": "Also operating in:",
+    "operatingRegions": "Iraq · Saudi Arabia · UAE",
+    "copyright": "© 2026 United Services Egypt. All rights reserved. · EGPC Registered",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service"
+  },
+  "services": {
+    "names": {
+      "gre": "GRE Tubular Lining",
+      "wrap": "External Wrapping",
+      "coating": "Industrial Coating",
+      "hdpe": "HDPE Lining",
+      "rtp": "RTP Systems",
+      "rtv": "RTV Insulator Coating"
+    },
+    "specs": {
+      "gre": "API 15CLT · Internal Barrier",
+      "wrap": "ISO 21809 · Multi-Layer Tape",
+      "coating": "FBE / NACE · Fusion-Bonded",
+      "hdpe": "PE100 / ASTM · Water Injection",
+      "rtp": "DN40–200 · 0.6–32 MPa",
+      "rtv": "IEC 62073 · High-Voltage"
+    }
+  },
+  "home": {
+    "loading": {
+      "portal": "USE · PORTAL · REV.01",
+      "calibrating": "CALIBRATING SYSTEM"
+    },
+    "hero": {
+      "eyebrow": "UNITED SERVICES EGYPT · EST. 2005",
+      "titleLine1": "Time leaves",
+      "titleLine2": "its mark.",
+      "bodyLine1": "Heat. Pressure. Moisture. Corrosion.",
+      "bodyLine2": "United Services Egypt arrests it.",
+      "ctaServices": "Our Services",
+      "ctaConsultation": "Request Consultation",
+      "scroll": "Scroll"
+    },
+    "certs": {
+      "apiQ1": "American Petroleum Institute",
+      "iso9001": "Quality Management · DNV",
+      "iso14001": "Environmental Management",
+      "iso45001": "Occupational Health & Safety",
+      "egpc": "Egyptian General Petroleum Corp."
+    },
+    "world": {
+      "eyebrow": "01 — THE WORLD",
+      "title": "Infrastructure that spans nations demands protection that outlasts decades.",
+      "body": "From the Nile Delta to the Arabian Gulf, the pipelines and facilities that power modern civilization face relentless attack. Every joint, every weld, every exposed surface is a front line."
+    },
+    "problem": {
+      "eyebrow": "02 — THE PROBLEM",
+      "title": "Corrosion doesn't announce itself.",
+      "body1": "It works silently — inside pipelines transporting crude and water, beneath thermal insulation, along buried infrastructure. By the time it's visible, structural compromise has already begun.",
+      "body2": "The question is never <em>whether</em> corrosion will occur. It is whether your system is engineered to stop it before it stops you."
+    },
+    "methodology": {
+      "eyebrow": "03 — THE METHODOLOGY",
+      "title": "A three-phase discipline.",
+      "subtitle": "Every USE engagement follows the same rigorous sequence — no shortcuts, no compromises.",
+      "assess": { "title": "Assess", "desc": "Detailed pipeline inspection, corrosion mapping, and condition assessment using API-compliant protocols. We quantify the threat before we prescribe the solution." },
+      "engineer": { "title": "Engineer", "desc": "Material selection, system design, and application engineering tailored to operating pressure, temperature, chemistry, and regulatory requirements." },
+      "execute": { "title": "Execute", "desc": "Factory application and on-site installation by certified USE technicians, backed by full QA documentation, third-party inspection, and lifecycle support." }
+    },
+    "servicesPreview": {
+      "eyebrow": "04 — OUR SERVICES",
+      "title": "Six specialized systems. One integrated company.",
+      "viewAll": "View All Services"
+    },
+    "proof": {
+      "eyebrow": "05 — THE PROOF",
+      "yearFoundedLabel": "Year Founded",
+      "facilityLabel": "Integrated Facility",
+      "countriesLabel": "Countries of Operation",
+      "clientsLabel": "Major Clients"
+    },
+    "clients": {
+      "eyebrow": "06 — OUR CLIENTS",
+      "title": "Trusted by the region's leading operators",
+      "viewProjectsWith": "View projects with {name}"
+    },
+    "cta": {
+      "eyebrow": "USE · ENGAGEMENT",
+      "title": "Ready to protect your infrastructure?",
+      "body": "Speak with a USE engineer about your specific application and operating conditions."
+    }
   }
 }
