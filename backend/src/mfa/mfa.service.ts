@@ -17,7 +17,8 @@ import type {
 } from '@simplewebauthn/server';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
-import { EncryptionService } from '../crypto/encryption.service';
+import { TotpCryptoService } from '../crypto/totp-crypto.service';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import type { User } from '../generated/prisma';
 
 const CHALLENGE_TTL_SECONDS = 300;
@@ -28,7 +29,8 @@ export class MfaService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
-    private readonly encryption: EncryptionService,
+    private readonly totpCrypto: TotpCryptoService,
+    private readonly auditLog: AuditLogService,
   ) {}
 
   private get rpId() {
@@ -72,10 +74,11 @@ export class MfaService {
 
   async enrollTotp(user: User) {
     const secret = this.makeTotp(user.email).generateSecret();
+    const envelope = await this.totpCrypto.encryptSecret(secret);
     await this.prisma.totpCredential.upsert({
       where: { userId: user.id },
-      update: { secretEncrypted: this.encryption.encrypt(secret), confirmedAt: null },
-      create: { userId: user.id, secretEncrypted: this.encryption.encrypt(secret) },
+      update: { ...envelope, confirmedAt: null },
+      create: { userId: user.id, ...envelope },
     });
     const otpauthUrl = this.makeTotp(user.email, secret).toURI();
     const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl);
@@ -86,7 +89,7 @@ export class MfaService {
     const credential = await this.prisma.totpCredential.findUnique({ where: { userId: user.id } });
     if (!credential) throw new BadRequestException('No TOTP enrollment in progress');
 
-    const secret = this.encryption.decrypt(credential.secretEncrypted);
+    const secret = await this.totpCrypto.decryptSecret(credential);
     const result = await this.makeTotp(user.email, secret).verify(code, { epochTolerance: 30 });
     if (!result.valid) throw new BadRequestException('Invalid code');
 
@@ -100,9 +103,33 @@ export class MfaService {
   async verifyTotp(user: User, code: string): Promise<boolean> {
     const credential = await this.prisma.totpCredential.findUnique({ where: { userId: user.id } });
     if (!credential?.confirmedAt) return false;
-    const secret = this.encryption.decrypt(credential.secretEncrypted);
+    const secret = await this.totpCrypto.decryptSecret(credential);
     const result = await this.makeTotp(user.email, secret).verify(code, { epochTolerance: 30 });
-    return result.valid;
+    if (!result.valid) return false;
+
+    await this.rewrapIfKekRetiring(user, credential.totpKekKeyId, secret);
+    return true;
+  }
+
+  // Rotation-in-use: on a successful TOTP verification, if the secret was
+  // still wrapped under a "retiring" KEK, re-wrap it under the current
+  // active key right away rather than waiting for a background job. Never
+  // logs key material or the plaintext secret — only which key ids moved.
+  private async rewrapIfKekRetiring(user: User, currentKeyId: string, plainSecret: string) {
+    const kek = await this.prisma.kekRegistry.findUnique({ where: { keyId: currentKeyId } });
+    if (kek?.status !== 'retiring') return;
+
+    const envelope = await this.totpCrypto.encryptSecret(plainSecret);
+    await this.prisma.$transaction([
+      this.prisma.totpCredential.update({ where: { userId: user.id }, data: envelope }),
+    ]);
+    await this.auditLog.record({
+      actorUserId: user.id,
+      action: 'mfa.totp_rewrapped',
+      targetType: 'TotpCredential',
+      targetId: user.id,
+      metadata: { fromKeyId: currentKeyId, toKeyId: envelope.totpKekKeyId },
+    });
   }
 
   // ── WebAuthn ─────────────────────────────────────────────────────────

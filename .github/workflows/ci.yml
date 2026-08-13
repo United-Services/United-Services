@@ -31,10 +31,11 @@ jobs:
           DATABASE_URL: postgresql://user:password@localhost:5432/ci
           DIRECT_URL: postgresql://user:password@localhost:5432/ci
       - run: pnpm exec tsc --noEmit -p tsconfig.json
+      # Unit tests use a FakeKekKeyStore (real in-memory libsodium
+      # keypairs, no disk/DB) — see crypto/testing/fake-kek-key-store.ts —
+      # so no KEK_KEYS_DIR or seeded KekRegistry row is needed here.
       - name: Unit tests
         run: pnpm test -- --ci
-        env:
-          ENCRYPTION_KEY: ci-placeholder-encryption-key
       - run: pnpm run build
       - run: pnpm audit --audit-level=high || true
 
@@ -69,7 +70,8 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/use_ci
       DIRECT_URL: postgresql://postgres:postgres@localhost:5432/use_ci
       REDIS_URL: redis://localhost:6379
-      ENCRYPTION_KEY: ci-placeholder-encryption-key
+      TOTP_KEK_PROVIDER: local
+      KEK_KEYS_DIR: ./secrets/kek
       CLERK_SECRET_KEY: sk_test_ci-placeholder-key
       AWS_REGION: us-east-1
       # Dummy static credentials — without them the AWS SDK's credential
@@ -94,6 +96,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec prisma generate
       - run: pnpm exec prisma migrate deploy
+      # AppModule bootstrap requires an active KekRegistry row + its
+      # private key file on disk (KekKeyStore.onModuleInit) — generate one
+      # fresh for this ephemeral CI database, same as a real first deploy.
+      - run: pnpm run kek:generate
       # Nest's Redis/Postgres client handles stay open at test-process
       # exit by design (they're app-lifetime singletons) — --forceExit is
       # expected here, not masking a real leak the unit-test job would fail.

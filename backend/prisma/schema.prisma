@@ -77,18 +77,47 @@ model User {
   @@index([companyName])
 }
 
-// One TOTP secret per admin. `secretEncrypted` is AES-256-GCM ciphertext
-// (see EncryptionService) — never stored or logged in plaintext.
-// `confirmedAt` is null until the admin proves possession of the
-// authenticator app during enrollment; unconfirmed secrets don't count
-// toward mfaEnrolled.
+// One TOTP secret per admin. `confirmedAt` is null until the admin proves
+// possession of the authenticator app during enrollment; unconfirmed
+// secrets don't count toward mfaEnrolled.
+//
+// The secret is never stored under a single symmetric key. It's envelope
+// encrypted: a random per-secret DEK (AES-256-GCM) encrypts the secret
+// itself (totpCiphertext/totpNonce/totpAuthTag), and the DEK is in turn
+// sealed to the active KEK's public key (totpWrappedDek, an anonymous
+// libsodium sealed box) — only the private key on disk for totpKekKeyId
+// can unwrap it. See TotpCryptoService / KekKeyStore.
 model TotpCredential {
   id              String    @id @default(cuid())
   userId          String    @unique
   user            User      @relation(fields: [userId], references: [id])
-  secretEncrypted String
+  totpCiphertext  String
+  totpNonce       String
+  totpAuthTag     String
+  totpWrappedDek  String
+  totpKekKeyId    String
+  kek             KekRegistry @relation(fields: [totpKekKeyId], references: [keyId])
   createdAt       DateTime  @default(now())
   confirmedAt     DateTime?
+
+  @@index([totpKekKeyId])
+}
+
+// Registry of Key Encryption Keys used to envelope-encrypt TOTP secrets.
+// Private keys never touch the database — only the public key (not
+// secret) is stored here; the corresponding private key lives on disk at
+// `KEK_KEYS_DIR/<keyId>.key`, loaded once at process start by
+// KekKeyStore. "retiring" means still usable for decryption (old
+// ciphertexts) but no longer used to encrypt new ones; "retired" means
+// the private key file has been deleted and this row is historical only.
+model KekRegistry {
+  keyId     String    @id
+  publicKey String
+  status    String
+  createdAt DateTime  @default(now())
+  retiredAt DateTime?
+
+  totpCredentials TotpCredential[]
 }
 
 // An admin may register more than one authenticator (e.g. a laptop

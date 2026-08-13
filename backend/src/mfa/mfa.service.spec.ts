@@ -3,33 +3,39 @@ import { NobleCryptoPlugin } from '@otplib/plugin-crypto-noble';
 import { ScureBase32Plugin } from '@otplib/plugin-base32-scure';
 import { BadRequestException } from '@nestjs/common';
 import { MfaService } from './mfa.service';
-import { EncryptionService } from '../crypto/encryption.service';
+import { TotpCryptoService } from '../crypto/totp-crypto.service';
+import { FakeKekKeyStore } from '../crypto/testing/fake-kek-key-store';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { RedisService } from '../redis/redis.service';
+import type { AuditLogService } from '../audit-log/audit-log.service';
 import type { User } from '../generated/prisma';
 
 // TOTP enrollment/confirmation is the primary MFA path for admin accounts.
-// Encryption-at-rest of the secret must round-trip correctly, and a code
+// Envelope encryption-at-rest of the secret must round-trip correctly
+// (exercised for real in totp-crypto.service.spec.ts), and a code
 // generated from a *different* secret must never verify.
 describe('MfaService — TOTP', () => {
   const user = { id: 'admin-1', email: 'admin@use-eg.com' } as User;
-  let prisma: { totpCredential: any; user: any; $transaction: jest.Mock };
+  let prisma: { totpCredential: any; user: any; kekRegistry: any; $transaction: jest.Mock };
+  let auditLog: { record: jest.Mock };
+  let kekStore: FakeKekKeyStore;
   let service: MfaService;
 
-  beforeAll(() => {
-    process.env.ENCRYPTION_KEY = 'test-only-encryption-key-not-for-prod';
-  });
-
-  beforeEach(() => {
+  beforeEach(async () => {
     prisma = {
       totpCredential: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
       user: { update: jest.fn() },
+      kekRegistry: { findUnique: jest.fn().mockResolvedValue({ status: 'active' }) },
       $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
     };
+    auditLog = { record: jest.fn().mockResolvedValue(undefined) };
+    kekStore = await FakeKekKeyStore.create();
+    kekStore.addActiveKey('kek-test-1');
     service = new MfaService(
       prisma as unknown as PrismaService,
       {} as RedisService,
-      new EncryptionService(),
+      new TotpCryptoService(kekStore.asKekKeyStore()),
+      auditLog as unknown as AuditLogService,
     );
   });
 
@@ -37,8 +43,8 @@ describe('MfaService — TOTP', () => {
     const { secret } = await service.enrollTotp(user);
     expect(prisma.totpCredential.upsert).toHaveBeenCalled();
 
-    const storedCiphertext = prisma.totpCredential.upsert.mock.calls[0][0].update.secretEncrypted;
-    prisma.totpCredential.findUnique.mockResolvedValue({ secretEncrypted: storedCiphertext });
+    const stored = prisma.totpCredential.upsert.mock.calls[0][0].update;
+    prisma.totpCredential.findUnique.mockResolvedValue(stored);
 
     const validCode = await new TOTP({
       secret,
@@ -54,10 +60,9 @@ describe('MfaService — TOTP', () => {
   });
 
   it('rejects a code generated from an unrelated secret', async () => {
-    const { secret } = await service.enrollTotp(user);
-    const storedCiphertext = prisma.totpCredential.upsert.mock.calls[0][0].update.secretEncrypted;
-    prisma.totpCredential.findUnique.mockResolvedValue({ secretEncrypted: storedCiphertext });
-    void secret;
+    await service.enrollTotp(user);
+    const stored = prisma.totpCredential.upsert.mock.calls[0][0].update;
+    prisma.totpCredential.findUnique.mockResolvedValue(stored);
 
     const unrelated = new TOTP({
       label: user.email,
@@ -82,7 +87,58 @@ describe('MfaService — TOTP', () => {
   });
 
   it('verifyTotp returns false for an unconfirmed credential', async () => {
-    prisma.totpCredential.findUnique.mockResolvedValue({ confirmedAt: null, secretEncrypted: 'irrelevant' });
+    prisma.totpCredential.findUnique.mockResolvedValue({ confirmedAt: null, totpKekKeyId: 'kek-test-1' });
     await expect(service.verifyTotp(user, '123456')).resolves.toBe(false);
+  });
+
+  it('re-wraps the secret under the active key on successful verify when the stored key is "retiring"', async () => {
+    const { secret } = await service.enrollTotp(user);
+    const stored = { ...prisma.totpCredential.upsert.mock.calls[0][0].update, confirmedAt: new Date() };
+    prisma.totpCredential.findUnique.mockResolvedValue(stored);
+    prisma.kekRegistry.findUnique.mockResolvedValue({ status: 'retiring' });
+
+    const validCode = await new TOTP({
+      secret,
+      label: user.email,
+      crypto: new NobleCryptoPlugin(),
+      base32: new ScureBase32Plugin(),
+    }).generate();
+
+    // A second, now-active key must exist so re-encryption has somewhere
+    // to wrap the DEK to (the old key stays loaded for decrypting the
+    // secret we're about to re-wrap).
+    kekStore.addActiveKey('kek-test-2');
+
+    const result = await service.verifyTotp(user, validCode);
+
+    expect(result).toBe(true);
+    expect(prisma.totpCredential.update).toHaveBeenCalled();
+    const rewrapped = prisma.totpCredential.update.mock.calls[0][0].data;
+    expect(rewrapped.totpKekKeyId).toBe('kek-test-2');
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'mfa.totp_rewrapped',
+        metadata: { fromKeyId: 'kek-test-1', toKeyId: 'kek-test-2' },
+      }),
+    );
+  });
+
+  it('does not re-wrap when the stored key is still active', async () => {
+    const { secret } = await service.enrollTotp(user);
+    const stored = { ...prisma.totpCredential.upsert.mock.calls[0][0].update, confirmedAt: new Date() };
+    prisma.totpCredential.findUnique.mockResolvedValue(stored);
+    prisma.kekRegistry.findUnique.mockResolvedValue({ status: 'active' });
+
+    const validCode = await new TOTP({
+      secret,
+      label: user.email,
+      crypto: new NobleCryptoPlugin(),
+      base32: new ScureBase32Plugin(),
+    }).generate();
+
+    await service.verifyTotp(user, validCode);
+
+    expect(prisma.totpCredential.update).not.toHaveBeenCalled();
+    expect(auditLog.record).not.toHaveBeenCalled();
   });
 });

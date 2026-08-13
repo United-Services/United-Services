@@ -39,7 +39,8 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/use_loadtest
       DIRECT_URL: postgresql://postgres:postgres@localhost:5432/use_loadtest
       REDIS_URL: redis://localhost:6379
-      ENCRYPTION_KEY: ci-placeholder-encryption-key
+      TOTP_KEK_PROVIDER: local
+      KEK_KEYS_DIR: ./secrets/kek
       CLERK_SECRET_KEY: sk_test_ci-placeholder-key
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: ci-placeholder
@@ -62,6 +63,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec prisma generate
       - run: pnpm exec prisma migrate deploy
+      - run: pnpm run kek:generate
       - run: pnpm run build
       - name: Boot the app in the background
         run: |

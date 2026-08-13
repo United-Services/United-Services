@@ -8,3 +8,7 @@ GeoIP.conf
 /geoip-db
 
 src/generated/prisma
+
+# TOTP KEK private keys — never committed, see docs comment on
+# KekKeyStore / TotpCryptoService
+/secrets/kek
