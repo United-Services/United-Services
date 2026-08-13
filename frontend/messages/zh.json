@@ -32,20 +32,20 @@
   },
   "services": {
     "names": {
-      "gre": "GRE 玻璃纤维增强环氧树脂内衬",
-      "wrap": "外部防护包覆",
-      "coating": "工业涂层",
-      "hdpe": "高密度聚乙烯内衬（HDPE）",
-      "rtp": "增强热塑性管道系统（RTP）",
-      "rtv": "RTV 绝缘子硅橡胶涂层"
+      "gre": "GRE Tubular Lining",
+      "wrap": "External Wrapping",
+      "coating": "Industrial Coating",
+      "hdpe": "HDPE Lining",
+      "rtp": "RTP Systems",
+      "rtv": "RTV Insulator Coating"
     },
     "specs": {
-      "gre": "API 15CLT · 内部防护层",
-      "wrap": "ISO 21809 · 多层胶带",
-      "coating": "FBE / NACE · 熔结环氧",
-      "hdpe": "PE100 / ASTM · 注水管线",
-      "rtp": "DN40–200 · 0.6–32 兆帕",
-      "rtv": "IEC 62073 · 高压应用"
+      "gre": "API 15CLT · Internal Barrier",
+      "wrap": "ISO 21809 · Multi-Layer Tape",
+      "coating": "FBE / NACE · Fusion-Bonded",
+      "hdpe": "PE100 / ASTM · Water Injection",
+      "rtp": "DN40–200 · 0.6–32 MPa",
+      "rtv": "IEC 62073 · High-Voltage"
     }
   },
   "home": {
@@ -199,103 +199,103 @@
     }
   },
   "servicesPage": {
-    "eyebrow": "USE · 表 02 · 系统索引",
-    "title": "系统索引",
-    "subtitle": "六大综合防腐与管道完整性系统，均在我们占地 6,000 平方米的开罗基地按国际标准设计施工。",
+    "eyebrow": "USE · SHEET 02 · SYS-INDEX",
+    "title": "Systems Index",
+    "subtitle": "Six integrated corrosion-control and pipeline-integrity systems, each engineered to international standards at our 6,000 m² Cairo facility.",
     "diagram": {
-      "eyebrow": "USE · 横截面详图 · 修订版 03",
-      "title": "分层管道防护",
-      "body": "一套完整的 USE 工程管道组件将所有防护层整合为一份规格说明，作为一个系统而非独立产品来设计。",
+      "eyebrow": "USE · CROSS-SECTION DETAIL · REV.03",
+      "title": "Layered Pipeline Protection",
+      "body": "A complete USE-engineered pipeline assembly integrates all protection layers into one specification, designed as a system — not as separate products.",
       "layers": {
         "wrap": {
-          "label": "外部包覆 / 机械防护",
-          "short": "外部包覆"
+          "label": "External Wrap / Mechanical Protection",
+          "short": "EXTERNAL"
         },
         "coating": {
-          "label": "防腐涂层（FBE / 环氧树脂）",
-          "short": "防腐涂层"
+          "label": "Anti-Corrosion Coating (FBE / Epoxy)",
+          "short": "ANTI-CORROSION"
         },
         "steel": {
-          "label": "钢基材",
-          "short": "钢基材"
+          "label": "Steel Substrate",
+          "short": "STEEL"
         },
         "lining": {
-          "label": "GRE / HDPE 内衬",
-          "short": "内衬"
+          "label": "GRE / HDPE Internal Lining",
+          "short": "GRE"
         },
         "flow": {
-          "label": "受保护流体通道",
-          "short": "流体通道"
+          "label": "Protected Flow Zone",
+          "short": "PROTECTED"
         }
       }
     },
-    "requestSpecFile": "申请规格文件",
+    "requestSpecFile": "Request Spec File",
     "tags": {
-      "gre": "API 15CLT · 内部防腐屏障",
-      "wrap": "ISO 21809 · 多层胶带系统",
-      "coating": "FBE / NACE · 熔结环氧与液态环氧",
-      "hdpe": "PE100 / ASTM · 注水与化学品管线",
-      "rtp": "DN40–200 · 0.6–32 兆帕 · 增强热塑性管道",
-      "rtv": "IEC 62073 · 高压绝缘子防护"
+      "gre": "API 15CLT · Internal Corrosion Barrier",
+      "wrap": "ISO 21809 · Multi-Layer Tape Systems",
+      "coating": "FBE / NACE · Fusion-Bonded & Liquid Epoxy",
+      "hdpe": "PE100 / ASTM · Water Injection & Chemical Lines",
+      "rtp": "DN40–200 · 0.6–32 MPa · Reinforced Thermoplastic",
+      "rtv": "IEC 62073 · High-Voltage Insulator Protection"
     },
     "imgAlt": {
-      "gre": "技术人员在 USE 工厂为钢管施加 GRE 内衬",
-      "wrap": "焊工正在钢管上进行外部包覆施工",
-      "coating": "配备涂层设备的工业管道工厂",
-      "hdpe": "堆放待装的 HDPE 塑料管",
-      "rtp": "大型增强热塑性管道工业盘卷",
-      "rtv": "日落时分的高压输电塔"
+      "gre": "Technicians applying GRE lining to a steel pipe at the USE factory",
+      "wrap": "Welder performing external wrapping application on steel pipe",
+      "coating": "Industrial pipeline factory with coating equipment",
+      "hdpe": "Stacked HDPE plastic pipes ready for installation",
+      "rtp": "Large industrial spool of reinforced thermoplastic pipe",
+      "rtv": "High-voltage transmission towers at sunset"
     },
     "desc": {
-      "gre": "玻璃纤维增强环氧树脂（GRE）管道内衬为输送原油、采出水及腐蚀性烃类介质的钢制管道提供化学惰性内部防护层。该内衬在我们占地 6,000 平方米的工厂内按照 API 15CLT 和 ISO 15996 质量体系施工，在含 H₂S 和 CO₂ 的环境中使用寿命超过 20 年。",
-      "wrap": "多层冷缠或热收缩胶带系统，用于保护管道外部免受土壤腐蚀、机械损伤及紫外线老化的影响。USE 的外部包覆系统已通过 ISO 21809-3 和 DIN 30672 认证，广泛应用于埃及、伊拉克、沙特阿拉伯和阿联酋的陆上埋地管道及海上立管。",
-      "coating": "熔结环氧粉末涂料（FBE）及液态环氧涂层系统，用于管道内外部防护。施工在 USE 工厂内使用感应加热管道旋转设备完成，涂层符合 NACE SP0188 和 CSA Z245.20 标准，适用于注水管道、原油输送及天然气配送管线。",
-      "hdpe": "高密度聚乙烯（HDPE）滑入式内衬及工厂预装内衬系统，适用于注水管道、化学品输送管线及采出水回注系统。采用符合 ASTM D3350 和 ISO 4427 标准的 PE100 级材料，具备完全抗腐蚀性并可提升水力效率。",
-      "rtp": "增强热塑性管道（RTP）系统，适用于钢管在经济性上不划算的腐蚀性环境中的油、气、水输送。USE 的 RTP 产品覆盖 DN40 至 DN200 规格，工作压力范围为 0.6 至 32 兆帕。连续长度生产可减少现场接口；轻量化盘装交付方式可比钢管加快最多 40% 的安装速度。",
-      "rtv": "适用于高压陶瓷及玻璃绝缘子的室温硫化（RTV）硅橡胶涂层，可在沙尘、盐雾及工业污染等污秽环境中使用。USE 的 RTV 涂层符合 IEC 62073 和 IEC 60815 标准，可将绝缘子使用寿命从 5 年延长至 20 年以上，并免除输电线路定期清洗绝缘子的需求。"
+      "gre": "Glass Reinforced Epoxy (GRE) tubular lining provides a chemically inert internal barrier for steel pipelines carrying crude oil, produced water, and corrosive hydrocarbons. Applied in our 6,000 m² factory under API 15CLT and ISO 15996 quality regimes, USE GRE liners deliver service life exceeding 20 years in H₂S and CO₂ environments.",
+      "wrap": "Multi-layer cold-applied and heat-shrink tape systems for external pipeline protection against soil corrosion, mechanical damage, and UV degradation. USE external wrap systems are qualified to ISO 21809-3 and DIN 30672 and are used for both onshore buried pipelines and subsea risers across Egypt, Iraq, KSA, and UAE.",
+      "coating": "Fusion Bonded Epoxy (FBE) and liquid epoxy coating systems for internal and external pipeline protection. Applied at the USE facility using induction-heated pipe rotation equipment, our coatings meet NACE SP0188 and CSA Z245.20 standards. Suitable for water injection, crude service, and gas distribution pipelines.",
+      "hdpe": "High-Density Polyethylene (HDPE) slip-lining and factory-installed liner systems for water injection pipelines, chemical transport lines, and produced water reinjection systems. PE100 grade material conforming to ASTM D3350 and ISO 4427, providing full corrosion immunity and hydraulic efficiency improvement.",
+      "rtp": "Reinforced Thermoplastic Pipe (RTP) systems for oil, gas, and water service in corrosive environments where steel pipelines are uneconomical. USE RTP covers sizes DN40 to DN200 at operating pressures from 0.6 MPa to 32 MPa. Continuous-length manufacture minimises field joints; lightweight spooled delivery accelerates installation by up to 40% versus steel.",
+      "rtv": "Room Temperature Vulcanising (RTV) silicone coating for high-voltage ceramic and glass insulators operating in polluted environments including desert dust, salt fog, and industrial contamination. USE RTV coatings meet IEC 62073 and IEC 60815, extending insulator service life from 5 to 20+ years and eliminating scheduled insulator washing on transmission lines."
     },
     "specs": {
       "gre": [
-        "符合 API 15CLT",
+        "API 15CLT Compliant",
         "DN50 – DN600",
-        "耐温至 120°C",
+        "Temp. up to 120°C",
         "pH 2–12",
-        "工厂及现场接口"
+        "Factory & field jointing"
       ],
       "wrap": [
         "ISO 21809-3 / DIN 30672",
-        "机械剥离强度 ≥ 40 N/10mm",
-        "运行温度 −20°C 至 80°C",
-        "耐阴极剥离",
-        "含电火花检测"
+        "Mechanical peel ≥ 40 N/10mm",
+        "Operating temp −20°C to 80°C",
+        "Cathodic disbondment resistant",
+        "Holiday detection included"
       ],
       "coating": [
         "NACE SP0188",
         "CSA Z245.20",
-        "FBE 干膜厚度 300–500 微米",
-        "3 kV/mm 无漏点检测",
-        "化学固化验证"
+        "DFT 300–500 µm FBE",
+        "Holiday free @ 3 kV/mm",
+        "Chemical cure verification"
       ],
       "hdpe": [
         "PE100 / ASTM D3350",
-        "符合 ISO 4427",
-        "耐压等级达 25 巴",
-        "耐温 −40°C 至 60°C",
-        "电熔或对接熔接"
+        "ISO 4427 Compliant",
+        "Pressure rating to 25 bar",
+        "Temp. −40°C to 60°C",
+        "Electrofusion or butt-fusion joints"
       ],
       "rtp": [
         "DN40 – DN200",
-        "0.6 – 32 兆帕",
-        "适用于油/气/水",
-        "连续盘管长度",
+        "0.6 – 32 MPa",
+        "Oil / gas / water service",
+        "Continuous spool lengths",
         "ISO 18226 / API 15S"
       ],
       "rtv": [
         "IEC 62073 / IEC 60815",
-        "污秽等级 IV 级",
-        "憎水性等级 HC1",
-        "运行电压 11 kV – 500 kV",
-        "刷涂或喷涂施工"
+        "Pollution class IV",
+        "Hydrophobicity class HC1",
+        "Operating 11 kV – 500 kV",
+        "Brush / spray application"
       ]
     }
   },
@@ -556,57 +556,57 @@
     }
   },
   "candidateSignup": {
-    "eyebrow": "USE · 招聘申请",
-    "title": "候选人注册",
-    "subtitle": "完善您的资料以加入 USE 人才库。我们的人力资源团队将在 5 个工作日内审核您的申请。",
-    "backToCareers": "← 返回招聘页面",
-    "returnHome": "返回 USE 官网",
+    "eyebrow": "USE · CAREERS APPLICATION",
+    "title": "Candidate Registration",
+    "subtitle": "Complete your profile to join the USE talent pipeline. Your application will be reviewed by our HR team within 5 business days.",
+    "backToCareers": "← Back to Careers",
+    "returnHome": "Return to USE Website",
     "verify": {
-      "prompt": "请输入我们发送至 {email} 的 6 位验证码以完成申请提交。",
-      "label": "验证码",
+      "prompt": "Enter the 6-digit code we sent to {email} to finish submitting your application.",
+      "label": "Verification Code",
       "placeholder": "123456",
-      "submitting": "正在提交申请…",
-      "submit": "验证并提交申请"
+      "submitting": "Submitting Application…",
+      "submit": "Verify & Submit Application"
     },
     "form": {
-      "firstName": "名",
-      "firstNamePlaceholder": "请输入您的名字",
-      "lastName": "姓",
-      "lastNamePlaceholder": "请输入您的姓氏",
-      "dob": "出生日期",
-      "email": "电子邮箱",
-      "emailPlaceholder": "您的个人或工作邮箱",
-      "password": "密码",
-      "passwordPlaceholder": "创建密码（至少 8 个字符）",
-      "docsHeading": "身份证明与简历文件",
-      "docsBody": "审核申请需要以上两份文件。身份证件格式为 JPG/PNG，简历格式为 PDF 或 DOC。",
-      "idLabel": "身份证 / 护照照片",
-      "cvLabel": "个人简历（CV）",
-      "uploadId": "上传身份证照片",
-      "uploadCv": "上传简历",
-      "clickToReplace": "点击以替换",
-      "imageHint": "JPG / PNG，最大 5 MB",
-      "docHint": "PDF 或 DOC，最大 10 MB",
-      "missingUploads": "⚠ 请上传您的身份证照片和简历后再继续。",
-      "creatingAccount": "正在创建账户…",
-      "continue": "继续",
-      "privacyNote": "您的信息将根据 USE 的隐私政策和适用的数据保护法规进行保密处理。"
+      "firstName": "First Name",
+      "firstNamePlaceholder": "Your first name",
+      "lastName": "Last Name",
+      "lastNamePlaceholder": "Your last name",
+      "dob": "Date of Birth",
+      "email": "Email Address",
+      "emailPlaceholder": "Your personal or work email",
+      "password": "Password",
+      "passwordPlaceholder": "Create a password (8+ characters)",
+      "docsHeading": "Identity & CV Documents",
+      "docsBody": "Both documents are required for application review. Formats: JPG/PNG for ID, PDF or DOC for CV.",
+      "idLabel": "National ID / Passport Photo",
+      "cvLabel": "Curriculum Vitae (CV)",
+      "uploadId": "Upload ID Photo",
+      "uploadCv": "Upload CV",
+      "clickToReplace": "Click to replace",
+      "imageHint": "JPG / PNG, max 5 MB",
+      "docHint": "PDF or DOC, max 10 MB",
+      "missingUploads": "⚠ Please upload both your ID photo and CV to proceed.",
+      "creatingAccount": "Creating Account…",
+      "continue": "Continue",
+      "privacyNote": "Your information is handled confidentially in accordance with USE's privacy policy and applicable data protection laws."
     },
     "submitted": {
-      "title": "申请已提交",
-      "body": "谢谢您，<strong>{firstName}</strong>。您的申请现已进入 USE 审核队列。",
-      "notify": "一旦我们的人力资源团队完成评估，将通过 <strong>{email}</strong> 通知您。",
-      "whatsNext": "接下来的流程",
-      "step1": "USE 人力资源部将在 5 个工作日内审核您的身份证件和简历。",
-      "step2": "入围候选人将被联系安排技术面试。",
-      "step3": "成功的候选人将加入 USE 人才库。"
+      "title": "Application Submitted",
+      "body": "Thank you, <strong>{firstName}</strong>. Your application is now in the USE review queue.",
+      "notify": "You will be notified at <strong>{email}</strong> once it has been assessed by our HR team.",
+      "whatsNext": "WHAT HAPPENS NEXT",
+      "step1": "Your ID and CV are reviewed by USE HR within 5 business days.",
+      "step2": "Shortlisted candidates are contacted for a technical interview.",
+      "step3": "Successful candidates join the USE talent pipeline."
     },
     "errors": {
-      "createFailed": "无法创建您的账户，请检查您的信息后重试。",
-      "codeFailed": "无法发送验证码，请重试。",
-      "invalidCode": "验证码无效，请重试。",
-      "finalizeFailed": "无法完成注册，请重试。",
-      "submitFailed": "提交申请时出现问题，请重试。"
+      "createFailed": "Could not create your account. Please check your details and try again.",
+      "codeFailed": "Could not send a verification code. Please try again.",
+      "invalidCode": "Invalid verification code. Please try again.",
+      "finalizeFailed": "Could not complete sign-up. Please try again.",
+      "submitFailed": "Something went wrong submitting your application. Please try again."
     }
   },
   "clientSignup": {
@@ -727,193 +727,193 @@
     }
   },
   "adminDashboard": {
-    "panelLabel": "管理面板",
-    "restrictedAccess": "USE · 管理员 · 权限受限",
-    "logOut": "🚪 退出登录",
-    "headerFallback": "仪表盘",
+    "panelLabel": "Admin Panel",
+    "restrictedAccess": "USE · ADMIN · RESTRICTED ACCESS",
+    "logOut": "🚪 Log Out",
+    "headerFallback": "Dashboard",
     "nav": {
-      "overview": "概览",
-      "clients": "客户",
-      "specs": "规格文件",
-      "requests": "文件申请",
-      "candidates": "候选人",
-      "rfqs": "询价单",
-      "bookings": "预约",
-      "audit": "审计日志",
-      "security": "安全"
+      "overview": "Overview",
+      "clients": "Clients",
+      "specs": "Spec Files",
+      "requests": "File Requests",
+      "candidates": "Candidates",
+      "rfqs": "RFQs",
+      "bookings": "Bookings",
+      "audit": "Audit Log",
+      "security": "Security"
     },
     "status": {
-      "pending": "待处理",
-      "approved": "已批准",
-      "denied": "已拒绝",
-      "in_review": "审核中",
-      "quoted": "已报价",
-      "closed": "已关闭"
+      "pending": "Pending",
+      "approved": "Approved",
+      "denied": "Denied",
+      "in_review": "In Review",
+      "quoted": "Quoted",
+      "closed": "Closed"
     },
-    "approve": "批准",
-    "deny": "拒绝",
-    "search": "搜索",
-    "yes": "是",
-    "no": "否",
+    "approve": "Approve",
+    "deny": "Deny",
+    "search": "Search",
+    "yes": "Yes",
+    "no": "No",
     "overview": {
-      "clients": "客户",
-      "companiesSub": "{count} 家公司",
-      "fileRequests": "文件申请",
-      "approvedSub": "已批准 {count} 项",
-      "rfqs": "询价单",
-      "totalSubmitted": "累计提交",
-      "appointments": "预约",
-      "totalBooked": "累计预订",
-      "recentActivity": "近期审计活动",
-      "noActivity": "暂无活动记录。",
-      "viewFullLog": "查看完整审计日志 →"
+      "clients": "Clients",
+      "companiesSub": "{count} companies",
+      "fileRequests": "File Requests",
+      "approvedSub": "{count} approved",
+      "rfqs": "RFQs",
+      "totalSubmitted": "Total submitted",
+      "appointments": "Appointments",
+      "totalBooked": "Total booked",
+      "recentActivity": "Recent Audit Activity",
+      "noActivity": "No activity yet.",
+      "viewFullLog": "View full audit log →"
     },
     "clients": {
-      "searchPlaceholder": "按姓名、邮箱或公司搜索客户",
+      "searchPlaceholder": "Search clients by name, email, or company",
       "cols": [
-        "姓名",
-        "公司",
-        "电子邮箱",
-        "加入时间",
-        "多因素认证",
-        "状态",
-        "操作"
+        "Name",
+        "Company",
+        "Email",
+        "Joined",
+        "MFA",
+        "Status",
+        "Action"
       ],
-      "none": "未找到客户。",
-      "enable": "启用",
-      "disable": "禁用"
+      "none": "No clients found.",
+      "enable": "Enable",
+      "disable": "Disable"
     },
     "specs": {
-      "noFile": "尚未上传规格文件",
-      "uploading": "上传中…",
-      "replaceFile": "替换文件",
-      "uploadFile": "上传规格文件"
+      "noFile": "No spec file uploaded yet",
+      "uploading": "Uploading…",
+      "replaceFile": "Replace File",
+      "uploadFile": "Upload Spec File"
     },
     "requests": {
-      "searchPlaceholder": "按客户、公司或文件搜索申请",
+      "searchPlaceholder": "Search requests by client, company, or file",
       "cols": [
-        "客户",
-        "公司",
-        "文件",
-        "申请时间",
-        "操作"
+        "Client",
+        "Company",
+        "File",
+        "Requested",
+        "Action"
       ],
-      "none": "未找到申请记录。"
+      "none": "No requests found."
     },
     "candidates": {
-      "searchPlaceholder": "按姓名或邮箱搜索候选人",
+      "searchPlaceholder": "Search candidates by name or email",
       "cols": [
-        "姓名",
-        "申请职位",
-        "电子邮箱",
-        "出生日期",
-        "文件",
-        "决定"
+        "Name",
+        "Role Applied",
+        "Email",
+        "DOB",
+        "Documents",
+        "Decision"
       ],
-      "none": "未找到申请记录。",
-      "viewDocs": "查看身份证与简历"
+      "none": "No applications found.",
+      "viewDocs": "View ID + CV"
     },
     "rfqs": {
-      "searchPlaceholder": "按客户、公司或详情搜索询价单",
+      "searchPlaceholder": "Search RFQs by client, company, or details",
       "cols": [
-        "客户",
-        "公司",
-        "服务",
-        "提交时间",
-        "状态"
+        "Client",
+        "Company",
+        "Service",
+        "Submitted",
+        "Status"
       ],
-      "none": "未找到询价单。",
-      "general": "一般咨询"
+      "none": "No RFQs found.",
+      "general": "General"
     },
     "bookings": {
-      "date": "日期",
-      "startTime": "开始时间",
-      "endTime": "结束时间",
-      "addSlot": "添加时段",
-      "searchPlaceholder": "按客户或公司搜索预约",
+      "date": "Date",
+      "startTime": "Start Time",
+      "endTime": "End Time",
+      "addSlot": "Add Slot",
+      "searchPlaceholder": "Search bookings by client or company",
       "cols": [
-        "客户",
-        "公司",
-        "日期",
-        "时间",
-        "预订时间"
+        "Client",
+        "Company",
+        "Date",
+        "Time",
+        "Booked"
       ],
-      "none": "未找到预约记录。"
+      "none": "No bookings found."
     },
     "audit": {
-      "searchPlaceholder": "按操作或对象搜索审计日志",
+      "searchPlaceholder": "Search audit log by action or target",
       "cols": [
-        "操作者",
-        "操作",
-        "对象",
-        "时间"
+        "Actor",
+        "Action",
+        "Target",
+        "When"
       ],
-      "none": "未找到审计日志记录。"
+      "none": "No audit log entries found."
     }
   },
   "adminMfaSetup": {
-    "eyebrow": "USE · 管理员安全",
-    "title": "设置多因素认证",
-    "subtitle": "管理员账户需要启用多因素认证。请选择身份验证器应用或生物识别凭据以继续。",
-    "authenticatorApp": "身份验证器应用",
-    "authenticatorAppDesc": "使用 Google Authenticator、1Password 或类似应用扫描二维码。",
-    "biometric": "生物识别 / 安全密钥",
-    "biometricDesc": "使用 Touch ID、Face ID、Windows Hello 或硬件安全密钥。",
-    "cantScan": "无法扫描？手动输入：",
-    "enterCode": "请输入应用中显示的 6 位验证码",
+    "eyebrow": "USE · ADMIN SECURITY",
+    "title": "Set Up Multi-Factor Authentication",
+    "subtitle": "Admin accounts require MFA. Choose an authenticator app or a biometric credential to continue.",
+    "authenticatorApp": "Authenticator App",
+    "authenticatorAppDesc": "Scan a QR code with Google Authenticator, 1Password, or similar.",
+    "biometric": "Biometric / Security Key",
+    "biometricDesc": "Use Touch ID, Face ID, Windows Hello, or a hardware security key.",
+    "cantScan": "Can't scan? Enter manually:",
+    "enterCode": "Enter the 6-digit code from your app",
     "codePlaceholder": "123456",
-    "verifying": "验证中…",
-    "verifyAndEnable": "验证并启用多因素认证",
-    "back": "返回",
-    "followPrompt": "请按照浏览器或设备提示注册您的凭据…",
-    "waiting": "等待中…",
-    "doneTitle": "多因素认证已启用",
-    "doneBody": "您的管理员账户现已受到多因素认证保护。",
-    "continueToDashboard": "继续前往管理员仪表盘",
+    "verifying": "Verifying…",
+    "verifyAndEnable": "Verify & Enable MFA",
+    "back": "Back",
+    "followPrompt": "Follow your browser or device prompt to register your credential…",
+    "waiting": "Waiting…",
+    "doneTitle": "MFA Enabled",
+    "doneBody": "Your admin account is now protected with multi-factor authentication.",
+    "continueToDashboard": "Continue to Admin Dashboard",
     "errors": {
-      "totpStartFailed": "无法启动 TOTP 注册，请重试。",
-      "invalidCode": "验证码无效，请重试。",
-      "webauthnFailed": "无法注册您的生物识别凭据，请重试，或改用身份验证器应用。"
+      "totpStartFailed": "Could not start TOTP enrollment. Please try again.",
+      "invalidCode": "Invalid code. Please try again.",
+      "webauthnFailed": "Could not register your biometric credential. Please try again, or use an authenticator app instead."
     }
   },
   "adminSecurity": {
-    "loading": "加载中…",
-    "authenticatorApp": "身份验证器应用",
-    "status": "状态：",
-    "enabled": "已启用",
-    "notEnrolled": "未注册",
-    "manualEntry": "手动输入：",
+    "loading": "Loading…",
+    "authenticatorApp": "Authenticator App",
+    "status": "Status:",
+    "enabled": "Enabled",
+    "notEnrolled": "Not enrolled",
+    "manualEntry": "Manual entry:",
     "codePlaceholder": "123456",
-    "verifyAndSave": "验证并保存",
-    "replaceAuthenticator": "更换身份验证器应用",
-    "setUpAuthenticator": "设置身份验证器应用",
-    "biometricCredentials": "生物识别 / 安全密钥凭据",
-    "noneRegistered": "尚未注册任何凭据。",
-    "registeredCount": "已注册 {count} 个。",
-    "addedOn": "添加于 {date}",
-    "addAnotherCredential": "添加另一个凭据",
-    "credentialLabelPrompt": "为该凭据命名（例如“MacBook Touch ID”）",
-    "resetPassword": "重置密码",
-    "resetPasswordDesc": "需要重新进行多因素认证验证 — 管理员账户不会通过邮件链接重置密码。",
-    "authenticatorCode": "验证器代码",
-    "biometric": "生物识别",
-    "currentAuthenticatorCode": "当前验证器代码",
-    "newPassword": "新密码",
-    "verifyBiometricAndReset": "验证生物识别并重置",
-    "verifyAndResetPassword": "验证并重置密码",
+    "verifyAndSave": "Verify & Save",
+    "replaceAuthenticator": "Replace Authenticator App",
+    "setUpAuthenticator": "Set Up Authenticator App",
+    "biometricCredentials": "Biometric / Security Key Credentials",
+    "noneRegistered": "None registered.",
+    "registeredCount": "{count} registered.",
+    "addedOn": "added {date}",
+    "addAnotherCredential": "Add Another Credential",
+    "credentialLabelPrompt": "Label this credential (e.g. \"MacBook Touch ID\")",
+    "resetPassword": "Reset Password",
+    "resetPasswordDesc": "Requires a fresh MFA verification — no email link is sent for admin accounts.",
+    "authenticatorCode": "Authenticator Code",
+    "biometric": "Biometric",
+    "currentAuthenticatorCode": "Current Authenticator Code",
+    "newPassword": "New Password",
+    "verifyBiometricAndReset": "Verify Biometric & Reset",
+    "verifyAndResetPassword": "Verify & Reset Password",
     "messages": {
-      "totpStartFailed": "无法启动 TOTP 注册。",
-      "authenticatorUpdated": "身份验证器应用已更新。",
-      "invalidCode": "验证码无效。",
-      "credentialRegistered": "新凭据已注册。",
-      "credentialFailed": "无法注册该凭据。",
-      "passwordUpdated": "密码已更新。您已在其他会话中被登出。",
-      "passwordResetFailed": "无法重置密码。"
+      "totpStartFailed": "Could not start TOTP enrollment.",
+      "authenticatorUpdated": "Authenticator app updated.",
+      "invalidCode": "Invalid code.",
+      "credentialRegistered": "New credential registered.",
+      "credentialFailed": "Could not register the credential.",
+      "passwordUpdated": "Password updated. You have been signed out of other sessions.",
+      "passwordResetFailed": "Could not reset password."
     }
   },
   "applicationStatus": {
-    "eyebrow": "USE · 候选人门户",
-    "title": "申请已收到",
-    "body": "感谢您申请加入 United Services Egypt。我们的人力资源团队会逐一人工审核每份申请——一旦做出决定，我们将通过电子邮件与您联系。无需候选人仪表盘可供查看；您的申请已全部完成。"
+    "eyebrow": "USE · CANDIDATE PORTAL",
+    "title": "Application received",
+    "body": "Thank you for applying to United Services Egypt. Our HR team reviews every application by hand — we'll reach out by email once a decision has been made. There's no candidate dashboard to check back on; you're all set."
   }
 }
