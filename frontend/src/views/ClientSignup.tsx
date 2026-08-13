@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useSignUp } from '@clerk/nextjs'
+import { useTranslations } from 'next-intl'
 import { palette, inputStyle } from '../theme'
 const worldImg = 'https://images.unsplash.com/photo-1602860109208-613d39362844?w=1200&q=85'
 
@@ -11,19 +12,9 @@ interface Props {
 
 const TOTAL_STEPS = 8
 
-const STEP_TITLES: Record<number, string> = {
-  1: 'First Name',
-  2: 'Last Name',
-  3: 'Phone Number',
-  4: 'Company / Operator',
-  5: 'Email Address',
-  6: 'Create Password',
-  7: 'Confirm Password',
-  8: 'Verify Your Email',
-}
-
 export default function ClientSignup({ onNavigate, onSignup }: Props) {
   const { signUp } = useSignUp()
+  const t = useTranslations('clientSignup')
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', company: '', email: '', password: '', confirmPassword: '' })
   const [code, setCode] = useState('')
@@ -35,15 +26,15 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
 
   useEffect(() => {
     if (!success) return
-    const t = setTimeout(() => onSignup(), 3000)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => onSignup(), 3000)
+    return () => clearTimeout(timer)
   }, [success, onSignup])
 
   const passwordChecks = [
-    { label: 'At least 8 characters', valid: form.password.length >= 8 },
-    { label: 'At least 1 uppercase letter', valid: /[A-Z]/.test(form.password) },
-    { label: 'At least 1 number', valid: /[0-9]/.test(form.password) },
-    { label: 'At least 1 symbol', valid: /[^A-Za-z0-9]/.test(form.password) },
+    { label: t('passwordChecks.length'), valid: form.password.length >= 8 },
+    { label: t('passwordChecks.uppercase'), valid: /[A-Z]/.test(form.password) },
+    { label: t('passwordChecks.number'), valid: /[0-9]/.test(form.password) },
+    { label: t('passwordChecks.symbol'), valid: /[^A-Za-z0-9]/.test(form.password) },
   ]
   const passwordValid = passwordChecks.every((c) => c.valid)
 
@@ -60,12 +51,12 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
     e.preventDefault()
 
     if (step === 6 && !passwordValid) {
-      setError('Please meet all password requirements to continue.')
+      setError(t('errors.passwordRequirements'))
       return
     }
     if (step === 7) {
       if (form.confirmPassword !== form.password) {
-        setError('Passwords do not match.')
+        setError(t('errors.passwordMismatch'))
         return
       }
       setLoading(true)
@@ -79,12 +70,12 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
           unsafeMetadata: { companyName: form.company, phone: form.phone },
         })
         if (createError) {
-          setError(createError.message ?? 'Could not create your account. Please check your details and try again.')
+          setError(createError.message ?? t('errors.createFailed'))
           return
         }
         const { error: codeError } = await signUp.verifications.sendEmailCode()
         if (codeError) {
-          setError(codeError.message ?? 'Could not send a verification code. Please try again.')
+          setError(codeError.message ?? t('errors.codeFailed'))
           return
         }
         goNext()
@@ -99,12 +90,12 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
       try {
         const { error: verifyError } = await signUp.verifications.verifyEmailCode({ code })
         if (verifyError) {
-          setError(verifyError.message ?? 'Invalid verification code. Please try again.')
+          setError(verifyError.message ?? t('errors.invalidCode'))
           return
         }
         const { error: finalizeError } = await signUp.finalize()
         if (finalizeError) {
-          setError(finalizeError.message ?? 'Could not complete sign-up. Please try again.')
+          setError(finalizeError.message ?? t('errors.finalizeFailed'))
           return
         }
         setSuccess(true)
@@ -122,14 +113,16 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', fontFamily: 'Poppins, sans-serif', padding: 24 }}>
         <div className="step-slide" style={{ maxWidth: 480, width: '100%', background: '#fff', borderRadius: 24, padding: '64px 48px', border: '1px solid #E2E8F0', textAlign: 'center' }}>
           <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, margin: '0 auto 24px', color: '#16A34A' }}>✓</div>
-          <h2 style={{ fontSize: 26, fontWeight: 800, color: palette.navy, marginBottom: 12, letterSpacing: '-0.02em' }}>Account Created</h2>
+          <h2 style={{ fontSize: 26, fontWeight: 800, color: palette.navy, marginBottom: 12, letterSpacing: '-0.02em' }}>{t('success.title')}</h2>
           <p style={{ fontSize: 14, color: palette.muted, lineHeight: 1.8 }}>
-            Welcome, <strong>{form.firstName}</strong>. Redirecting you to your client dashboard…
+            {t.rich('success.body', { firstName: form.firstName, strong: (chunks) => <strong>{chunks}</strong> })}
           </p>
         </div>
       </div>
     )
   }
+
+  const stepTitle = t(`stepTitles.${step}` as any)
 
   return (
     <div style={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: '1fr 1fr', fontFamily: 'Poppins, sans-serif' }}>
@@ -142,21 +135,21 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
             <span style={{ fontWeight: 700, fontSize: 17, color: '#fff' }}>United Services Egypt</span>
           </button>
           <h2 style={{ fontSize: 36, fontWeight: 800, color: '#fff', lineHeight: 1.15, marginBottom: 20, letterSpacing: '-0.02em' }}>
-            Access the full USE service portfolio.
+            {t('panel.heading')}
           </h2>
           <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.8)', lineHeight: 1.7, marginBottom: 40 }}>
-            Register as a client to browse technical specifications, request spec file downloads, submit RFQs, and book engineering consultations.
+            {t('panel.body')}
           </p>
-          {['✓ Browse all six service systems', '✓ Request certified spec file access', '✓ Submit RFQs and book site visits'].map((t) => (
-            <div key={t} style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', fontWeight: 500, marginBottom: 12 }}>{t}</div>
+          {[t('panel.perk1'), t('panel.perk2'), t('panel.perk3')].map((perk) => (
+            <div key={perk} style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', fontWeight: 500, marginBottom: 12 }}>{perk}</div>
           ))}
         </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px 48px', background: '#fff', overflowY: 'auto' }}>
         <div style={{ maxWidth: 420, width: '100%', margin: '0 auto' }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: palette.navy, marginBottom: 4, letterSpacing: '-0.02em' }}>Create Client Account</h1>
-          <p style={{ fontSize: 13, color: palette.muted, marginBottom: 24 }}>Step {step} of {TOTAL_STEPS} — {STEP_TITLES[step]}</p>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: palette.navy, marginBottom: 4, letterSpacing: '-0.02em' }}>{t('title')}</h1>
+          <p style={{ fontSize: 13, color: palette.muted, marginBottom: 24 }}>{t('stepOf', { step, total: TOTAL_STEPS, label: stepTitle })}</p>
 
           {/* Stepper */}
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 32 }}>
@@ -197,43 +190,43 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
           <form key={step} onSubmit={handleStepSubmit} className="step-slide">
             {step === 1 && (
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>First Name</label>
-                <input autoFocus name="firstName" autoComplete="given-name" value={form.firstName} onChange={set('firstName')} placeholder="Your first name" required style={inputStyle}
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>{t('form.firstName')}</label>
+                <input autoFocus name="firstName" autoComplete="given-name" value={form.firstName} onChange={set('firstName')} placeholder={t('form.firstNamePlaceholder')} required style={inputStyle}
                   onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
               </div>
             )}
             {step === 2 && (
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>Last Name</label>
-                <input autoFocus name="lastName" autoComplete="family-name" value={form.lastName} onChange={set('lastName')} placeholder="Your last name" required style={inputStyle}
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>{t('form.lastName')}</label>
+                <input autoFocus name="lastName" autoComplete="family-name" value={form.lastName} onChange={set('lastName')} placeholder={t('form.lastNamePlaceholder')} required style={inputStyle}
                   onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
               </div>
             )}
             {step === 3 && (
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>Phone Number</label>
-                <input autoFocus name="phone" type="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} placeholder="Your direct contact phone number" required style={inputStyle}
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>{t('form.phone')}</label>
+                <input autoFocus name="phone" type="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} placeholder={t('form.phonePlaceholder')} required style={inputStyle}
                   onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
               </div>
             )}
             {step === 4 && (
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>Company / Operator Name</label>
-                <input autoFocus name="company" autoComplete="organization" value={form.company} onChange={set('company')} placeholder="Full name of your organisation" required style={inputStyle}
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>{t('form.company')}</label>
+                <input autoFocus name="company" autoComplete="organization" value={form.company} onChange={set('company')} placeholder={t('form.companyPlaceholder')} required style={inputStyle}
                   onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
               </div>
             )}
             {step === 5 && (
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>Email Address</label>
-                <input autoFocus name="email" type="email" autoComplete="email" value={form.email} onChange={set('email')} placeholder="Your work email address" required style={inputStyle}
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>{t('form.email')}</label>
+                <input autoFocus name="email" type="email" autoComplete="email" value={form.email} onChange={set('email')} placeholder={t('form.emailPlaceholder')} required style={inputStyle}
                   onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
               </div>
             )}
             {step === 6 && (
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>Password</label>
-                <input autoFocus name="password" type="password" autoComplete="new-password" value={form.password} onChange={set('password')} placeholder="Create a strong password" required minLength={8} style={inputStyle}
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>{t('form.password')}</label>
+                <input autoFocus name="password" type="password" autoComplete="new-password" value={form.password} onChange={set('password')} placeholder={t('form.passwordPlaceholder')} required minLength={8} style={inputStyle}
                   onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
                 <ul style={{ listStyle: 'none', padding: 0, marginTop: 14 }}>
                   {passwordChecks.map((rule) => (
@@ -247,16 +240,16 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
             )}
             {step === 7 && (
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>Confirm Password</label>
-                <input autoFocus name="confirmPassword" type="password" autoComplete="new-password" value={form.confirmPassword} onChange={set('confirmPassword')} placeholder="Re-enter your password" required minLength={8} style={inputStyle}
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>{t('form.confirmPassword')}</label>
+                <input autoFocus name="confirmPassword" type="password" autoComplete="new-password" value={form.confirmPassword} onChange={set('confirmPassword')} placeholder={t('form.confirmPasswordPlaceholder')} required minLength={8} style={inputStyle}
                   onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
               </div>
             )}
             {step === 8 && (
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>Verification Code</label>
-                <p style={{ fontSize: 12.5, color: palette.muted, marginBottom: 10 }}>Enter the 6-digit code we sent to {form.email}.</p>
-                <input autoFocus name="code" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" required style={inputStyle}
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>{t('form.verificationCode')}</label>
+                <p style={{ fontSize: 12.5, color: palette.muted, marginBottom: 10 }}>{t('form.codePrompt', { email: form.email })}</p>
+                <input autoFocus name="code" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} placeholder={t('form.codePlaceholder')} required style={inputStyle}
                   onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
               </div>
             )}
@@ -266,19 +259,19 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
             <div style={{ display: 'flex', gap: 12 }}>
               {step > 1 && (
                 <button type="button" onClick={goBack} disabled={loading} style={{ flex: '0 0 auto', padding: '13px 22px', borderRadius: 9999, border: '1.5px solid #E2E8F0', background: '#fff', color: palette.navy, fontWeight: 600, fontSize: 14, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-                  Back
+                  {t('back')}
                 </button>
               )}
               <button type="submit" disabled={loading} style={{ flex: 1, padding: '13px', borderRadius: 9999, border: 'none', background: loading ? '#9CA3AF' : palette.accent, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-                {loading ? 'Please wait…' : step === 8 ? 'Verify & Create Account' : 'Next'}
+                {loading ? t('pleaseWait') : step === 8 ? t('verifyAndCreate') : t('next')}
               </button>
             </div>
           </form>
 
           <div style={{ textAlign: 'center', marginTop: 24 }}>
-            <span style={{ fontSize: 13, color: palette.muted }}>Already have an account? </span>
+            <span style={{ fontSize: 13, color: palette.muted }}>{t('alreadyHaveAccount')} </span>
             <button onClick={() => onNavigate('client-login')} style={{ background: 'none', border: 'none', color: palette.accent, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-              Sign In
+              {t('signIn')}
             </button>
           </div>
         </div>

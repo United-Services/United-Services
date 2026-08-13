@@ -554,5 +554,123 @@
         }
       }
     }
+  },
+  "candidateSignup": {
+    "eyebrow": "USE · 招聘申请",
+    "title": "候选人注册",
+    "subtitle": "完善您的资料以加入 USE 人才库。我们的人力资源团队将在 5 个工作日内审核您的申请。",
+    "backToCareers": "← 返回招聘页面",
+    "returnHome": "返回 USE 官网",
+    "verify": {
+      "prompt": "请输入我们发送至 {email} 的 6 位验证码以完成申请提交。",
+      "label": "验证码",
+      "placeholder": "123456",
+      "submitting": "正在提交申请…",
+      "submit": "验证并提交申请"
+    },
+    "form": {
+      "firstName": "名",
+      "firstNamePlaceholder": "请输入您的名字",
+      "lastName": "姓",
+      "lastNamePlaceholder": "请输入您的姓氏",
+      "dob": "出生日期",
+      "email": "电子邮箱",
+      "emailPlaceholder": "您的个人或工作邮箱",
+      "password": "密码",
+      "passwordPlaceholder": "创建密码（至少 8 个字符）",
+      "docsHeading": "身份证明与简历文件",
+      "docsBody": "审核申请需要以上两份文件。身份证件格式为 JPG/PNG，简历格式为 PDF 或 DOC。",
+      "idLabel": "身份证 / 护照照片",
+      "cvLabel": "个人简历（CV）",
+      "uploadId": "上传身份证照片",
+      "uploadCv": "上传简历",
+      "clickToReplace": "点击以替换",
+      "imageHint": "JPG / PNG，最大 5 MB",
+      "docHint": "PDF 或 DOC，最大 10 MB",
+      "missingUploads": "⚠ 请上传您的身份证照片和简历后再继续。",
+      "creatingAccount": "正在创建账户…",
+      "continue": "继续",
+      "privacyNote": "您的信息将根据 USE 的隐私政策和适用的数据保护法规进行保密处理。"
+    },
+    "submitted": {
+      "title": "申请已提交",
+      "body": "谢谢您，<strong>{firstName}</strong>。您的申请现已进入 USE 审核队列。",
+      "notify": "一旦我们的人力资源团队完成评估，将通过 <strong>{email}</strong> 通知您。",
+      "whatsNext": "接下来的流程",
+      "step1": "USE 人力资源部将在 5 个工作日内审核您的身份证件和简历。",
+      "step2": "入围候选人将被联系安排技术面试。",
+      "step3": "成功的候选人将加入 USE 人才库。"
+    },
+    "errors": {
+      "createFailed": "无法创建您的账户，请检查您的信息后重试。",
+      "codeFailed": "无法发送验证码，请重试。",
+      "invalidCode": "验证码无效，请重试。",
+      "finalizeFailed": "无法完成注册，请重试。",
+      "submitFailed": "提交申请时出现问题，请重试。"
+    }
+  },
+  "clientSignup": {
+    "stepTitles": {
+      "1": "名",
+      "2": "姓",
+      "3": "电话号码",
+      "4": "公司 / 运营方",
+      "5": "电子邮箱",
+      "6": "创建密码",
+      "7": "确认密码",
+      "8": "验证您的邮箱"
+    },
+    "panel": {
+      "heading": "获取 USE 完整服务组合的访问权限。",
+      "body": "注册为客户即可浏览技术规格、申请下载规格文件、提交询价单并预约工程咨询。",
+      "perk1": "✓ 浏览全部六大服务系统",
+      "perk2": "✓ 申请获取认证规格文件",
+      "perk3": "✓ 提交询价单并预约现场访问"
+    },
+    "title": "创建客户账户",
+    "stepOf": "第 {step} 步 / 共 {total} 步 — {label}",
+    "form": {
+      "firstName": "名",
+      "firstNamePlaceholder": "请输入您的名字",
+      "lastName": "姓",
+      "lastNamePlaceholder": "请输入您的姓氏",
+      "phone": "电话号码",
+      "phonePlaceholder": "您的直接联系电话",
+      "company": "公司 / 运营方名称",
+      "companyPlaceholder": "您所在机构的全称",
+      "email": "电子邮箱",
+      "emailPlaceholder": "您的工作邮箱地址",
+      "password": "密码",
+      "passwordPlaceholder": "创建一个强密码",
+      "confirmPassword": "确认密码",
+      "confirmPasswordPlaceholder": "请再次输入密码",
+      "verificationCode": "验证码",
+      "codePrompt": "请输入我们发送至 {email} 的 6 位验证码。",
+      "codePlaceholder": "123456"
+    },
+    "passwordChecks": {
+      "length": "至少 8 个字符",
+      "uppercase": "至少包含 1 个大写字母",
+      "number": "至少包含 1 个数字",
+      "symbol": "至少包含 1 个符号"
+    },
+    "back": "上一步",
+    "pleaseWait": "请稍候…",
+    "next": "下一步",
+    "verifyAndCreate": "验证并创建账户",
+    "alreadyHaveAccount": "已有账户？",
+    "signIn": "登录",
+    "success": {
+      "title": "账户创建成功",
+      "body": "欢迎您，<strong>{firstName}</strong>。正在跳转至您的客户仪表盘…"
+    },
+    "errors": {
+      "passwordRequirements": "请满足所有密码要求后再继续。",
+      "passwordMismatch": "两次输入的密码不一致。",
+      "createFailed": "无法创建您的账户，请检查您的信息后重试。",
+      "codeFailed": "无法发送验证码，请重试。",
+      "invalidCode": "验证码无效，请重试。",
+      "finalizeFailed": "无法完成注册，请重试。"
+    }
   }
 }

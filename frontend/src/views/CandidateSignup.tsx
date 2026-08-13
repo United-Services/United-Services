@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef } from 'react'
 import { useSignUp, useAuth } from '@clerk/nextjs'
+import { useTranslations } from 'next-intl'
 import { palette, inputStyle } from '../theme'
 import { api, authHeader } from '../lib/api'
 
@@ -9,6 +10,7 @@ interface Props { onNavigate: (page: string) => void }
 export default function CandidateSignup({ onNavigate }: Props) {
   const { signUp } = useSignUp()
   const { getToken } = useAuth()
+  const t = useTranslations('candidateSignup')
   const [form, setForm] = useState({ firstName: '', lastName: '', dob: '', email: '', password: '' })
   const [idFile, setIdFile] = useState<File | null>(null)
   const [cvFile, setCvFile] = useState<File | null>(null)
@@ -41,12 +43,12 @@ export default function CandidateSignup({ onNavigate }: Props) {
         lastName: form.lastName,
       })
       if (createError) {
-        setError(createError.message ?? 'Could not create your account. Please check your details and try again.')
+        setError(createError.message ?? t('errors.createFailed'))
         return
       }
       const { error: codeError } = await signUp.verifications.sendEmailCode()
       if (codeError) {
-        setError(codeError.message ?? 'Could not send a verification code. Please try again.')
+        setError(codeError.message ?? t('errors.codeFailed'))
         return
       }
       setStep('verify')
@@ -63,12 +65,12 @@ export default function CandidateSignup({ onNavigate }: Props) {
     try {
       const { error: verifyError } = await signUp.verifications.verifyEmailCode({ code })
       if (verifyError) {
-        setError(verifyError.message ?? 'Invalid verification code. Please try again.')
+        setError(verifyError.message ?? t('errors.invalidCode'))
         return
       }
       const { error: finalizeError } = await signUp.finalize()
       if (finalizeError) {
-        setError(finalizeError.message ?? 'Could not complete sign-up. Please try again.')
+        setError(finalizeError.message ?? t('errors.finalizeFailed'))
         return
       }
 
@@ -85,7 +87,7 @@ export default function CandidateSignup({ onNavigate }: Props) {
 
       setSubmitted(true)
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Something went wrong submitting your application. Please try again.')
+      setError(err?.response?.data?.message ?? t('errors.submitFailed'))
     } finally {
       setLoading(false)
     }
@@ -101,7 +103,7 @@ export default function CandidateSignup({ onNavigate }: Props) {
       <input ref={onRef} type="file" accept={accept} style={{ display: 'none' }} onChange={(e) => { if (e.target.files?.[0]) onFile(e.target.files[0]) }} />
       <div style={{ fontSize: 28, marginBottom: 8 }}>{file ? '✅' : accept.includes('image') ? '🪪' : '📄'}</div>
       <div style={{ fontSize: 13, fontWeight: 700, color: file ? palette.accent : palette.navy, marginBottom: 4 }}>{file ? file.name : label}</div>
-      <div style={{ fontSize: 11, color: palette.muted }}>{file ? 'Click to replace' : accept.includes('image') ? 'JPG / PNG, max 5 MB' : 'PDF or DOC, max 10 MB'}</div>
+      <div style={{ fontSize: 11, color: palette.muted }}>{file ? t('form.clickToReplace') : accept.includes('image') ? t('form.imageHint') : t('form.docHint')}</div>
     </div>
   )
 
@@ -110,14 +112,14 @@ export default function CandidateSignup({ onNavigate }: Props) {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', fontFamily: 'Poppins, sans-serif', padding: 24 }}>
         <div style={{ maxWidth: 520, width: '100%', background: '#fff', borderRadius: 24, padding: '64px 48px', border: '1px solid #E2E8F0', textAlign: 'center' }}>
           <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#FFF7ED', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, margin: '0 auto 24px' }}>⏳</div>
-          <h2 style={{ fontSize: 26, fontWeight: 800, color: palette.navy, marginBottom: 12, letterSpacing: '-0.02em' }}>Application Submitted</h2>
+          <h2 style={{ fontSize: 26, fontWeight: 800, color: palette.navy, marginBottom: 12, letterSpacing: '-0.02em' }}>{t('submitted.title')}</h2>
           <p style={{ fontSize: 14, color: palette.muted, lineHeight: 1.8, marginBottom: 32 }}>
-            Thank you, <strong>{form.firstName}</strong>. Your application is now in the USE review queue.<br />
-            You will be notified at <strong>{form.email}</strong> once it has been assessed by our HR team.
+            {t.rich('submitted.body', { firstName: form.firstName, strong: (chunks) => <strong>{chunks}</strong> })}<br />
+            {t.rich('submitted.notify', { email: form.email, strong: (chunks) => <strong>{chunks}</strong> })}
           </p>
           <div style={{ background: '#F8FAFC', borderRadius: 14, padding: '20px 24px', marginBottom: 32, textAlign: 'left' }}>
-            <div style={{ fontSize: 11, color: palette.accent, fontWeight: 700, letterSpacing: '0.12em', marginBottom: 12 }}>WHAT HAPPENS NEXT</div>
-            {['Your ID and CV are reviewed by USE HR within 5 business days.', 'Shortlisted candidates are contacted for a technical interview.', 'Successful candidates join the USE talent pipeline.'].map((s, i) => (
+            <div style={{ fontSize: 11, color: palette.accent, fontWeight: 700, letterSpacing: '0.12em', marginBottom: 12 }}>{t('submitted.whatsNext')}</div>
+            {[t('submitted.step1'), t('submitted.step2'), t('submitted.step3')].map((s, i) => (
               <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 10, alignItems: 'flex-start' }}>
                 <span style={{ width: 20, height: 20, borderRadius: '50%', background: palette.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 10, flexShrink: 0 }}>{i + 1}</span>
                 <span style={{ fontSize: 13, color: palette.slate, lineHeight: 1.5 }}>{s}</span>
@@ -125,7 +127,7 @@ export default function CandidateSignup({ onNavigate }: Props) {
             ))}
           </div>
           <button onClick={() => onNavigate('home')} style={{ background: palette.accent, color: '#fff', border: 'none', borderRadius: 9999, padding: '12px 32px', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-            Return to USE Website
+            {t('returnHome')}
           </button>
         </div>
       </div>
@@ -141,87 +143,87 @@ export default function CandidateSignup({ onNavigate }: Props) {
         </button>
 
         <div style={{ background: '#fff', borderRadius: 24, padding: '48px', border: '1px solid #E2E8F0' }}>
-          <div style={{ fontSize: 11, color: palette.accent, fontWeight: 700, letterSpacing: '0.15em', marginBottom: 10 }}>USE · CAREERS APPLICATION</div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: palette.navy, marginBottom: 8, letterSpacing: '-0.02em' }}>Candidate Registration</h1>
+          <div style={{ fontSize: 11, color: palette.accent, fontWeight: 700, letterSpacing: '0.15em', marginBottom: 10 }}>{t('eyebrow')}</div>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: palette.navy, marginBottom: 8, letterSpacing: '-0.02em' }}>{t('title')}</h1>
           <p style={{ fontSize: 14, color: palette.muted, marginBottom: 36, lineHeight: 1.6 }}>
-            Complete your profile to join the USE talent pipeline. Your application will be reviewed by our HR team within 5 business days.
+            {t('subtitle')}
           </p>
 
           {step === 'verify' ? (
             <form onSubmit={handleVerify}>
-              <p style={{ fontSize: 14, color: palette.muted, marginBottom: 20 }}>Enter the 6-digit code we sent to {form.email} to finish submitting your application.</p>
+              <p style={{ fontSize: 14, color: palette.muted, marginBottom: 20 }}>{t('verify.prompt', { email: form.email })}</p>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Verification Code</label>
-                <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" required autoComplete="one-time-code" style={inputStyle}
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>{t('verify.label')}</label>
+                <input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t('verify.placeholder')} required autoComplete="one-time-code" style={inputStyle}
                   onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
               </div>
               {error && <p style={{ fontSize: 12, color: '#DC2626', marginBottom: 16, fontWeight: 600 }}>{error}</p>}
               <button type="submit" disabled={loading} style={{ width: '100%', padding: '14px', borderRadius: 9999, border: 'none', background: loading ? '#9CA3AF' : palette.accent, color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-                {loading ? 'Submitting Application…' : 'Verify & Submit Application'}
+                {loading ? t('verify.submitting') : t('verify.submit')}
               </button>
             </form>
           ) : (
           <form onSubmit={handleCreateAccount}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>First Name</label>
-                <input value={form.firstName} onChange={set('firstName')} placeholder="Your first name" required style={inputStyle}
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>{t('form.firstName')}</label>
+                <input value={form.firstName} onChange={set('firstName')} placeholder={t('form.firstNamePlaceholder')} required style={inputStyle}
                   onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Last Name</label>
-                <input value={form.lastName} onChange={set('lastName')} placeholder="Your last name" required style={inputStyle}
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>{t('form.lastName')}</label>
+                <input value={form.lastName} onChange={set('lastName')} placeholder={t('form.lastNamePlaceholder')} required style={inputStyle}
                   onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
               </div>
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Date of Birth</label>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>{t('form.dob')}</label>
               <input type="date" value={form.dob} onChange={set('dob')} required style={inputStyle}
                 onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Email Address</label>
-              <input type="email" autoComplete="email" value={form.email} onChange={set('email')} placeholder="Your personal or work email" required style={inputStyle}
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>{t('form.email')}</label>
+              <input type="email" autoComplete="email" value={form.email} onChange={set('email')} placeholder={t('form.emailPlaceholder')} required style={inputStyle}
                 onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
             </div>
 
             <div style={{ marginBottom: 28 }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Password</label>
-              <input type="password" autoComplete="new-password" value={form.password} onChange={set('password')} placeholder="Create a password (8+ characters)" required minLength={8} style={inputStyle}
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>{t('form.password')}</label>
+              <input type="password" autoComplete="new-password" value={form.password} onChange={set('password')} placeholder={t('form.passwordPlaceholder')} required minLength={8} style={inputStyle}
                 onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
             </div>
 
             <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: 28, marginBottom: 28 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: palette.navy, marginBottom: 6 }}>Identity & CV Documents</div>
-              <p style={{ fontSize: 13, color: palette.muted, marginBottom: 20 }}>Both documents are required for application review. Formats: JPG/PNG for ID, PDF or DOC for CV.</p>
+              <div style={{ fontSize: 14, fontWeight: 700, color: palette.navy, marginBottom: 6 }}>{t('form.docsHeading')}</div>
+              <p style={{ fontSize: 13, color: palette.muted, marginBottom: 20 }}>{t('form.docsBody')}</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>National ID / Passport Photo</div>
-                  <UploadBox label="Upload ID Photo" file={idFile} accept="image/*" onRef={idRef} onFile={(f) => setIdFile(f)} />
+                  <div style={{ fontSize: 12, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>{t('form.idLabel')}</div>
+                  <UploadBox label={t('form.uploadId')} file={idFile} accept="image/*" onRef={idRef} onFile={(f) => setIdFile(f)} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Curriculum Vitae (CV)</div>
-                  <UploadBox label="Upload CV" file={cvFile} accept=".pdf,.doc,.docx" onRef={cvRef} onFile={(f) => setCvFile(f)} />
+                  <div style={{ fontSize: 12, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>{t('form.cvLabel')}</div>
+                  <UploadBox label={t('form.uploadCv')} file={cvFile} accept=".pdf,.doc,.docx" onRef={cvRef} onFile={(f) => setCvFile(f)} />
                 </div>
               </div>
             </div>
 
             {(!idFile || !cvFile) && (
               <p style={{ fontSize: 12, color: '#F59E0B', marginBottom: 16, fontWeight: 600 }}>
-                ⚠ Please upload both your ID photo and CV to proceed.
+                {t('form.missingUploads')}
               </p>
             )}
 
             {error && <p style={{ fontSize: 12, color: '#DC2626', marginBottom: 16, fontWeight: 600 }}>{error}</p>}
 
             <button type="submit" disabled={loading || !idFile || !cvFile} style={{ width: '100%', padding: '14px', borderRadius: 9999, border: 'none', background: loading || !idFile || !cvFile ? '#9CA3AF' : palette.accent, color: '#fff', fontWeight: 700, fontSize: 15, cursor: loading || !idFile || !cvFile ? 'not-allowed' : 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-              {loading ? 'Creating Account…' : 'Continue'}
+              {loading ? t('form.creatingAccount') : t('form.continue')}
             </button>
 
             <p style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 14, lineHeight: 1.5 }}>
-              Your information is handled confidentially in accordance with USE's privacy policy and applicable data protection laws.
+              {t('form.privacyNote')}
             </p>
           </form>
           )}
@@ -229,7 +231,7 @@ export default function CandidateSignup({ onNavigate }: Props) {
 
         <div style={{ textAlign: 'center', marginTop: 20 }}>
           <button onClick={() => onNavigate('careers')} style={{ background: 'none', border: 'none', color: palette.accent, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-            ← Back to Careers
+            {t('backToCareers')}
           </button>
         </div>
       </div>
