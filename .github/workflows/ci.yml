@@ -29,6 +29,10 @@ jobs:
           DATABASE_URL: postgresql://user:password@localhost:5432/ci
           DIRECT_URL: postgresql://user:password@localhost:5432/ci
       - run: pnpm exec tsc --noEmit -p tsconfig.json
+      - name: Unit tests
+        run: pnpm test -- --ci
+        env:
+          ENCRYPTION_KEY: ci-placeholder-encryption-key
       - run: pnpm run build
       - run: pnpm audit --audit-level=high || true
 
