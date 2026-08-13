@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/nextjs'
 import { useTranslations } from 'next-intl'
 import { palette, inputStyle } from '../theme'
 import { InlineSpinner } from '../components/Spinner'
+import { IconGear, IconClipboard, IconCalendar, IconUser, IconLogout } from '../components/NavIcons'
 import { api, authHeader } from '../lib/api'
 
 const FALLBACK_IMG = '/images/bp-valves.jpg'
@@ -35,10 +36,10 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
   const [section, setSection] = useState('services')
 
   const NAV_ITEMS = [
-    { id: 'services', label: t('nav.services'), icon: '⚙️' },
-    { id: 'rfq', label: t('nav.rfq'), icon: '📋' },
-    { id: 'appointments', label: t('nav.appointments'), icon: '📅' },
-    { id: 'profile', label: t('nav.profile'), icon: '👤' },
+    { id: 'services', label: t('nav.services'), icon: <IconGear /> },
+    { id: 'rfq', label: t('nav.rfq'), icon: <IconClipboard /> },
+    { id: 'appointments', label: t('nav.appointments'), icon: <IconCalendar /> },
+    { id: 'profile', label: t('nav.profile'), icon: <IconUser /> },
   ]
 
   const [me, setMe] = useState<Me | null>(null)
@@ -156,11 +157,11 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'Poppins, sans-serif', background: '#F8FAFC' }}>
       {/* Sidebar */}
-      <aside style={{ width: 240, flexShrink: 0, background: palette.navy, display: 'flex', flexDirection: 'column' }}>
+      <aside className="dashboard-sidebar" style={{ width: 240, flexShrink: 0, background: palette.navy, display: 'flex', flexDirection: 'column' }}>
         <div style={{ height: 68, display: 'flex', alignItems: 'center', padding: '0 20px', borderBottom: '1px solid #1E293B' }}>
           <button onClick={() => onNavigate('home')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 9, background: palette.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 12 }}>USE</div>
-            <div>
+            <img src="/images/logo-footer.png" alt="United Services Egypt" style={{ height: 28, width: 'auto', objectFit: 'contain' }} />
+            <div className="sidebar-label">
               <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{t('portalLabel')}</div>
               <div style={{ fontSize: 10, color: '#475569' }}>United Services Egypt</div>
             </div>
@@ -168,14 +169,14 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
         </div>
         <nav style={{ flex: 1, padding: '16px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
           {NAV_ITEMS.map((n) => (
-            <button key={n.id} onClick={() => setSection(n.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: 'none', background: section === n.id ? 'rgba(234,88,12,0.15)' : 'transparent', color: section === n.id ? palette.accent : '#64748B', fontWeight: section === n.id ? 600 : 400, fontSize: 14, cursor: 'pointer', fontFamily: 'Poppins, sans-serif', textAlign: 'left', transition: 'background 0.15s' }}>
-              <span style={{ fontSize: 16 }}>{n.icon}</span>
-              {n.label}
+            <button key={n.id} className="sidebar-nav-btn" onClick={() => setSection(n.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: 'none', background: section === n.id ? 'rgba(234,88,12,0.15)' : 'transparent', color: section === n.id ? palette.accent : '#64748B', fontWeight: section === n.id ? 600 : 400, fontSize: 14, cursor: 'pointer', fontFamily: 'Poppins, sans-serif', textAlign: 'left', transition: 'background 0.15s' }}>
+              {n.icon}
+              <span className="sidebar-label">{n.label}</span>
             </button>
           ))}
         </nav>
         <div style={{ padding: '12px 10px', borderTop: '1px solid #1E293B' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', marginBottom: 4, background: '#1E293B', borderRadius: 10 }}>
+          <div className="sidebar-label" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', marginBottom: 4, background: '#1E293B', borderRadius: 10 }}>
             <div style={{ width: 32, height: 32, borderRadius: '50%', background: palette.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
               {me?.firstName?.[0] ?? '·'}
             </div>
@@ -186,8 +187,9 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
               <div style={{ fontSize: 11, color: '#475569' }}>{me?.companyName ?? ''}</div>
             </div>
           </div>
-          <button onClick={onLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderRadius: 10, border: 'none', background: 'transparent', color: '#EF4444', fontSize: 13, fontWeight: 500, cursor: 'pointer', width: '100%', fontFamily: 'Poppins, sans-serif' }}>
-            {t('logOut')}
+          <button className="sidebar-nav-btn" onClick={onLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderRadius: 10, border: 'none', background: 'transparent', color: '#EF4444', fontSize: 13, fontWeight: 500, cursor: 'pointer', width: '100%', fontFamily: 'Poppins, sans-serif' }}>
+            <IconLogout size={15} />
+            <span className="sidebar-label">{t('logOut')}</span>
           </button>
         </div>
       </aside>
@@ -207,7 +209,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
               <p style={{ fontSize: 14, color: palette.muted, marginBottom: 28 }}>
                 {t('services.intro')}
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+              <div className="responsive-card-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
                 {services.map((s) => {
                   const status = statusForService(s.id)
                   const hasFile = !!latestFiles[s.id]

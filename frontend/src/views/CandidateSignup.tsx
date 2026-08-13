@@ -139,8 +139,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
     <div style={{ minHeight: '100vh', background: '#F8FAFC', fontFamily: 'Poppins, sans-serif', padding: '40px 24px' }}>
       <div style={{ maxWidth: 680, margin: '0 auto' }}>
         <button onClick={() => onNavigate('home')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 36 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 9, background: palette.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 12 }}>USE</div>
-          <span style={{ fontWeight: 700, fontSize: 15, color: palette.navy }}>United Services Egypt</span>
+          <img src="/images/logo-nav-future-energy.png" alt="United Services Egypt" style={{ height: 32, width: 'auto', objectFit: 'contain' }} />
         </button>
 
         <div style={{ background: '#fff', borderRadius: 24, padding: '48px', border: '1px solid #E2E8F0' }}>

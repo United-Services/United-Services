@@ -677,7 +677,7 @@
   "clientDashboard": {
     "portalLabel": "Client Portal",
     "loading": "Loading…",
-    "logOut": "🚪 Log Out",
+    "logOut": "Log Out",
     "nav": {
       "services": "Services",
       "rfq": "Request for Quotation",
@@ -730,7 +730,7 @@
   "adminDashboard": {
     "panelLabel": "Admin Panel",
     "restrictedAccess": "USE · ADMIN · RESTRICTED ACCESS",
-    "logOut": "🚪 Log Out",
+    "logOut": "Log Out",
     "headerFallback": "Dashboard",
     "nav": {
       "overview": "Overview",

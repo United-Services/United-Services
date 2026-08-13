@@ -126,14 +126,13 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
   const stepTitle = t(`stepTitles.${step}` as any)
 
   return (
-    <div style={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: '1fr 1fr', fontFamily: 'Poppins, sans-serif' }}>
-      <div style={{ position: 'relative', overflow: 'hidden', background: '#111' }}>
+    <div className="signup-split" style={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: '1fr 1fr', fontFamily: 'Poppins, sans-serif' }}>
+      <div className="signup-split-panel" style={{ position: 'relative', overflow: 'hidden', background: '#111' }}>
         <img src={worldImg} alt="Industrial energy infrastructure" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.75 }} />
         <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(135deg, ${palette.accent}bb 0%, rgba(15,23,42,0.85) 100%)` }} />
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 52 }}>
           <button onClick={() => onNavigate('home')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 52 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: palette.accent, fontWeight: 800, fontSize: 13 }}>USE</div>
-            <span style={{ fontWeight: 700, fontSize: 17, color: '#fff' }}>United Services Egypt</span>
+            <img src="/images/logo-footer.png" alt="United Services Egypt" style={{ height: 32, width: 'auto', objectFit: 'contain' }} />
           </button>
           <h2 style={{ fontSize: 36, fontWeight: 800, color: '#fff', lineHeight: 1.15, marginBottom: 20, letterSpacing: '-0.02em' }}>
             {t('panel.heading')}

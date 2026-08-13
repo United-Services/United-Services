@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/nextjs'
 import { useTranslations } from 'next-intl'
 import { palette } from '../theme'
 import { InlineSpinner } from '../components/Spinner'
+import { IconChart, IconUsers, IconFolder, IconClipboard, IconCompass, IconCap, IconBriefcase, IconCalendar, IconReceipt, IconLock, IconLogout } from '../components/NavIcons'
 import { api, authHeader } from '../lib/api'
 import AdminSecuritySection from './AdminSecuritySection'
 
@@ -56,16 +57,16 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   const authed = async () => authHeader(await getToken())
 
   const NAV = [
-    { id: 'overview', label: t('nav.overview'), icon: '📊' },
-    { id: 'clients', label: t('nav.clients'), icon: '👥' },
-    { id: 'specs', label: t('nav.specs'), icon: '📁' },
-    { id: 'requests', label: t('nav.requests'), icon: '📋' },
-    { id: 'positions', label: t('nav.positions'), icon: '🧭' },
-    { id: 'candidates', label: t('nav.candidates'), icon: '🎓' },
-    { id: 'rfqs', label: t('nav.rfqs'), icon: '💼' },
-    { id: 'bookings', label: t('nav.bookings'), icon: '📅' },
-    { id: 'audit', label: t('nav.audit'), icon: '🧾' },
-    { id: 'security', label: t('nav.security'), icon: '🔒' },
+    { id: 'overview', label: t('nav.overview'), icon: <IconChart /> },
+    { id: 'clients', label: t('nav.clients'), icon: <IconUsers /> },
+    { id: 'specs', label: t('nav.specs'), icon: <IconFolder /> },
+    { id: 'requests', label: t('nav.requests'), icon: <IconClipboard /> },
+    { id: 'positions', label: t('nav.positions'), icon: <IconCompass /> },
+    { id: 'candidates', label: t('nav.candidates'), icon: <IconCap /> },
+    { id: 'rfqs', label: t('nav.rfqs'), icon: <IconBriefcase /> },
+    { id: 'bookings', label: t('nav.bookings'), icon: <IconCalendar /> },
+    { id: 'audit', label: t('nav.audit'), icon: <IconReceipt /> },
+    { id: 'security', label: t('nav.security'), icon: <IconLock /> },
   ]
 
   // Overview
@@ -317,11 +318,11 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'Poppins, sans-serif', background: '#F8FAFC' }}>
       {/* Sidebar */}
-      <aside style={{ width: 220, flexShrink: 0, background: palette.navy, display: 'flex', flexDirection: 'column' }}>
+      <aside className="dashboard-sidebar" style={{ width: 220, flexShrink: 0, background: palette.navy, display: 'flex', flexDirection: 'column' }}>
         <div style={{ height: 64, display: 'flex', alignItems: 'center', padding: '0 16px', borderBottom: '1px solid #1E293B' }}>
           <button onClick={() => onNavigate('home')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: palette.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 11 }}>USE</div>
-            <div>
+            <img src="/images/logo-footer.png" alt="United Services Egypt" style={{ height: 26, width: 'auto', objectFit: 'contain' }} />
+            <div className="sidebar-label">
               <div style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>{t('panelLabel')}</div>
               <div style={{ fontSize: 9, color: '#475569' }}>United Services Egypt</div>
             </div>
@@ -329,14 +330,15 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
         </div>
         <nav style={{ flex: 1, padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
           {NAV.map((n) => (
-            <button key={n.id} onClick={() => setSection(n.id)} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 12px', borderRadius: 9, border: 'none', background: section === n.id ? 'rgba(234,88,12,0.15)' : 'transparent', color: section === n.id ? palette.accent : '#64748B', fontWeight: section === n.id ? 600 : 400, fontSize: 13, cursor: 'pointer', fontFamily: 'Poppins, sans-serif', textAlign: 'left', transition: 'background 0.15s' }}>
-              <span style={{ fontSize: 14 }}>{n.icon}</span>{n.label}
+            <button key={n.id} className="sidebar-nav-btn" onClick={() => setSection(n.id)} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 12px', borderRadius: 9, border: 'none', background: section === n.id ? 'rgba(234,88,12,0.15)' : 'transparent', color: section === n.id ? palette.accent : '#64748B', fontWeight: section === n.id ? 600 : 400, fontSize: 13, cursor: 'pointer', fontFamily: 'Poppins, sans-serif', textAlign: 'left', transition: 'background 0.15s' }}>
+              {n.icon}<span className="sidebar-label">{n.label}</span>
             </button>
           ))}
         </nav>
         <div style={{ padding: '10px 8px', borderTop: '1px solid #1E293B' }}>
-          <button onClick={onLogout} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 9, border: 'none', background: 'transparent', color: '#EF4444', fontSize: 12, fontWeight: 500, cursor: 'pointer', width: '100%', fontFamily: 'Poppins, sans-serif' }}>
-            {t('logOut')}
+          <button className="sidebar-nav-btn" onClick={onLogout} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 9, border: 'none', background: 'transparent', color: '#EF4444', fontSize: 12, fontWeight: 500, cursor: 'pointer', width: '100%', fontFamily: 'Poppins, sans-serif' }}>
+            <IconLogout size={14} />
+            <span className="sidebar-label">{t('logOut')}</span>
           </button>
         </div>
       </aside>
@@ -416,7 +418,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
 
           {/* SPEC FILES */}
           {section === 'specs' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+            <div className="responsive-card-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
               {services.map((svc) => {
                 const files = serviceFiles[svc.id] ?? []
                 const latest = files[0]

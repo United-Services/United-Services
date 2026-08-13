@@ -98,3 +98,35 @@ html { scroll-behavior: smooth; }
   to { transform: scaleX(1); }
 }
 .step-bar-fill { animation: stepBarFill 0.4s cubic-bezier(.4,0,.2,1); transform-origin: left; }
+
+/* ── Mobile responsiveness ──────────────────────────────────────────────
+   Dashboards and the client-signup wizard were built desktop-first with
+   no breakpoints at all (fixed sidebar widths, hard 2-column grids). These
+   utility classes retrofit the layouts that break worst on a phone —
+   real fixed pixel widths and grid-template-columns can't respond to a
+   media query from an inline style object, so these live here instead. */
+
+/* ClientSignup: full split-screen (branding panel + form) collapses to
+   form-only below tablet width. */
+@media (max-width: 860px) {
+  .signup-split { grid-template-columns: 1fr !important; }
+  .signup-split-panel { display: none !important; }
+}
+
+/* Card grids that assume 3 columns (client dashboard services, admin spec
+   files/positions) fall back to 1 column on narrow viewports. */
+@media (max-width: 860px) {
+  .responsive-card-grid { grid-template-columns: 1fr !important; }
+}
+@media (min-width: 861px) and (max-width: 1100px) {
+  .responsive-card-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+/* Dashboard shell: sidebar shrinks to an icon rail (labels hidden) below
+   tablet width instead of eating most of a phone's viewport. */
+@media (max-width: 780px) {
+  .dashboard-sidebar { width: 64px !important; }
+  .dashboard-sidebar .sidebar-label { display: none !important; }
+  .dashboard-sidebar .sidebar-nav-btn { justify-content: center !important; }
+}
+

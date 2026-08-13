@@ -677,7 +677,7 @@
   "clientDashboard": {
     "portalLabel": "客户门户",
     "loading": "加载中…",
-    "logOut": "🚪 退出登录",
+    "logOut": "退出登录",
     "nav": {
       "services": "服务",
       "rfq": "询价申请",
@@ -730,7 +730,7 @@
   "adminDashboard": {
     "panelLabel": "Admin Panel",
     "restrictedAccess": "USE · ADMIN · RESTRICTED ACCESS",
-    "logOut": "🚪 Log Out",
+    "logOut": "Log Out",
     "headerFallback": "Dashboard",
     "nav": {
       "overview": "Overview",

@@ -677,7 +677,7 @@
   "clientDashboard": {
     "portalLabel": "بوابة العملاء",
     "loading": "جارٍ التحميل…",
-    "logOut": "🚪 تسجيل الخروج",
+    "logOut": "تسجيل الخروج",
     "nav": {
       "services": "الخدمات",
       "rfq": "طلب عرض سعر",
@@ -730,7 +730,7 @@
   "adminDashboard": {
     "panelLabel": "Admin Panel",
     "restrictedAccess": "USE · ADMIN · RESTRICTED ACCESS",
-    "logOut": "🚪 Log Out",
+    "logOut": "Log Out",
     "headerFallback": "Dashboard",
     "nav": {
       "overview": "Overview",
