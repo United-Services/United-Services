@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend — typecheck & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: backend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      # Prisma client generation needs a schema-valid DATABASE_URL string,
+      # but not a reachable database — validate/generate don't connect.
+      - run: pnpm exec prisma generate
+        env:
+          DATABASE_URL: postgresql://user:password@localhost:5432/ci
+          DIRECT_URL: postgresql://user:password@localhost:5432/ci
+      - run: pnpm exec tsc --noEmit -p tsconfig.json
+      - run: pnpm run build
+      - run: pnpm audit --audit-level=high || true
+
+  frontend:
+    name: Frontend — typecheck & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsc --noEmit
+      # NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must be a syntactically valid test
+      # key for the build to succeed even though no real Clerk instance is
+      # reachable in CI.
+      - name: Build
+        run: pnpm run build
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2ktcGxhY2Vob2xkZXIta2V5LmNsZXJrLmFjY291bnRzLmRldiQ
+          CLERK_SECRET_KEY: sk_test_ci-placeholder-key
+          NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+      - run: pnpm audit --audit-level=high || true

@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
+import { RedisService } from '../redis/redis.service';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -10,20 +11,30 @@ import { PresignServiceFileDto } from './dto/presign-service-file.dto';
 import { ConfirmServiceFileDto } from './dto/confirm-service-file.dto';
 import { Role, type User } from '../generated/prisma';
 
+const SERVICES_LIST_CACHE_KEY = 'cache:services:list';
+const CACHE_TTL_SECONDS = 300;
+
 @Controller('services')
 export class ServicesController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly s3: S3Service,
     private readonly auditLog: AuditLogService,
+    private readonly redis: RedisService,
   ) {}
 
-  // Public marketing content — services page content is DB-editable by
-  // admins, but browsing it never requires an account.
+  // Public marketing content — read-heavy, low-churn, so it's cached in
+  // Redis with an explicit invalidation on admin edits (Phase 10). Never
+  // cache anything containing per-user data — this endpoint never does.
   @Public()
   @Get()
-  list() {
-    return this.prisma.service.findMany({ orderBy: { order: 'asc' } });
+  async list() {
+    const cached = await this.redis.get(SERVICES_LIST_CACHE_KEY);
+    if (cached) return JSON.parse(cached);
+
+    const services = await this.prisma.service.findMany({ orderBy: { order: 'asc' } });
+    await this.redis.set(SERVICES_LIST_CACHE_KEY, JSON.stringify(services), 'EX', CACHE_TTL_SECONDS);
+    return services;
   }
 
   @Public()
@@ -39,6 +50,7 @@ export class ServicesController {
       where: { id },
       data: { ...dto, updatedByAdminId: admin.id },
     });
+    await this.redis.del(SERVICES_LIST_CACHE_KEY);
     await this.auditLog.record({
       actorUserId: admin.id,
       action: 'service.updated',
