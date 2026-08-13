@@ -1,29 +1,31 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useAuth } from '@clerk/nextjs'
 import { palette, inputStyle } from '../theme'
-const greApplicationImg = '/images/bp-valves.jpg'
-const insulatorImg = '/images/lux-power.jpg'
+import { api, authHeader } from '../lib/api'
 
-const SVC_IMGS = {
-  svc01: greApplicationImg as unknown as string,
-  svc02: 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&q=80',
-  svc03: 'https://images.unsplash.com/photo-1678984239420-43cdc183bce6?w=600&q=80',
-  svc04: 'https://images.unsplash.com/photo-1684667273934-e5d39307eeae?w=600&q=80',
-  svc05: 'https://images.unsplash.com/photo-1758965364875-e090e5423d2d?w=600&q=80',
+const FALLBACK_IMG = '/images/bp-valves.jpg'
+const SVC_IMG_BY_SLUG: Record<string, string> = {
+  'gre-tubular-lining': '/images/bp-valves.jpg',
+  'external-wrapping': 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&q=80',
+  'industrial-coating': 'https://images.unsplash.com/photo-1678984239420-43cdc183bce6?w=600&q=80',
+  'hdpe-lining': 'https://images.unsplash.com/photo-1684667273934-e5d39307eeae?w=600&q=80',
+  'rtp-systems': 'https://images.unsplash.com/photo-1758965364875-e090e5423d2d?w=600&q=80',
+  'rtv-insulator-coating': '/images/lux-power.jpg',
 }
 
 interface Props { onLogout: () => void; onNavigate: (page: string) => void }
 
-type SpecStatus = 'none' | 'pending' | 'approved'
-
-const SERVICES = [
-  { id: 'SVC-01', name: 'GRE Tubular Lining', tag: 'API 15CLT', img: SVC_IMGS.svc01 },
-  { id: 'SVC-02', name: 'External Wrapping', tag: 'ISO 21809', img: SVC_IMGS.svc02 },
-  { id: 'SVC-03', name: 'Industrial Coating', tag: 'FBE / NACE', img: SVC_IMGS.svc03 },
-  { id: 'SVC-04', name: 'HDPE Lining', tag: 'PE100 / ASTM', img: SVC_IMGS.svc04 },
-  { id: 'SVC-05', name: 'RTP Systems', tag: 'DN40–200', img: SVC_IMGS.svc05 },
-  { id: 'SVC-06', name: 'RTV Insulator Coating', tag: 'IEC 62073', img: insulatorImg as unknown as string },
-]
+interface Service { id: string; slug: string; name: string; shortDescription: string }
+type LatestFile = { id: string; originalFilename: string } | null
+interface FileAccessRequest {
+  id: string
+  status: 'pending' | 'approved' | 'denied'
+  serviceFile: { id: string; service: { name: string; slug: string } }
+}
+interface Slot { id: string; date: string; startTime: string; endTime: string }
+interface MyAppointment { id: string; slot: Slot }
+interface Me { firstName: string; lastName: string; email: string; companyName: string | null; role: string }
 
 const NAV_ITEMS = [
   { id: 'services', label: 'Services', icon: '⚙️' },
@@ -33,17 +35,119 @@ const NAV_ITEMS = [
 ]
 
 export default function ClientDashboard({ onLogout, onNavigate }: Props) {
+  const { getToken } = useAuth()
   const [section, setSection] = useState('services')
-  const [specStatus, setSpecStatus] = useState<Record<string, SpecStatus>>({})
-  const [rfq, setRfq] = useState({ service: '', description: '', timeline: '', message: '' })
-  const [rfqSent, setRfqSent] = useState(false)
-  const [appt, setAppt] = useState({ date: '', time: '', notes: '' })
-  const [apptSent, setApptSent] = useState(false)
 
-  const requestSpec = (id: string) => {
-    setSpecStatus((prev) => ({ ...prev, [id]: 'pending' }))
-    // Simulate admin approval after 3s for demo
-    setTimeout(() => setSpecStatus((prev) => ({ ...prev, [id]: 'approved' })), 3000)
+  const [me, setMe] = useState<Me | null>(null)
+  const [services, setServices] = useState<Service[]>([])
+  const [latestFiles, setLatestFiles] = useState<Record<string, LatestFile>>({})
+  const [myRequests, setMyRequests] = useState<FileAccessRequest[]>([])
+  const [requestingId, setRequestingId] = useState<string | null>(null)
+
+  const [rfq, setRfq] = useState({ serviceId: '', description: '', timeline: '', message: '' })
+  const [rfqSent, setRfqSent] = useState(false)
+  const [rfqLoading, setRfqLoading] = useState(false)
+
+  const [slots, setSlots] = useState<Slot[]>([])
+  const [myAppointments, setMyAppointments] = useState<MyAppointment[]>([])
+  const [selectedSlotId, setSelectedSlotId] = useState('')
+  const [apptSent, setApptSent] = useState(false)
+  const [apptLoading, setApptLoading] = useState(false)
+  const [apptError, setApptError] = useState<string | null>(null)
+
+  const authed = async () => authHeader(await getToken())
+
+  const loadAll = async () => {
+    const headers = await authed()
+    const [meRes, servicesRes, requestsRes, slotsRes, myApptsRes] = await Promise.all([
+      api.get('/me', { headers }),
+      api.get('/services', { headers }),
+      api.get('/file-access-requests/mine', { headers }),
+      api.get('/appointments/slots', { headers }),
+      api.get('/appointments/mine', { headers }),
+    ])
+    setMe(meRes.data)
+    setServices(servicesRes.data)
+    setMyRequests(requestsRes.data)
+    setSlots(slotsRes.data)
+    setMyAppointments(myApptsRes.data)
+
+    const filePairs = await Promise.all(
+      servicesRes.data.map(async (s: Service) => {
+        const { data } = await api.get(`/services/${s.id}/latest-file`, { headers })
+        return [s.id, data] as const
+      }),
+    )
+    setLatestFiles(Object.fromEntries(filePairs))
+  }
+
+  useEffect(() => {
+    loadAll()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const statusForService = (serviceId: string): 'none' | 'pending' | 'approved' | 'denied' => {
+    const file = latestFiles[serviceId]
+    if (!file) return 'none'
+    const req = myRequests.find((r) => r.serviceFile.id === file.id)
+    return req?.status ?? 'none'
+  }
+
+  const requestSpec = async (serviceId: string) => {
+    const file = latestFiles[serviceId]
+    if (!file) return
+    setRequestingId(serviceId)
+    try {
+      const headers = await authed()
+      await api.post('/file-access-requests', { serviceFileId: file.id }, { headers })
+      const { data } = await api.get('/file-access-requests/mine', { headers })
+      setMyRequests(data)
+    } finally {
+      setRequestingId(null)
+    }
+  }
+
+  const downloadSpec = async (serviceId: string) => {
+    const file = latestFiles[serviceId]
+    const req = myRequests.find((r) => r.serviceFile.id === file?.id)
+    if (!req) return
+    const headers = await authed()
+    const { data } = await api.get(`/file-access-requests/${req.id}/download`, { headers })
+    window.open(data.url, '_blank')
+  }
+
+  const submitRfq = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setRfqLoading(true)
+    try {
+      const headers = await authed()
+      const projectDetails = [rfq.description, rfq.timeline && `Timeline: ${rfq.timeline}`, rfq.message]
+        .filter(Boolean)
+        .join('\n\n')
+      await api.post('/rfqs', { serviceId: rfq.serviceId || undefined, projectDetails }, { headers })
+      setRfqSent(true)
+    } finally {
+      setRfqLoading(false)
+    }
+  }
+
+  const bookAppointment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedSlotId) return
+    setApptLoading(true)
+    setApptError(null)
+    try {
+      const headers = await authed()
+      await api.post('/appointments/book', { slotId: selectedSlotId }, { headers })
+      setApptSent(true)
+    } catch (err: any) {
+      setApptError(err?.response?.data?.message ?? 'This slot may have just been booked — please pick another.')
+      const headers = await authed()
+      const { data } = await api.get('/appointments/slots', { headers })
+      setSlots(data)
+    } finally {
+      setApptLoading(false)
+    }
   }
 
   return (
@@ -69,10 +173,14 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
         </nav>
         <div style={{ padding: '12px 10px', borderTop: '1px solid #1E293B' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', marginBottom: 4, background: '#1E293B', borderRadius: 10 }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: palette.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>A</div>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: palette.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+              {me?.firstName?.[0] ?? '·'}
+            </div>
             <div style={{ overflow: 'hidden' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Ahmed Khalil</div>
-              <div style={{ fontSize: 11, color: '#475569' }}>Petrobel</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {me ? `${me.firstName} ${me.lastName}` : 'Loading…'}
+              </div>
+              <div style={{ fontSize: 11, color: '#475569' }}>{me?.companyName ?? ''}</div>
             </div>
           </div>
           <button onClick={onLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderRadius: 10, border: 'none', background: 'transparent', color: '#EF4444', fontSize: 13, fontWeight: 500, cursor: 'pointer', width: '100%', fontFamily: 'Poppins, sans-serif' }}>
@@ -94,31 +202,42 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
           {section === 'services' && (
             <div>
               <p style={{ fontSize: 14, color: palette.muted, marginBottom: 28 }}>
-                Browse our six service systems. Request access to download certified specification files. Approved requests unlock the download immediately.
+                Browse our service systems. Request access to download certified specification files. Approved requests unlock the download immediately.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
-                {SERVICES.map((s) => {
-                  const status = specStatus[s.id] ?? 'none'
+                {services.map((s) => {
+                  const status = statusForService(s.id)
+                  const hasFile = !!latestFiles[s.id]
                   return (
                     <div key={s.id} style={{ background: '#fff', borderRadius: 18, border: '1px solid #E2E8F0', overflow: 'hidden', transition: 'box-shadow 0.2s' }}
                       onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 32px rgba(0,0,0,0.07)' }}
                       onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'none' }}>
-                      <img src={s.img} alt={s.name} style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} />
+                      <img src={SVC_IMG_BY_SLUG[s.slug] ?? FALLBACK_IMG} alt={s.name} style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} />
                       <div style={{ padding: '18px 18px' }}>
-                        <div style={{ fontSize: 10, color: palette.accent, fontWeight: 700, letterSpacing: '0.12em', marginBottom: 6 }}>{s.id} · {s.tag}</div>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: palette.navy, marginBottom: 14 }}>{s.name}</div>
-                        {status === 'none' && (
-                          <button onClick={() => requestSpec(s.id)} style={{ width: '100%', padding: '9px', background: '#4B5563', color: '#fff', border: 'none', borderRadius: 9999, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-                            Request Spec File
+                        <div style={{ fontSize: 15, fontWeight: 700, color: palette.navy, marginBottom: 6 }}>{s.name}</div>
+                        <div style={{ fontSize: 12, color: palette.muted, marginBottom: 14 }}>{s.shortDescription}</div>
+                        {!hasFile && (
+                          <div style={{ textAlign: 'center', fontSize: 12, color: palette.muted, fontWeight: 600, padding: '9px', background: '#F8FAFC', borderRadius: 9999 }}>
+                            No spec file yet
+                          </div>
+                        )}
+                        {hasFile && status === 'none' && (
+                          <button onClick={() => requestSpec(s.id)} disabled={requestingId === s.id} style={{ width: '100%', padding: '9px', background: '#4B5563', color: '#fff', border: 'none', borderRadius: 9999, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
+                            {requestingId === s.id ? 'Requesting…' : 'Request Spec File'}
                           </button>
                         )}
-                        {status === 'pending' && (
+                        {hasFile && status === 'pending' && (
                           <div style={{ textAlign: 'center', fontSize: 12, color: '#F59E0B', fontWeight: 600, padding: '9px', background: '#FFFBEB', borderRadius: 9999, border: '1px solid #FCD34D' }}>
                             ⏳ Awaiting Admin Approval
                           </div>
                         )}
-                        {status === 'approved' && (
-                          <button style={{ width: '100%', padding: '9px', background: palette.accent, color: '#fff', border: 'none', borderRadius: 9999, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
+                        {hasFile && status === 'denied' && (
+                          <div style={{ textAlign: 'center', fontSize: 12, color: '#DC2626', fontWeight: 600, padding: '9px', background: '#FEF2F2', borderRadius: 9999, border: '1px solid #FECACA' }}>
+                            Request Denied
+                          </div>
+                        )}
+                        {hasFile && status === 'approved' && (
+                          <button onClick={() => downloadSpec(s.id)} style={{ width: '100%', padding: '9px', background: palette.accent, color: '#fff', border: 'none', borderRadius: 9999, fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
                             ⬇ Download Spec File
                           </button>
                         )}
@@ -140,13 +259,13 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                   <p style={{ fontSize: 14, color: '#15803D', lineHeight: 1.7 }}>A USE engineer will review your request and respond within two business days.</p>
                 </div>
               ) : (
-                <form onSubmit={(e) => { e.preventDefault(); setRfqSent(true) }} style={{ background: '#fff', borderRadius: 20, padding: '36px', border: '1px solid #E2E8F0' }}>
+                <form onSubmit={submitRfq} style={{ background: '#fff', borderRadius: 20, padding: '36px', border: '1px solid #E2E8F0' }}>
                   <div style={{ marginBottom: 18 }}>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Service Required</label>
-                    <select value={rfq.service} onChange={(e) => setRfq((f) => ({ ...f, service: e.target.value }))} required style={{ ...inputStyle, appearance: 'none' }}
+                    <select value={rfq.serviceId} onChange={(e) => setRfq((f) => ({ ...f, serviceId: e.target.value }))} required style={{ ...inputStyle, appearance: 'none' }}
                       onFocus={(e) => { (e.target as HTMLSelectElement).style.borderColor = palette.accent }} onBlur={(e) => { (e.target as HTMLSelectElement).style.borderColor = '#E2E8F0' }}>
                       <option value="">Select the service you need</option>
-                      {SERVICES.map((s) => <option key={s.id}>{s.name}</option>)}
+                      {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   </div>
                   <div style={{ marginBottom: 18 }}>
@@ -164,8 +283,8 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                     <textarea value={rfq.message} onChange={(e) => setRfq((f) => ({ ...f, message: e.target.value }))} placeholder="Any specific standards, certifications, or access constraints to note" rows={3} style={{ ...inputStyle, resize: 'vertical' }}
                       onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = palette.accent }} onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = '#E2E8F0' }} />
                   </div>
-                  <button type="submit" style={{ width: '100%', padding: '13px', borderRadius: 9999, border: 'none', background: palette.accent, color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-                    Submit RFQ to USE Engineering
+                  <button type="submit" disabled={rfqLoading} style={{ width: '100%', padding: '13px', borderRadius: 9999, border: 'none', background: rfqLoading ? '#9CA3AF' : palette.accent, color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
+                    {rfqLoading ? 'Submitting…' : 'Submit RFQ to USE Engineering'}
                   </button>
                 </form>
               )}
@@ -178,36 +297,47 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
               {apptSent ? (
                 <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 20, padding: '48px', textAlign: 'center' }}>
                   <div style={{ fontSize: 48, marginBottom: 16 }}>📅</div>
-                  <h2 style={{ fontSize: 22, fontWeight: 800, color: '#166534', marginBottom: 10 }}>Appointment Requested</h2>
-                  <p style={{ fontSize: 14, color: '#15803D', lineHeight: 1.7 }}>USE will confirm your visit within 24 hours. You'll receive a confirmation at your registered email address.</p>
+                  <h2 style={{ fontSize: 22, fontWeight: 800, color: '#166534', marginBottom: 10 }}>Appointment Booked</h2>
+                  <p style={{ fontSize: 14, color: '#15803D', lineHeight: 1.7 }}>You'll receive a confirmation at your registered email address.</p>
                 </div>
               ) : (
-                <form onSubmit={(e) => { e.preventDefault(); setApptSent(true) }} style={{ background: '#fff', borderRadius: 20, padding: '36px', border: '1px solid #E2E8F0' }}>
+                <form onSubmit={bookAppointment} style={{ background: '#fff', borderRadius: 20, padding: '36px', border: '1px solid #E2E8F0' }}>
                   <p style={{ fontSize: 14, color: palette.muted, marginBottom: 28 }}>
                     Book an office visit to the USE facility in Cairo to meet our engineering team, tour our manufacturing lines, or discuss your project.
                   </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 18 }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Preferred Date</label>
-                      <input type="date" value={appt.date} onChange={(e) => setAppt((f) => ({ ...f, date: e.target.value }))} required style={inputStyle}
-                        onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
+
+                  {myAppointments.length > 0 && (
+                    <div style={{ marginBottom: 24, padding: '14px 16px', background: '#F8FAFC', borderRadius: 12 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: palette.navy, marginBottom: 8 }}>Your upcoming appointments</div>
+                      {myAppointments.map((a) => (
+                        <div key={a.id} style={{ fontSize: 13, color: palette.slate }}>
+                          {new Date(a.slot.date).toLocaleDateString()} · {new Date(a.slot.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}–{new Date(a.slot.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      ))}
                     </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Preferred Time</label>
-                      <select value={appt.time} onChange={(e) => setAppt((f) => ({ ...f, time: e.target.value }))} required style={{ ...inputStyle, appearance: 'none' }}
+                  )}
+
+                  <div style={{ marginBottom: 18 }}>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Available Time Slots</label>
+                    {slots.length === 0 ? (
+                      <p style={{ fontSize: 13, color: palette.muted }}>No open slots right now — check back soon.</p>
+                    ) : (
+                      <select value={selectedSlotId} onChange={(e) => setSelectedSlotId(e.target.value)} required style={{ ...inputStyle, appearance: 'none' }}
                         onFocus={(e) => { (e.target as HTMLSelectElement).style.borderColor = palette.accent }} onBlur={(e) => { (e.target as HTMLSelectElement).style.borderColor = '#E2E8F0' }}>
-                        <option value="">Select a time slot</option>
-                        {['09:00', '10:00', '11:00', '13:00', '14:00', '15:00'].map((t) => <option key={t}>{t} – {(parseInt(t) + 1).toString().padStart(2, '0')}:00</option>)}
+                        <option value="">Select an open slot</option>
+                        {slots.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {new Date(s.date).toLocaleDateString()} · {new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}–{new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </option>
+                        ))}
                       </select>
-                    </div>
+                    )}
                   </div>
-                  <div style={{ marginBottom: 28 }}>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Visit Purpose / Notes</label>
-                    <textarea value={appt.notes} onChange={(e) => setAppt((f) => ({ ...f, notes: e.target.value }))} placeholder="Brief description of the purpose of your visit and who will be attending" rows={3} style={{ ...inputStyle, resize: 'vertical' }}
-                      onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = palette.accent }} onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = '#E2E8F0' }} />
-                  </div>
-                  <button type="submit" style={{ width: '100%', padding: '13px', borderRadius: 9999, border: 'none', background: '#4B5563', color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-                    Request Appointment
+
+                  {apptError && <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 16 }}>{apptError}</p>}
+
+                  <button type="submit" disabled={apptLoading || !selectedSlotId} style={{ width: '100%', padding: '13px', borderRadius: 9999, border: 'none', background: apptLoading ? '#9CA3AF' : '#4B5563', color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
+                    {apptLoading ? 'Booking…' : 'Book Appointment'}
                   </button>
                 </form>
               )}
@@ -219,13 +349,15 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
             <div style={{ maxWidth: 480, margin: '0 auto' }}>
               <div style={{ background: '#fff', borderRadius: 20, padding: '32px', border: '1px solid #E2E8F0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
-                  <div style={{ width: 52, height: 52, borderRadius: '50%', background: palette.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 20 }}>A</div>
+                  <div style={{ width: 52, height: 52, borderRadius: '50%', background: palette.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 20 }}>
+                    {me?.firstName?.[0] ?? '·'}
+                  </div>
                   <div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: palette.navy }}>Ahmed Khalil</div>
-                    <div style={{ fontSize: 13, color: palette.muted }}>Senior Pipeline Engineer · Petrobel</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: palette.navy }}>{me ? `${me.firstName} ${me.lastName}` : 'Loading…'}</div>
+                    <div style={{ fontSize: 13, color: palette.muted }}>{me?.companyName ?? ''}</div>
                   </div>
                 </div>
-                {[['Email', 'ahmed.khalil@petrobel.com.eg'], ['Company', 'Petrobel'], ['Phone', '+20 2 1234 5678'], ['Account Type', 'Client'], ['Status', 'Verified ✓']].map(([k, v]) => (
+                {me && [['Email', me.email], ['Company', me.companyName ?? '—'], ['Account Type', 'Client']].map(([k, v]) => (
                   <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid #F1F5F9' }}>
                     <span style={{ fontSize: 13, color: palette.muted, fontWeight: 500 }}>{k}</span>
                     <span style={{ fontSize: 13, color: palette.navy, fontWeight: 600 }}>{v}</span>

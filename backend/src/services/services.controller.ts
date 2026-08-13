@@ -89,4 +89,17 @@ export class ServicesController {
   listFiles(@Param('id') serviceId: string) {
     return this.prisma.serviceFile.findMany({ where: { serviceId }, orderBy: { uploadedAt: 'desc' } });
   }
+
+  // Any signed-in user can see which spec file exists for a service (just
+  // id/filename — never the s3Key) so a client can request access to it.
+  // The file itself is still only ever reachable through the request ->
+  // approval -> presigned-download flow.
+  @Get(':id/latest-file')
+  async latestFile(@Param('id') serviceId: string) {
+    return this.prisma.serviceFile.findFirst({
+      where: { serviceId },
+      orderBy: { uploadedAt: 'desc' },
+      select: { id: true, originalFilename: true, version: true, uploadedAt: true },
+    });
+  }
 }
