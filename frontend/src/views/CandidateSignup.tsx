@@ -1,25 +1,94 @@
 'use client'
 import { useState, useRef } from 'react'
+import { useSignUp, useAuth } from '@clerk/nextjs'
 import { palette, inputStyle } from '../theme'
+import { api, authHeader } from '../lib/api'
 
 interface Props { onNavigate: (page: string) => void }
 
 export default function CandidateSignup({ onNavigate }: Props) {
+  const { signUp } = useSignUp()
+  const { getToken } = useAuth()
   const [form, setForm] = useState({ firstName: '', lastName: '', dob: '', email: '', password: '' })
   const [idFile, setIdFile] = useState<File | null>(null)
   const [cvFile, setCvFile] = useState<File | null>(null)
+  const [code, setCode] = useState('')
+  const [step, setStep] = useState<'form' | 'verify'>('form')
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const idRef = useRef<HTMLInputElement>(null)
   const cvRef = useRef<HTMLInputElement>(null)
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const uploadFile = async (file: File, kind: 'candidate-id-photo' | 'candidate-cv', token: string | null) => {
+    const { data } = await api.post('/uploads/presign', { kind, contentType: file.type }, { headers: authHeader(token) })
+    await fetch(data.url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } })
+    return data.key as string
+  }
+
+  const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!idFile || !cvFile) return
     setLoading(true)
-    setTimeout(() => { setLoading(false); setSubmitted(true) }, 1200)
+    setError(null)
+    try {
+      const { error: createError } = await signUp.password({
+        emailAddress: form.email,
+        password: form.password,
+        firstName: form.firstName,
+        lastName: form.lastName,
+      })
+      if (createError) {
+        setError(createError.message ?? 'Could not create your account. Please check your details and try again.')
+        return
+      }
+      const { error: codeError } = await signUp.verifications.sendEmailCode()
+      if (codeError) {
+        setError(codeError.message ?? 'Could not send a verification code. Please try again.')
+        return
+      }
+      setStep('verify')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!idFile || !cvFile) return
+    setLoading(true)
+    setError(null)
+    try {
+      const { error: verifyError } = await signUp.verifications.verifyEmailCode({ code })
+      if (verifyError) {
+        setError(verifyError.message ?? 'Invalid verification code. Please try again.')
+        return
+      }
+      const { error: finalizeError } = await signUp.finalize()
+      if (finalizeError) {
+        setError(finalizeError.message ?? 'Could not complete sign-up. Please try again.')
+        return
+      }
+
+      const token = await getToken()
+      const [idPhotoS3Key, cvS3Key] = await Promise.all([
+        uploadFile(idFile, 'candidate-id-photo', token),
+        uploadFile(cvFile, 'candidate-cv', token),
+      ])
+      await api.post(
+        '/me/become-candidate',
+        { dateOfBirth: form.dob, idPhotoS3Key, cvS3Key },
+        { headers: authHeader(token) },
+      )
+
+      setSubmitted(true)
+    } catch (err: any) {
+      setError(err?.response?.data?.message ?? 'Something went wrong submitting your application. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const UploadBox = ({ label, file, accept, onRef, onFile }: { label: string; file: File | null; accept: string; onRef: React.RefObject<HTMLInputElement | null>; onFile: (f: File) => void }) => (
@@ -78,7 +147,21 @@ export default function CandidateSignup({ onNavigate }: Props) {
             Complete your profile to join the USE talent pipeline. Your application will be reviewed by our HR team within 5 business days.
           </p>
 
-          <form onSubmit={handleSubmit}>
+          {step === 'verify' ? (
+            <form onSubmit={handleVerify}>
+              <p style={{ fontSize: 14, color: palette.muted, marginBottom: 20 }}>Enter the 6-digit code we sent to {form.email} to finish submitting your application.</p>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Verification Code</label>
+                <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" required autoComplete="one-time-code" style={inputStyle}
+                  onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
+              </div>
+              {error && <p style={{ fontSize: 12, color: '#DC2626', marginBottom: 16, fontWeight: 600 }}>{error}</p>}
+              <button type="submit" disabled={loading} style={{ width: '100%', padding: '14px', borderRadius: 9999, border: 'none', background: loading ? '#9CA3AF' : palette.accent, color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
+                {loading ? 'Submitting Application…' : 'Verify & Submit Application'}
+              </button>
+            </form>
+          ) : (
+          <form onSubmit={handleCreateAccount}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>First Name</label>
@@ -100,13 +183,13 @@ export default function CandidateSignup({ onNavigate }: Props) {
 
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Email Address</label>
-              <input type="email" value={form.email} onChange={set('email')} placeholder="Your personal or work email" required style={inputStyle}
+              <input type="email" autoComplete="email" value={form.email} onChange={set('email')} placeholder="Your personal or work email" required style={inputStyle}
                 onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
             </div>
 
             <div style={{ marginBottom: 28 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 8 }}>Password</label>
-              <input type="password" value={form.password} onChange={set('password')} placeholder="Create a password (8+ characters)" required minLength={8} style={inputStyle}
+              <input type="password" autoComplete="new-password" value={form.password} onChange={set('password')} placeholder="Create a password (8+ characters)" required minLength={8} style={inputStyle}
                 onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
             </div>
 
@@ -131,14 +214,17 @@ export default function CandidateSignup({ onNavigate }: Props) {
               </p>
             )}
 
+            {error && <p style={{ fontSize: 12, color: '#DC2626', marginBottom: 16, fontWeight: 600 }}>{error}</p>}
+
             <button type="submit" disabled={loading || !idFile || !cvFile} style={{ width: '100%', padding: '14px', borderRadius: 9999, border: 'none', background: loading || !idFile || !cvFile ? '#9CA3AF' : palette.accent, color: '#fff', fontWeight: 700, fontSize: 15, cursor: loading || !idFile || !cvFile ? 'not-allowed' : 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-              {loading ? 'Submitting Application…' : 'Submit Application to USE HR'}
+              {loading ? 'Creating Account…' : 'Continue'}
             </button>
 
             <p style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 14, lineHeight: 1.5 }}>
               Your information is handled confidentially in accordance with USE's privacy policy and applicable data protection laws.
             </p>
           </form>
+          )}
         </div>
 
         <div style={{ textAlign: 'center', marginTop: 20 }}>

@@ -11,7 +11,12 @@ interface ClerkUserPayload {
   first_name: string | null;
   last_name: string | null;
   phone_numbers?: { phone_number: string }[];
-  public_metadata?: { role?: Role; companyName?: string };
+  // Only ever server-set (e.g. via the Clerk dashboard/Backend API for
+  // admins) — the sole source role is ever assigned from.
+  public_metadata?: { role?: Role };
+  // Client-settable at sign-up. Not privilege-sensitive — never read for
+  // `role` — but safe to trust for profile fields like companyName/phone.
+  unsafe_metadata?: { companyName?: string; phone?: string };
 }
 
 // Syncs Clerk's user.created / user.updated events into our own User table.
@@ -53,15 +58,15 @@ export class ClerkWebhookController {
           email: primaryEmail,
           firstName: data.first_name ?? '',
           lastName: data.last_name ?? '',
-          phone: data.phone_numbers?.[0]?.phone_number,
+          phone: data.phone_numbers?.[0]?.phone_number ?? data.unsafe_metadata?.phone,
           role: data.public_metadata?.role ?? Role.client,
-          companyName: data.public_metadata?.companyName,
+          companyName: data.unsafe_metadata?.companyName,
         },
         update: {
           email: primaryEmail,
           firstName: data.first_name ?? '',
           lastName: data.last_name ?? '',
-          phone: data.phone_numbers?.[0]?.phone_number,
+          phone: data.phone_numbers?.[0]?.phone_number ?? data.unsafe_metadata?.phone,
         },
       });
     }
