@@ -207,5 +207,56 @@
       "rtp": ["DN40 – DN200", "0.6 – 32 MPa", "Oil / gas / water service", "Continuous spool lengths", "ISO 18226 / API 15S"],
       "rtv": ["IEC 62073 / IEC 60815", "Pollution class IV", "Hydrophobicity class HC1", "Operating 11 kV – 500 kV", "Brush / spray application"]
     }
+  },
+  "careers": {
+    "eyebrow": "USE · SHEET 05 · CAREERS",
+    "title": "Join the team that protects the region's infrastructure.",
+    "subtitle": "USE looks for engineers and technicians who take quality seriously. We offer international-standard training, API/ISO-certified work environments, and projects that matter.",
+    "filterAll": "All",
+    "typePermanent": "Permanent",
+    "typeContract": "Contract",
+    "applyNow": "Apply Now",
+    "roles": {
+      "eng01": { "title": "Senior Corrosion Engineer", "dept": "Engineering", "location": "Cairo, Egypt" },
+      "ops02": { "title": "GRE Lining Applicator – Level 3", "dept": "Operations", "location": "Cairo Factory" },
+      "qc03": { "title": "QC Inspector (NACE Level II)", "dept": "Quality", "location": "Cairo / Field" },
+      "ops04": { "title": "Field Coating Supervisor", "dept": "Operations", "location": "Iraq / KSA" },
+      "hse05": { "title": "HSE Officer", "dept": "Health & Safety", "location": "Cairo, Egypt" },
+      "com06": { "title": "Business Development Engineer – Gulf", "dept": "Commercial", "location": "UAE / Remote" }
+    }
+  },
+  "contact": {
+    "eyebrow": "USE · ENGAGEMENT",
+    "title": "Request a Consultation",
+    "subtitle": "Speak with a USE engineer about your application. We'll respond within one business day.",
+    "info": {
+      "headquarters": "Headquarters",
+      "headquartersValue": "14S Building, El Oroba Street Extension, New Maadi, Cairo",
+      "email": "Email",
+      "tel": "Tel",
+      "operations": "Operations",
+      "operationsValue": "Egypt · Iraq · Saudi Arabia · UAE"
+    },
+    "openInMaps": "Open in Google Maps ↗",
+    "mapAlt": "USE Cairo facility location",
+    "form": {
+      "fullName": "Full Name",
+      "fullNamePlaceholder": "Your full name",
+      "emailAddress": "Email Address",
+      "emailPlaceholder": "Your work email address",
+      "company": "Company / Operator",
+      "companyPlaceholder": "Name of your company or operating entity",
+      "service": "Service of Interest",
+      "servicePlaceholder": "Select a service area",
+      "serviceGeneral": "General Enquiry",
+      "description": "Project Description",
+      "descriptionPlaceholder": "Describe your pipeline system, operating conditions, and what you need",
+      "sending": "Sending…",
+      "submit": "Send Consultation Request"
+    },
+    "sent": {
+      "title": "Message Sent",
+      "body": "Thank you, {name}. A USE engineer will contact you at <strong>{email}</strong> within one business day."
+    }
   }
 }

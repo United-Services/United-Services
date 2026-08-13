@@ -207,5 +207,56 @@
       "rtp": ["DN40 – DN200", "0.6 – 32 兆帕", "适用于油/气/水", "连续盘管长度", "ISO 18226 / API 15S"],
       "rtv": ["IEC 62073 / IEC 60815", "污秽等级 IV 级", "憎水性等级 HC1", "运行电压 11 kV – 500 kV", "刷涂或喷涂施工"]
     }
+  },
+  "careers": {
+    "eyebrow": "USE · 表 05 · 招聘",
+    "title": "加入守护区域基础设施的团队。",
+    "subtitle": "USE 寻找重视质量的工程师和技术人员。我们提供国际标准培训、通过 API/ISO 认证的工作环境，以及真正有意义的项目。",
+    "filterAll": "全部",
+    "typePermanent": "全职",
+    "typeContract": "合同工",
+    "applyNow": "立即申请",
+    "roles": {
+      "eng01": { "title": "高级防腐工程师", "dept": "工程部", "location": "埃及开罗" },
+      "ops02": { "title": "GRE 内衬施工员 – 三级", "dept": "运营部", "location": "开罗工厂" },
+      "qc03": { "title": "质量检验员（NACE 二级）", "dept": "质量部", "location": "开罗 / 现场" },
+      "ops04": { "title": "现场涂层主管", "dept": "运营部", "location": "伊拉克 / 沙特" },
+      "hse05": { "title": "健康安全环保专员", "dept": "健康安全部", "location": "埃及开罗" },
+      "com06": { "title": "业务拓展工程师 – 海湾地区", "dept": "商务部", "location": "阿联酋 / 远程" }
+    }
+  },
+  "contact": {
+    "eyebrow": "USE · 联系我们",
+    "title": "预约咨询",
+    "subtitle": "与 USE 工程师沟通您的应用需求，我们将在一个工作日内回复。",
+    "info": {
+      "headquarters": "总部",
+      "headquartersValue": "14S 大楼，El Oroba 街延长段，新马阿迪，开罗",
+      "email": "电子邮箱",
+      "tel": "电话",
+      "operations": "运营地区",
+      "operationsValue": "埃及 · 伊拉克 · 沙特阿拉伯 · 阿联酋"
+    },
+    "openInMaps": "在谷歌地图中打开 ↗",
+    "mapAlt": "USE 开罗工厂位置",
+    "form": {
+      "fullName": "姓名",
+      "fullNamePlaceholder": "请输入您的姓名",
+      "emailAddress": "电子邮箱",
+      "emailPlaceholder": "请输入您的工作邮箱",
+      "company": "公司 / 运营方",
+      "companyPlaceholder": "您的公司或运营实体名称",
+      "service": "感兴趣的服务",
+      "servicePlaceholder": "选择服务领域",
+      "serviceGeneral": "一般咨询",
+      "description": "项目描述",
+      "descriptionPlaceholder": "请描述您的管道系统、运行条件以及所需服务",
+      "sending": "发送中…",
+      "submit": "发送咨询请求"
+    },
+    "sent": {
+      "title": "消息已发送",
+      "body": "谢谢您，{name}。USE 工程师将在一个工作日内通过 <strong>{email}</strong> 与您联系。"
+    }
   }
 }
