@@ -265,18 +265,29 @@ model OpenPosition {
 }
 
 model CandidateApplication {
-  id                String            @id @default(cuid())
-  candidateUserId   String            @unique
-  candidateUser     User              @relation("CandidateApplicationUser", fields: [candidateUserId], references: [id])
-  positionId        String?
-  position          OpenPosition?     @relation(fields: [positionId], references: [id])
-  idPhotoS3Key      String
-  cvS3Key           String
-  dateOfBirth       DateTime          @db.Date
-  status            ApplicationStatus @default(pending)
-  reviewedByAdminId String?
-  reviewedByAdmin   User?             @relation("CandidateApplicationReviewedBy", fields: [reviewedByAdminId], references: [id])
-  reviewedAt        DateTime?
+  id              String        @id @default(cuid())
+  candidateUserId String        @unique
+  candidateUser   User          @relation("CandidateApplicationUser", fields: [candidateUserId], references: [id])
+  positionId      String?
+  position        OpenPosition? @relation(fields: [positionId], references: [id])
+  // Nullable: candidate signup creates the role='candidate' account and
+  // application row up front, before any document exists. ID/CV are
+  // uploaded afterward from the candidate's own dashboard (uploads.controller
+  // + this row's self-service update endpoint on MeController), not as
+  // part of signup.
+  idPhotoS3Key         String?
+  cvS3Key              String?
+  dateOfBirth          DateTime          @db.Date
+  status               ApplicationStatus @default(pending)
+  // Set by an admin when they need the candidate to (re-)submit a
+  // document; cleared automatically the next time the candidate uploads
+  // anything. The candidate dashboard surfaces this + the note as a banner.
+  documentsRequested     Boolean   @default(false)
+  documentsRequestedNote String?
+  documentsRequestedAt   DateTime?
+  reviewedByAdminId      String?
+  reviewedByAdmin        User?     @relation("CandidateApplicationReviewedBy", fields: [reviewedByAdminId], references: [id])
+  reviewedAt             DateTime?
 
   @@index([positionId])
   @@index([status])

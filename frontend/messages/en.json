@@ -562,7 +562,6 @@
     "title": "Candidate Registration",
     "subtitle": "Complete your profile to join the USE talent pipeline. Your application will be reviewed by our HR team within 5 business days.",
     "backToCareers": "← Back to Careers",
-    "returnHome": "Return to USE Website",
     "verify": {
       "prompt": "Enter the 6-digit code we sent to {email} to finish submitting your application.",
       "label": "Verification Code",
@@ -580,19 +579,10 @@
       "emailPlaceholder": "Your personal or work email",
       "password": "Password",
       "passwordPlaceholder": "Create a password (8+ characters)",
-      "docsHeading": "Identity & CV Documents",
-      "docsBody": "Both documents are required for application review. Formats: JPG/PNG for ID, PDF or DOC for CV.",
-      "idLabel": "National ID / Passport Photo",
-      "cvLabel": "Curriculum Vitae (CV)",
-      "uploadId": "Upload ID Photo",
-      "uploadCv": "Upload CV",
-      "clickToReplace": "Click to replace",
-      "imageHint": "JPG / PNG, max 5 MB",
-      "docHint": "PDF or DOC, max 10 MB",
-      "missingUploads": "⚠ Please upload both your ID photo and CV to proceed.",
       "creatingAccount": "Creating Account…",
       "continue": "Continue",
-      "privacyNote": "Your information is handled confidentially in accordance with USE's privacy policy and applicable data protection laws."
+      "privacyNote": "Your information is handled confidentially in accordance with USE's privacy policy and applicable data protection laws.",
+      "docsNote": "After your account is created, you'll upload your ID photo and CV from your candidate dashboard."
     },
     "submitted": {
       "title": "Application Submitted",
@@ -609,7 +599,8 @@
       "invalidCode": "Invalid verification code. Please try again.",
       "finalizeFailed": "Could not complete sign-up. Please try again.",
       "submitFailed": "Something went wrong submitting your application. Please try again."
-    }
+    },
+    "goToDashboard": "Go to Your Dashboard"
   },
   "clientSignup": {
     "stepTitles": {
@@ -820,7 +811,11 @@
         "Decision"
       ],
       "none": "No applications found.",
-      "viewDocs": "View ID + CV"
+      "viewDocs": "View ID + CV",
+      "noDocsYet": "No documents have been uploaded by this candidate yet.",
+      "requestDocsPrompt": "Optional note for the candidate about what's needed:",
+      "requestDocs": "Request documents",
+      "docsRequested": "Documents requested"
     },
     "rfqs": {
       "searchPlaceholder": "Search RFQs by client, company, or details",
@@ -1052,5 +1047,34 @@
         "body": "For any question about these terms, contact us at info@use-eg.com or 14S Building, El Oroba Street Extension, New Maadi, Cairo, Egypt."
       }
     }
+  },
+  "candidateDashboard": {
+    "brand": "United Services",
+    "loading": "Loading your application...",
+    "logout": "Log Out",
+    "title": "Your Application",
+    "statusHeading": "Application status",
+    "status": {
+      "pending": "Under review",
+      "approved": "Approved",
+      "denied": "Not successful this time"
+    },
+    "statusBody": {
+      "pending": "Our HR team is reviewing your application. We'll notify you by email once there's an update.",
+      "approved": "Congratulations — your application has been approved. Our team will be in touch about next steps.",
+      "denied": "Thank you for your interest in United Services Egypt. Your application was not successful this time."
+    },
+    "documentsRequestedBanner": "Our HR team has requested additional documents from you:",
+    "documentsHeading": "Your documents",
+    "idLabel": "National ID / Passport Photo",
+    "cvLabel": "Curriculum Vitae (CV)",
+    "uploaded": "Uploaded",
+    "notUploaded": "Not uploaded yet",
+    "uploadId": "Upload ID Photo",
+    "uploadCv": "Upload CV",
+    "replace": "Replace",
+    "uploading": "Uploading...",
+    "uploadSuccess": "Document uploaded successfully.",
+    "uploadError": "Could not upload this file. Please check the format and try again."
   }
 }

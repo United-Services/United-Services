@@ -1,14 +1,10 @@
 import { IsDateString, IsOptional, IsString } from 'class-validator';
 
+// Signup only collects identity info — ID photo and CV are uploaded later
+// from the candidate's own dashboard, not at signup time.
 export class BecomeCandidateDto {
   @IsDateString()
   dateOfBirth!: string;
-
-  @IsString()
-  idPhotoS3Key!: string;
-
-  @IsString()
-  cvS3Key!: string;
 
   @IsOptional()
   @IsString()

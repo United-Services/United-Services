@@ -98,6 +98,7 @@ interface CandidateRow {
   id: string
   status: ApplicationStatus
   dateOfBirth: string
+  documentsRequested: boolean
   candidateUser: { firstName: string; lastName: string; email: string }
   position: { title: string; department: string } | null
 }
@@ -361,8 +362,24 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
     const { data } = await axios.get(`/candidate-applications/${id}/documents`, {
       headers,
     })
-    window.open(data.idPhotoUrl, "_blank")
-    window.open(data.cvUrl, "_blank")
+    // Either document may not be uploaded yet — the candidate dashboard
+    // lets them upload ID/CV after signup, not during it.
+    if (data.idPhotoUrl) window.open(data.idPhotoUrl, "_blank")
+    if (data.cvUrl) window.open(data.cvUrl, "_blank")
+    if (!data.idPhotoUrl && !data.cvUrl) {
+      window.alert(t("candidates.noDocsYet"))
+    }
+  }
+
+  const requestCandidateDocuments = async (id: string) => {
+    const note = window.prompt(t("candidates.requestDocsPrompt")) ?? undefined
+    const headers = await authed()
+    await axios.patch(
+      `/candidate-applications/${id}/request-documents`,
+      { note },
+      { headers },
+    )
+    loadCandidates(candidateQuery)
   }
 
   const startEditPosition = (p: PositionRow) => {
@@ -1598,22 +1615,53 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                           {fmtDate(c.dateOfBirth)}
                         </td>
                         <td style={{ padding: "14px 16px" }}>
-                          <button
-                            onClick={() => viewCandidateDocs(c.id)}
+                          <div
                             style={{
-                              fontSize: 11,
-                              background: "#DBEAFE",
-                              color: "#1E40AF",
-                              borderRadius: 6,
-                              padding: "4px 10px",
-                              fontWeight: 600,
-                              border: "none",
-                              cursor: "pointer",
-                              fontFamily: "Poppins, sans-serif",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 6,
+                              alignItems: "flex-start",
                             }}
                           >
-                            {t("candidates.viewDocs")}
-                          </button>
+                            <button
+                              onClick={() => viewCandidateDocs(c.id)}
+                              style={{
+                                fontSize: 11,
+                                background: "#DBEAFE",
+                                color: "#1E40AF",
+                                borderRadius: 6,
+                                padding: "4px 10px",
+                                fontWeight: 600,
+                                border: "none",
+                                cursor: "pointer",
+                                fontFamily: "Poppins, sans-serif",
+                              }}
+                            >
+                              {t("candidates.viewDocs")}
+                            </button>
+                            <button
+                              onClick={() => requestCandidateDocuments(c.id)}
+                              style={{
+                                fontSize: 11,
+                                background: c.documentsRequested
+                                  ? "#FFFBEB"
+                                  : "#F1F5F9",
+                                color: c.documentsRequested
+                                  ? "#92400E"
+                                  : palette.slate,
+                                borderRadius: 6,
+                                padding: "4px 10px",
+                                fontWeight: 600,
+                                border: "none",
+                                cursor: "pointer",
+                                fontFamily: "Poppins, sans-serif",
+                              }}
+                            >
+                              {c.documentsRequested
+                                ? t("candidates.docsRequested")
+                                : t("candidates.requestDocs")}
+                            </button>
+                          </div>
                         </td>
                         <td style={{ padding: "14px 16px" }}>
                           <ActionPair

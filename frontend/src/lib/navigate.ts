@@ -19,6 +19,7 @@ export const ROUTES: Record<string, string> = {
   "client-signup": "/client-signup",
   "client-dashboard": "/client-dashboard",
   "candidate-signup": "/candidate-signup",
+  "candidate-dashboard": "/candidate-dashboard",
   "admin-dashboard": "/admin-dashboard",
   "admin-mfa-setup": "/admin-mfa-setup",
   privacy: "/privacy",

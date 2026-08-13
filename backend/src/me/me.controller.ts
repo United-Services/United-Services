@@ -5,6 +5,7 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  NotFoundException,
   Patch,
   Post,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { BecomeCandidateDto } from './dto/become-candidate.dto';
+import { UploadCandidateDocumentsDto } from './dto/upload-candidate-documents.dto';
 import { Role, type User } from '../generated/prisma';
 import { matchesContentType } from '../common/utils/file-security';
 
@@ -84,9 +86,14 @@ export class MeController {
   }
 
   // One-time self-service transition from the default 'client' role to
-  // 'candidate', paired with creating the CandidateApplication row
-  // atomically. Only ever reachable from 'client' — an admin account can
-  // never reach this path, closing off any privilege-escalation route.
+  // 'candidate' (every new sign-in self-heals to 'client' by default — see
+  // ClerkAuthGuard — so this is the only path that ever produces a
+  // 'candidate' account), paired with creating the CandidateApplication row
+  // atomically. Only ever reachable from 'client', closing off any
+  // privilege-escalation route (an admin account can never reach this
+  // path). Deliberately does NOT accept document uploads — ID photo and CV
+  // are uploaded afterward from the candidate's own dashboard via
+  // uploadDocuments() below, not collected at signup.
   @Post('become-candidate')
   async becomeCandidate(
     @CurrentUser() user: User,
@@ -94,19 +101,9 @@ export class MeController {
   ) {
     if (user.role !== Role.client) {
       throw new ForbiddenException(
-        'Only client accounts can apply as a candidate',
+        'This account has already applied as a candidate, or cannot apply',
       );
     }
-
-    await Promise.all([
-      assertOwnedCandidateUpload(
-        this.s3,
-        user.id,
-        'candidate-id-photo',
-        dto.idPhotoS3Key,
-      ),
-      assertOwnedCandidateUpload(this.s3, user.id, 'candidate-cv', dto.cvS3Key),
-    ]);
 
     try {
       const [updatedUser, application] = await this.prisma.$transaction([
@@ -118,8 +115,6 @@ export class MeController {
           data: {
             candidateUserId: user.id,
             positionId: dto.positionId,
-            idPhotoS3Key: dto.idPhotoS3Key,
-            cvS3Key: dto.cvS3Key,
             dateOfBirth: new Date(dto.dateOfBirth),
           },
         }),
@@ -130,6 +125,86 @@ export class MeController {
         'An application already exists for this account',
       );
     }
+  }
+
+  // Candidate dashboard status view — a candidate's own application, never
+  // another candidate's (candidateUserId is always scoped to the caller,
+  // never taken from the request).
+  @Get('candidate-application')
+  async myCandidateApplication(@CurrentUser() user: User) {
+    if (user.role !== Role.candidate) {
+      throw new ForbiddenException(
+        'Only candidate accounts have an application',
+      );
+    }
+    const application = await this.prisma.candidateApplication.findUnique({
+      where: { candidateUserId: user.id },
+      include: { position: { select: { title: true, department: true } } },
+    });
+    if (!application) throw new NotFoundException('No application found');
+    return {
+      id: application.id,
+      status: application.status,
+      hasIdPhoto: application.idPhotoS3Key !== null,
+      hasCv: application.cvS3Key !== null,
+      documentsRequested: application.documentsRequested,
+      documentsRequestedNote: application.documentsRequestedNote,
+      position: application.position,
+    };
+  }
+
+  // Lets a candidate upload (or replace) their ID photo and/or CV after
+  // signup, from their own dashboard. Uploading anything clears a pending
+  // "documents requested" flag from an admin, since that's what it was
+  // asking for.
+  @Post('candidate-documents')
+  async uploadDocuments(
+    @CurrentUser() user: User,
+    @Body() dto: UploadCandidateDocumentsDto,
+  ) {
+    if (user.role !== Role.candidate) {
+      throw new ForbiddenException(
+        'Only candidate accounts can upload documents',
+      );
+    }
+    if (!dto.idPhotoS3Key && !dto.cvS3Key) {
+      throw new BadRequestException(
+        'Provide at least one of idPhotoS3Key or cvS3Key',
+      );
+    }
+
+    await Promise.all([
+      dto.idPhotoS3Key
+        ? assertOwnedCandidateUpload(
+            this.s3,
+            user.id,
+            'candidate-id-photo',
+            dto.idPhotoS3Key,
+          )
+        : Promise.resolve(),
+      dto.cvS3Key
+        ? assertOwnedCandidateUpload(
+            this.s3,
+            user.id,
+            'candidate-cv',
+            dto.cvS3Key,
+          )
+        : Promise.resolve(),
+    ]);
+
+    const updated = await this.prisma.candidateApplication.update({
+      where: { candidateUserId: user.id },
+      data: {
+        ...(dto.idPhotoS3Key ? { idPhotoS3Key: dto.idPhotoS3Key } : {}),
+        ...(dto.cvS3Key ? { cvS3Key: dto.cvS3Key } : {}),
+        documentsRequested: false,
+        documentsRequestedNote: null,
+      },
+    });
+    return {
+      hasIdPhoto: updated.idPhotoS3Key !== null,
+      hasCv: updated.cvS3Key !== null,
+    };
   }
 
   private toDto(user: User) {

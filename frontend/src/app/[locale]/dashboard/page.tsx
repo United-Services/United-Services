@@ -29,6 +29,8 @@ export default async function DashboardRedirectPage({
       })
     if (me.role === Role.Client)
       redirect({ href: "/client-dashboard", locale })
+    if (me.role === Role.Candidate)
+      redirect({ href: "/candidate-dashboard", locale })
     redirect({ href: "/application-status", locale })
   } catch (error) {
     if (error && typeof error === "object" && "digest" in error) throw error // Next.js redirect() control-flow signal

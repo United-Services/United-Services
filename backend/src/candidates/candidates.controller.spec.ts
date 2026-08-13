@@ -102,5 +102,47 @@ describe('CandidatesController', () => {
         expiresInSeconds: 300,
       });
     });
+
+    it('returns null URLs for documents not yet uploaded, without erroring', async () => {
+      const { controller, prisma, s3 } = makeController();
+      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
+        id: 'app-1',
+        idPhotoS3Key: null,
+        cvS3Key: null,
+      });
+
+      const result = await controller.documents('app-1');
+
+      expect(s3.createDownloadUrl).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        idPhotoUrl: null,
+        cvUrl: null,
+        expiresInSeconds: 300,
+      });
+    });
+  });
+
+  describe('requestDocuments', () => {
+    it('flags the application and records an audit entry', async () => {
+      const { controller, prisma, auditLog } = makeController();
+      (prisma.candidateApplication.update as jest.Mock).mockImplementation(
+        ({ data }) => Promise.resolve({ id: 'app-1', ...data }),
+      );
+
+      const result = await controller.requestDocuments(admin, 'app-1', {
+        note: 'ID photo was blurry, please retake',
+      });
+
+      expect(result.documentsRequested).toBe(true);
+      expect(result.documentsRequestedNote).toBe(
+        'ID photo was blurry, please retake',
+      );
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'candidate.documents_requested',
+          targetId: 'app-1',
+        }),
+      );
+    });
   });
 });

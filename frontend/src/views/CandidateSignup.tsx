@@ -1,5 +1,5 @@
 "use client"
-import { useState, useRef } from "react"
+import { useState } from "react"
 import { useSignUp, useAuth } from "@clerk/nextjs"
 import { useTranslations } from "next-intl"
 import { palette, inputStyle } from "../theme"
@@ -22,41 +22,18 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
     email: "",
     password: "",
   })
-  const [idFile, setIdFile] = useState<File | null>(null)
-  const [cvFile, setCvFile] = useState<File | null>(null)
   const [code, setCode] = useState("")
   const [step, setStep] = useState<"form" | "verify">("form")
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const idRef = useRef<HTMLInputElement>(null)
-  const cvRef = useRef<HTMLInputElement>(null)
 
   const set =
     (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((f) => ({ ...f, [k]: e.target.value }))
 
-  const uploadFile = async (
-    file: File,
-    kind: "candidate-id-photo" | "candidate-cv",
-    token: string | null,
-  ) => {
-    const { data } = await axios.post(
-      "/uploads/presign",
-      { kind, contentType: file.type },
-      { headers: authHeader(token) },
-    )
-    await fetch(data.url, {
-      method: "PUT",
-      body: file,
-      headers: { "Content-Type": file.type },
-    })
-    return data.key as string
-  }
-
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!idFile || !cvFile) return
     setLoading(true)
     setError(null)
     try {
@@ -83,7 +60,6 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!idFile || !cvFile) return
     setLoading(true)
     setError(null)
     try {
@@ -101,16 +77,10 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
       }
 
       const token = await getToken()
-      const [idPhotoS3Key, cvS3Key] = await Promise.all([
-        uploadFile(idFile, "candidate-id-photo", token),
-        uploadFile(cvFile, "candidate-cv", token),
-      ])
       await axios.post(
         "/me/become-candidate",
         {
           dateOfBirth: form.dob,
-          idPhotoS3Key,
-          cvS3Key,
           ...(positionId ? { positionId } : {}),
         },
         { headers: authHeader(token) },
@@ -123,71 +93,6 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
       setLoading(false)
     }
   }
-
-  const UploadBox = ({
-    label,
-    file,
-    accept,
-    onRef,
-    onFile,
-  }: {
-    label: string
-    file: File | null
-    accept: string
-    onRef: React.RefObject<HTMLInputElement | null>
-    onFile: (f: File) => void
-  }) => (
-    <div
-      onClick={() => onRef.current?.click()}
-      style={{
-        border: `2px dashed ${file ? palette.accent : "#E2E8F0"}`,
-        borderRadius: 14,
-        padding: "24px",
-        cursor: "pointer",
-        textAlign: "center",
-        background: file ? "#FFF7ED" : "#F8FAFC",
-        transition: "border-color 0.2s, background 0.2s",
-      }}
-      onMouseEnter={(e) => {
-        if (!file)
-          (e.currentTarget as HTMLDivElement).style.borderColor = "#94A3B8"
-      }}
-      onMouseLeave={(e) => {
-        if (!file)
-          (e.currentTarget as HTMLDivElement).style.borderColor = "#E2E8F0"
-      }}
-    >
-      <input
-        ref={onRef}
-        type="file"
-        accept={accept}
-        style={{ display: "none" }}
-        onChange={(e) => {
-          if (e.target.files?.[0]) onFile(e.target.files[0])
-        }}
-      />
-      <div style={{ fontSize: 28, marginBottom: 8 }}>
-        {file ? "✅" : accept.includes("image") ? "🪪" : "📄"}
-      </div>
-      <div
-        style={{
-          fontSize: 13,
-          fontWeight: 700,
-          color: file ? palette.accent : palette.navy,
-          marginBottom: 4,
-        }}
-      >
-        {file ? file.name : label}
-      </div>
-      <div style={{ fontSize: 11, color: palette.muted }}>
-        {file
-          ? t("form.clickToReplace")
-          : accept.includes("image")
-            ? t("form.imageHint")
-            : t("form.docHint")}
-      </div>
-    </div>
-  )
 
   if (submitted) {
     return (
@@ -321,7 +226,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
             ))}
           </div>
           <button
-            onClick={() => onNavigate("home")}
+            onClick={() => onNavigate("candidate-dashboard")}
             style={{
               background: palette.accent,
               color: "#fff",
@@ -334,7 +239,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
               fontFamily: "Poppins, sans-serif",
             }}
           >
-            {t("returnHome")}
+            {t("goToDashboard")}
           </button>
         </div>
       </div>
@@ -624,89 +529,15 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
               <div
                 style={{
                   borderTop: "1px solid #F1F5F9",
-                  paddingTop: 28,
-                  marginBottom: 28,
+                  paddingTop: 20,
+                  marginBottom: 8,
+                  fontSize: 12,
+                  color: palette.muted,
+                  lineHeight: 1.6,
                 }}
               >
-                <div
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 700,
-                    color: palette.navy,
-                    marginBottom: 6,
-                  }}
-                >
-                  {t("form.docsHeading")}
-                </div>
-                <p
-                  style={{
-                    fontSize: 13,
-                    color: palette.muted,
-                    marginBottom: 20,
-                  }}
-                >
-                  {t("form.docsBody")}
-                </p>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 16,
-                  }}
-                >
-                  <div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: palette.navy,
-                        marginBottom: 8,
-                      }}
-                    >
-                      {t("form.idLabel")}
-                    </div>
-                    <UploadBox
-                      label={t("form.uploadId")}
-                      file={idFile}
-                      accept="image/*"
-                      onRef={idRef}
-                      onFile={(f) => setIdFile(f)}
-                    />
-                  </div>
-                  <div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: palette.navy,
-                        marginBottom: 8,
-                      }}
-                    >
-                      {t("form.cvLabel")}
-                    </div>
-                    <UploadBox
-                      label={t("form.uploadCv")}
-                      file={cvFile}
-                      accept=".pdf,.doc,.docx"
-                      onRef={cvRef}
-                      onFile={(f) => setCvFile(f)}
-                    />
-                  </div>
-                </div>
+                {t("form.docsNote")}
               </div>
-
-              {(!idFile || !cvFile) && (
-                <p
-                  style={{
-                    fontSize: 12,
-                    color: "#F59E0B",
-                    marginBottom: 16,
-                    fontWeight: 600,
-                  }}
-                >
-                  {t("form.missingUploads")}
-                </p>
-              )}
 
               {error && (
                 <p
@@ -723,19 +554,17 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
 
               <button
                 type="submit"
-                disabled={loading || !idFile || !cvFile}
+                disabled={loading}
                 style={{
                   width: "100%",
                   padding: "14px",
                   borderRadius: 9999,
                   border: "none",
-                  background:
-                    loading || !idFile || !cvFile ? "#9CA3AF" : palette.accent,
+                  background: loading ? "#9CA3AF" : palette.accent,
                   color: "#fff",
                   fontWeight: 700,
                   fontSize: 15,
-                  cursor:
-                    loading || !idFile || !cvFile ? "not-allowed" : "pointer",
+                  cursor: loading ? "not-allowed" : "pointer",
                   fontFamily: "Poppins, sans-serif",
                 }}
               >

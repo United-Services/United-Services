@@ -13,6 +13,7 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { DecideApplicationDto } from './dto/decide-application.dto';
+import { RequestDocumentsDto } from './dto/request-documents.dto';
 import { ApplicationStatus, Role, type User } from '../generated/prisma';
 
 const DOCUMENT_URL_TTL_SECONDS = 300;
@@ -62,14 +63,50 @@ export class CandidatesController {
     });
     if (!application) throw new NotFoundException('Application not found');
 
+    // Either document may not have been uploaded yet — the candidate
+    // dashboard lets them upload ID/CV after signup, not during it.
     const [idPhotoUrl, cvUrl] = await Promise.all([
-      this.s3.createDownloadUrl(
-        application.idPhotoS3Key,
-        DOCUMENT_URL_TTL_SECONDS,
-      ),
-      this.s3.createDownloadUrl(application.cvS3Key, DOCUMENT_URL_TTL_SECONDS),
+      application.idPhotoS3Key
+        ? this.s3.createDownloadUrl(
+            application.idPhotoS3Key,
+            DOCUMENT_URL_TTL_SECONDS,
+          )
+        : Promise.resolve(null),
+      application.cvS3Key
+        ? this.s3.createDownloadUrl(
+            application.cvS3Key,
+            DOCUMENT_URL_TTL_SECONDS,
+          )
+        : Promise.resolve(null),
     ]);
     return { idPhotoUrl, cvUrl, expiresInSeconds: DOCUMENT_URL_TTL_SECONDS };
+  }
+
+  // Lets an admin ask a candidate to (re-)submit a document — surfaced as
+  // a banner + optional note on the candidate's own dashboard. Cleared
+  // automatically the next time the candidate uploads anything (see
+  // MeController.uploadDocuments).
+  @Patch(':id/request-documents')
+  async requestDocuments(
+    @CurrentUser() admin: User,
+    @Param('id') id: string,
+    @Body() dto: RequestDocumentsDto,
+  ) {
+    const updated = await this.prisma.candidateApplication.update({
+      where: { id },
+      data: {
+        documentsRequested: true,
+        documentsRequestedNote: dto.note ?? null,
+        documentsRequestedAt: new Date(),
+      },
+    });
+    await this.auditLog.record({
+      actorUserId: admin.id,
+      action: 'candidate.documents_requested',
+      targetType: 'CandidateApplication',
+      targetId: id,
+    });
+    return updated;
   }
 
   @Patch(':id/decide')
