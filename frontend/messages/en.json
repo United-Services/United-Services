@@ -850,5 +850,70 @@
       ],
       "none": "No audit log entries found."
     }
+  },
+  "adminMfaSetup": {
+    "eyebrow": "USE · ADMIN SECURITY",
+    "title": "Set Up Multi-Factor Authentication",
+    "subtitle": "Admin accounts require MFA. Choose an authenticator app or a biometric credential to continue.",
+    "authenticatorApp": "Authenticator App",
+    "authenticatorAppDesc": "Scan a QR code with Google Authenticator, 1Password, or similar.",
+    "biometric": "Biometric / Security Key",
+    "biometricDesc": "Use Touch ID, Face ID, Windows Hello, or a hardware security key.",
+    "cantScan": "Can't scan? Enter manually:",
+    "enterCode": "Enter the 6-digit code from your app",
+    "codePlaceholder": "123456",
+    "verifying": "Verifying…",
+    "verifyAndEnable": "Verify & Enable MFA",
+    "back": "Back",
+    "followPrompt": "Follow your browser or device prompt to register your credential…",
+    "waiting": "Waiting…",
+    "doneTitle": "MFA Enabled",
+    "doneBody": "Your admin account is now protected with multi-factor authentication.",
+    "continueToDashboard": "Continue to Admin Dashboard",
+    "errors": {
+      "totpStartFailed": "Could not start TOTP enrollment. Please try again.",
+      "invalidCode": "Invalid code. Please try again.",
+      "webauthnFailed": "Could not register your biometric credential. Please try again, or use an authenticator app instead."
+    }
+  },
+  "adminSecurity": {
+    "loading": "Loading…",
+    "authenticatorApp": "Authenticator App",
+    "status": "Status:",
+    "enabled": "Enabled",
+    "notEnrolled": "Not enrolled",
+    "manualEntry": "Manual entry:",
+    "codePlaceholder": "123456",
+    "verifyAndSave": "Verify & Save",
+    "replaceAuthenticator": "Replace Authenticator App",
+    "setUpAuthenticator": "Set Up Authenticator App",
+    "biometricCredentials": "Biometric / Security Key Credentials",
+    "noneRegistered": "None registered.",
+    "registeredCount": "{count} registered.",
+    "addedOn": "added {date}",
+    "addAnotherCredential": "Add Another Credential",
+    "credentialLabelPrompt": "Label this credential (e.g. \"MacBook Touch ID\")",
+    "resetPassword": "Reset Password",
+    "resetPasswordDesc": "Requires a fresh MFA verification — no email link is sent for admin accounts.",
+    "authenticatorCode": "Authenticator Code",
+    "biometric": "Biometric",
+    "currentAuthenticatorCode": "Current Authenticator Code",
+    "newPassword": "New Password",
+    "verifyBiometricAndReset": "Verify Biometric & Reset",
+    "verifyAndResetPassword": "Verify & Reset Password",
+    "messages": {
+      "totpStartFailed": "Could not start TOTP enrollment.",
+      "authenticatorUpdated": "Authenticator app updated.",
+      "invalidCode": "Invalid code.",
+      "credentialRegistered": "New credential registered.",
+      "credentialFailed": "Could not register the credential.",
+      "passwordUpdated": "Password updated. You have been signed out of other sessions.",
+      "passwordResetFailed": "Could not reset password."
+    }
+  },
+  "applicationStatus": {
+    "eyebrow": "USE · CANDIDATE PORTAL",
+    "title": "Application received",
+    "body": "Thank you for applying to United Services Egypt. Our HR team reviews every application by hand — we'll reach out by email once a decision has been made. There's no candidate dashboard to check back on; you're all set."
   }
 }

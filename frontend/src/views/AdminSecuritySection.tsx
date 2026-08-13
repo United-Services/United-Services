@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@clerk/nextjs'
+import { useTranslations } from 'next-intl'
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser'
 import { palette, inputStyle } from '../theme'
 import { api, authHeader } from '../lib/api'
@@ -24,6 +25,7 @@ interface MfaStatus {
 // docs/BUSINESS_RULES.md rule 7.
 export default function AdminSecuritySection() {
   const { getToken } = useAuth()
+  const t = useTranslations('adminSecurity')
   const [status, setStatus] = useState<MfaStatus | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [message, setMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null)
@@ -56,7 +58,7 @@ export default function AdminSecuritySection() {
       setTotpQr(data.qrCodeDataUrl)
       setTotpSecret(data.secret)
     } catch {
-      setMessage({ type: 'error', text: 'Could not start TOTP enrollment.' })
+      setMessage({ type: 'error', text: t('messages.totpStartFailed') })
     } finally {
       setBusy(null)
     }
@@ -72,10 +74,10 @@ export default function AdminSecuritySection() {
       setTotpQr(null)
       setTotpSecret(null)
       setTotpCode('')
-      setMessage({ type: 'ok', text: 'Authenticator app updated.' })
+      setMessage({ type: 'ok', text: t('messages.authenticatorUpdated') })
       await loadStatus()
     } catch (err: any) {
-      setMessage({ type: 'error', text: err?.response?.data?.message ?? 'Invalid code.' })
+      setMessage({ type: 'error', text: err?.response?.data?.message ?? t('messages.invalidCode') })
     } finally {
       setBusy(null)
     }
@@ -88,12 +90,12 @@ export default function AdminSecuritySection() {
       const token = await getToken()
       const { data: options } = await api.post('/mfa/webauthn/register-options', {}, { headers: authHeader(token) })
       const response = await startRegistration({ optionsJSON: options })
-      const label = window.prompt('Label this credential (e.g. "MacBook Touch ID")') ?? undefined
+      const label = window.prompt(t('credentialLabelPrompt')) ?? undefined
       await api.post('/mfa/webauthn/register-verify', { response, label }, { headers: authHeader(token) })
-      setMessage({ type: 'ok', text: 'New credential registered.' })
+      setMessage({ type: 'ok', text: t('messages.credentialRegistered') })
       await loadStatus()
     } catch {
-      setMessage({ type: 'error', text: 'Could not register the credential.' })
+      setMessage({ type: 'error', text: t('messages.credentialFailed') })
     } finally {
       setBusy(null)
     }
@@ -122,15 +124,15 @@ export default function AdminSecuritySection() {
       }
       setNewPassword('')
       setResetTotpCode('')
-      setMessage({ type: 'ok', text: 'Password updated. You have been signed out of other sessions.' })
+      setMessage({ type: 'ok', text: t('messages.passwordUpdated') })
     } catch (err: any) {
-      setMessage({ type: 'error', text: err?.response?.data?.message ?? 'Could not reset password.' })
+      setMessage({ type: 'error', text: err?.response?.data?.message ?? t('messages.passwordResetFailed') })
     } finally {
       setBusy(null)
     }
   }
 
-  if (!status) return <div style={{ fontSize: 13, color: palette.muted }}>Loading…</div>
+  if (!status) return <div style={{ fontSize: 13, color: palette.muted }}>{t('loading')}</div>
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 640 }}>
@@ -142,77 +144,77 @@ export default function AdminSecuritySection() {
 
       {/* Authenticator app */}
       <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, padding: 24 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: palette.navy, marginBottom: 4 }}>Authenticator App</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: palette.navy, marginBottom: 4 }}>{t('authenticatorApp')}</div>
         <div style={{ fontSize: 13, color: palette.muted, marginBottom: 16 }}>
-          Status: <strong style={{ color: status.totpEnrolled ? '#16A34A' : palette.muted }}>{status.totpEnrolled ? 'Enabled' : 'Not enrolled'}</strong>
+          {t('status')} <strong style={{ color: status.totpEnrolled ? '#16A34A' : palette.muted }}>{status.totpEnrolled ? t('enabled') : t('notEnrolled')}</strong>
         </div>
 
         {totpQr ? (
           <form onSubmit={confirmTotp}>
             <img src={totpQr} alt="TOTP QR code" style={{ width: 160, height: 160, border: '1px solid #E2E8F0', borderRadius: 12, marginBottom: 10 }} />
-            {totpSecret && <p style={{ fontSize: 11, color: palette.muted, marginBottom: 12, wordBreak: 'break-all' }}>Manual entry: <strong>{totpSecret}</strong></p>}
-            <input value={totpCode} onChange={(e) => setTotpCode(e.target.value)} placeholder="123456" autoComplete="one-time-code" required style={inputStyle} />
+            {totpSecret && <p style={{ fontSize: 11, color: palette.muted, marginBottom: 12, wordBreak: 'break-all' }}>{t('manualEntry')} <strong>{totpSecret}</strong></p>}
+            <input value={totpCode} onChange={(e) => setTotpCode(e.target.value)} placeholder={t('codePlaceholder')} autoComplete="one-time-code" required style={inputStyle} />
             <button type="submit" disabled={busy === 'totp-confirm'} style={{ marginTop: 12, padding: '10px 20px', borderRadius: 9999, border: 'none', background: palette.accent, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-              Verify & Save
+              {t('verifyAndSave')}
             </button>
           </form>
         ) : (
           <button onClick={addTotp} disabled={busy === 'totp-start'} style={{ padding: '10px 20px', borderRadius: 9999, border: '1.5px solid #E2E8F0', background: '#fff', color: palette.navy, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-            {status.totpEnrolled ? 'Replace Authenticator App' : 'Set Up Authenticator App'}
+            {status.totpEnrolled ? t('replaceAuthenticator') : t('setUpAuthenticator')}
           </button>
         )}
       </div>
 
       {/* WebAuthn credentials */}
       <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, padding: 24 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: palette.navy, marginBottom: 4 }}>Biometric / Security Key Credentials</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: palette.navy, marginBottom: 4 }}>{t('biometricCredentials')}</div>
         <div style={{ fontSize: 13, color: palette.muted, marginBottom: 16 }}>
-          {status.webauthnCredentials.length === 0 ? 'None registered.' : `${status.webauthnCredentials.length} registered.`}
+          {status.webauthnCredentials.length === 0 ? t('noneRegistered') : t('registeredCount', { count: status.webauthnCredentials.length })}
         </div>
         {status.webauthnCredentials.length > 0 && (
           <ul style={{ listStyle: 'none', padding: 0, marginBottom: 16 }}>
             {status.webauthnCredentials.map((c) => (
               <li key={c.id} style={{ fontSize: 13, color: palette.slate, padding: '8px 0', borderTop: '1px solid #F1F5F9' }}>
-                {c.label || c.deviceType} — added {new Date(c.createdAt).toLocaleDateString()}
+                {c.label || c.deviceType} — {t('addedOn', { date: new Date(c.createdAt).toLocaleDateString() })}
               </li>
             ))}
           </ul>
         )}
         <button onClick={addWebAuthn} disabled={busy === 'webauthn'} style={{ padding: '10px 20px', borderRadius: 9999, border: '1.5px solid #E2E8F0', background: '#fff', color: palette.navy, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-          Add Another Credential
+          {t('addAnotherCredential')}
         </button>
       </div>
 
       {/* Password reset — MFA-gated, not email-link based */}
       <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: 16, padding: 24 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: palette.navy, marginBottom: 4 }}>Reset Password</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: palette.navy, marginBottom: 4 }}>{t('resetPassword')}</div>
         <p style={{ fontSize: 13, color: palette.muted, marginBottom: 16 }}>
-          Requires a fresh MFA verification — no email link is sent for admin accounts.
+          {t('resetPasswordDesc')}
         </p>
         <form onSubmit={resetPassword}>
           <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
             <button type="button" onClick={() => setResetMethod('totp')} style={{ flex: 1, padding: '9px', borderRadius: 9999, border: `1.5px solid ${resetMethod === 'totp' ? palette.accent : '#E2E8F0'}`, background: resetMethod === 'totp' ? palette.accentLight : '#fff', color: resetMethod === 'totp' ? palette.accent : palette.muted, fontWeight: 600, fontSize: 12.5, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-              Authenticator Code
+              {t('authenticatorCode')}
             </button>
             <button type="button" onClick={() => setResetMethod('webauthn')} style={{ flex: 1, padding: '9px', borderRadius: 9999, border: `1.5px solid ${resetMethod === 'webauthn' ? palette.accent : '#E2E8F0'}`, background: resetMethod === 'webauthn' ? palette.accentLight : '#fff', color: resetMethod === 'webauthn' ? palette.accent : palette.muted, fontWeight: 600, fontSize: 12.5, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-              Biometric
+              {t('biometric')}
             </button>
           </div>
 
           {resetMethod === 'totp' && (
             <div style={{ marginBottom: 14 }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>Current Authenticator Code</label>
-              <input value={resetTotpCode} onChange={(e) => setResetTotpCode(e.target.value)} placeholder="123456" autoComplete="one-time-code" required style={inputStyle} />
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>{t('currentAuthenticatorCode')}</label>
+              <input value={resetTotpCode} onChange={(e) => setResetTotpCode(e.target.value)} placeholder={t('codePlaceholder')} autoComplete="one-time-code" required style={inputStyle} />
             </div>
           )}
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>New Password</label>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: palette.navy, marginBottom: 7 }}>{t('newPassword')}</label>
             <input type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={8} style={inputStyle} />
           </div>
 
           <button type="submit" disabled={busy === 'reset'} style={{ padding: '10px 24px', borderRadius: 9999, border: 'none', background: palette.accent, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-            {resetMethod === 'webauthn' ? 'Verify Biometric & Reset' : 'Verify & Reset Password'}
+            {resetMethod === 'webauthn' ? t('verifyBiometricAndReset') : t('verifyAndResetPassword')}
           </button>
         </form>
       </div>

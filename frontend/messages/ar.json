@@ -850,5 +850,70 @@
       ],
       "none": "لا توجد إدخالات في سجل التدقيق."
     }
+  },
+  "adminMfaSetup": {
+    "eyebrow": "USE · أمان المشرف",
+    "title": "إعداد المصادقة متعددة العوامل",
+    "subtitle": "تتطلب حسابات المشرفين تفعيل المصادقة متعددة العوامل. اختر تطبيق مصادقة أو بيانات اعتماد بيومترية للمتابعة.",
+    "authenticatorApp": "تطبيق المصادقة",
+    "authenticatorAppDesc": "امسح رمز QR باستخدام Google Authenticator أو 1Password أو ما شابه.",
+    "biometric": "بصمة حيوية / مفتاح أمان",
+    "biometricDesc": "استخدم Touch ID أو Face ID أو Windows Hello أو مفتاح أمان مادي.",
+    "cantScan": "تعذّر المسح؟ أدخل يدويًا:",
+    "enterCode": "أدخل الرمز المكوّن من 6 أرقام من تطبيقك",
+    "codePlaceholder": "123456",
+    "verifying": "جارٍ التحقق…",
+    "verifyAndEnable": "تحقق وفعّل المصادقة متعددة العوامل",
+    "back": "رجوع",
+    "followPrompt": "اتبع تعليمات المتصفح أو الجهاز لتسجيل بيانات الاعتماد الخاصة بك…",
+    "waiting": "جارٍ الانتظار…",
+    "doneTitle": "تم تفعيل المصادقة متعددة العوامل",
+    "doneBody": "حساب المشرف الخاص بك محمي الآن بالمصادقة متعددة العوامل.",
+    "continueToDashboard": "المتابعة إلى لوحة تحكم المشرف",
+    "errors": {
+      "totpStartFailed": "تعذّر بدء تسجيل تطبيق المصادقة. يرجى المحاولة مرة أخرى.",
+      "invalidCode": "رمز غير صحيح. يرجى المحاولة مرة أخرى.",
+      "webauthnFailed": "تعذّر تسجيل بيانات الاعتماد البيومترية. يرجى المحاولة مرة أخرى، أو استخدام تطبيق مصادقة بدلاً من ذلك."
+    }
+  },
+  "adminSecurity": {
+    "loading": "جارٍ التحميل…",
+    "authenticatorApp": "تطبيق المصادقة",
+    "status": "الحالة:",
+    "enabled": "مفعّل",
+    "notEnrolled": "غير مسجّل",
+    "manualEntry": "إدخال يدوي:",
+    "codePlaceholder": "123456",
+    "verifyAndSave": "تحقق واحفظ",
+    "replaceAuthenticator": "استبدال تطبيق المصادقة",
+    "setUpAuthenticator": "إعداد تطبيق المصادقة",
+    "biometricCredentials": "بيانات اعتماد البصمة الحيوية / مفتاح الأمان",
+    "noneRegistered": "لا توجد بيانات مسجلة.",
+    "registeredCount": "{count} مسجلة.",
+    "addedOn": "أُضيفت في {date}",
+    "addAnotherCredential": "إضافة بيانات اعتماد أخرى",
+    "credentialLabelPrompt": "سمِّ بيانات الاعتماد هذه (مثال: \"بصمة MacBook\")",
+    "resetPassword": "إعادة تعيين كلمة المرور",
+    "resetPasswordDesc": "يتطلب تحققًا جديدًا من المصادقة متعددة العوامل — لا يتم إرسال رابط بريد إلكتروني لحسابات المشرفين.",
+    "authenticatorCode": "رمز المصادقة",
+    "biometric": "بصمة حيوية",
+    "currentAuthenticatorCode": "رمز المصادقة الحالي",
+    "newPassword": "كلمة المرور الجديدة",
+    "verifyBiometricAndReset": "تحقق من البصمة وأعد التعيين",
+    "verifyAndResetPassword": "تحقق وأعد تعيين كلمة المرور",
+    "messages": {
+      "totpStartFailed": "تعذّر بدء تسجيل تطبيق المصادقة.",
+      "authenticatorUpdated": "تم تحديث تطبيق المصادقة.",
+      "invalidCode": "رمز غير صحيح.",
+      "credentialRegistered": "تم تسجيل بيانات اعتماد جديدة.",
+      "credentialFailed": "تعذّر تسجيل بيانات الاعتماد.",
+      "passwordUpdated": "تم تحديث كلمة المرور. تم تسجيل خروجك من الجلسات الأخرى.",
+      "passwordResetFailed": "تعذّر إعادة تعيين كلمة المرور."
+    }
+  },
+  "applicationStatus": {
+    "eyebrow": "USE · بوابة المرشحين",
+    "title": "تم استلام الطلب",
+    "body": "شكرًا لتقديمك على وظيفة لدى يونايتد سيرفيسز مصر. يقوم فريق الموارد البشرية لدينا بمراجعة كل طلب يدويًا — سنتواصل معك عبر البريد الإلكتروني بمجرد اتخاذ القرار. لا توجد لوحة تحكم للمرشح لمتابعتها؛ كل شيء جاهز من جانبك."
   }
 }

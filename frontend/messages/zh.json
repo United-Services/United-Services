@@ -850,5 +850,70 @@
       ],
       "none": "未找到审计日志记录。"
     }
+  },
+  "adminMfaSetup": {
+    "eyebrow": "USE · 管理员安全",
+    "title": "设置多因素认证",
+    "subtitle": "管理员账户需要启用多因素认证。请选择身份验证器应用或生物识别凭据以继续。",
+    "authenticatorApp": "身份验证器应用",
+    "authenticatorAppDesc": "使用 Google Authenticator、1Password 或类似应用扫描二维码。",
+    "biometric": "生物识别 / 安全密钥",
+    "biometricDesc": "使用 Touch ID、Face ID、Windows Hello 或硬件安全密钥。",
+    "cantScan": "无法扫描？手动输入：",
+    "enterCode": "请输入应用中显示的 6 位验证码",
+    "codePlaceholder": "123456",
+    "verifying": "验证中…",
+    "verifyAndEnable": "验证并启用多因素认证",
+    "back": "返回",
+    "followPrompt": "请按照浏览器或设备提示注册您的凭据…",
+    "waiting": "等待中…",
+    "doneTitle": "多因素认证已启用",
+    "doneBody": "您的管理员账户现已受到多因素认证保护。",
+    "continueToDashboard": "继续前往管理员仪表盘",
+    "errors": {
+      "totpStartFailed": "无法启动 TOTP 注册，请重试。",
+      "invalidCode": "验证码无效，请重试。",
+      "webauthnFailed": "无法注册您的生物识别凭据，请重试，或改用身份验证器应用。"
+    }
+  },
+  "adminSecurity": {
+    "loading": "加载中…",
+    "authenticatorApp": "身份验证器应用",
+    "status": "状态：",
+    "enabled": "已启用",
+    "notEnrolled": "未注册",
+    "manualEntry": "手动输入：",
+    "codePlaceholder": "123456",
+    "verifyAndSave": "验证并保存",
+    "replaceAuthenticator": "更换身份验证器应用",
+    "setUpAuthenticator": "设置身份验证器应用",
+    "biometricCredentials": "生物识别 / 安全密钥凭据",
+    "noneRegistered": "尚未注册任何凭据。",
+    "registeredCount": "已注册 {count} 个。",
+    "addedOn": "添加于 {date}",
+    "addAnotherCredential": "添加另一个凭据",
+    "credentialLabelPrompt": "为该凭据命名（例如“MacBook Touch ID”）",
+    "resetPassword": "重置密码",
+    "resetPasswordDesc": "需要重新进行多因素认证验证 — 管理员账户不会通过邮件链接重置密码。",
+    "authenticatorCode": "验证器代码",
+    "biometric": "生物识别",
+    "currentAuthenticatorCode": "当前验证器代码",
+    "newPassword": "新密码",
+    "verifyBiometricAndReset": "验证生物识别并重置",
+    "verifyAndResetPassword": "验证并重置密码",
+    "messages": {
+      "totpStartFailed": "无法启动 TOTP 注册。",
+      "authenticatorUpdated": "身份验证器应用已更新。",
+      "invalidCode": "验证码无效。",
+      "credentialRegistered": "新凭据已注册。",
+      "credentialFailed": "无法注册该凭据。",
+      "passwordUpdated": "密码已更新。您已在其他会话中被登出。",
+      "passwordResetFailed": "无法重置密码。"
+    }
+  },
+  "applicationStatus": {
+    "eyebrow": "USE · 候选人门户",
+    "title": "申请已收到",
+    "body": "感谢您申请加入 United Services Egypt。我们的人力资源团队会逐一人工审核每份申请——一旦做出决定，我们将通过电子邮件与您联系。无需候选人仪表盘可供查看；您的申请已全部完成。"
   }
 }

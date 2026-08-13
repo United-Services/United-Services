@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { palette } from '@/theme'
 import PublicNav from '@/components/PublicNav'
 import PublicFooter from '@/components/PublicFooter'
@@ -7,6 +8,7 @@ import { useAppNavigate } from '@/lib/navigate'
 
 export default function ApplicationStatusPage() {
   const navigate = useAppNavigate()
+  const t = useTranslations('applicationStatus')
 
   return (
     <div style={{ fontFamily: 'Poppins, sans-serif', background: '#fff' }}>
@@ -15,15 +17,13 @@ export default function ApplicationStatusPage() {
       <section style={{ padding: '96px 28px', textAlign: 'center' }}>
         <div style={{ maxWidth: 560, margin: '0 auto' }}>
           <div style={{ fontSize: 11, color: palette.accent, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 16 }}>
-            USE · CANDIDATE PORTAL
+            {t('eyebrow')}
           </div>
           <h1 style={{ fontSize: 32, fontWeight: 800, color: palette.navy, marginBottom: 16 }}>
-            Application received
+            {t('title')}
           </h1>
           <p style={{ fontSize: 15, color: palette.slate, lineHeight: 1.8 }}>
-            Thank you for applying to United Services Egypt. Our HR team reviews every application by hand — we'll
-            reach out by email once a decision has been made. There's no candidate dashboard to check back on; you're
-            all set.
+            {t('body')}
           </p>
         </div>
       </section>
