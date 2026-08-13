@@ -1,21 +1,11 @@
-'use client'
+import type { Metadata } from 'next'
+import ProjectsClient from './ProjectsClient'
 
-import { Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
-import Projects from '@/views/Projects'
-import { useAppNavigate } from '@/lib/navigate'
-
-function ProjectsInner() {
-  const navigate = useAppNavigate()
-  const searchParams = useSearchParams()
-  const company = searchParams.get('company')
-  return <Projects onNavigate={navigate} company={company} />
+export const metadata: Metadata = {
+  title: 'Projects | United Services Egypt',
+  description: 'Pipeline integrity and corrosion-control work delivered for ADNOC, BP, Shell, ENI, Petrobel, and other operators across Egypt and the region.',
 }
 
 export default function ProjectsPage() {
-  return (
-    <Suspense fallback={null}>
-      <ProjectsInner />
-    </Suspense>
-  )
+  return <ProjectsClient />
 }

@@ -103,7 +103,7 @@ export default function Home({ onNavigate }: Props) {
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(15,23,42,0.72) 0%, rgba(15,23,42,0.55) 50%, rgba(15,23,42,0.92) 100%)' }} />
           <div style={{ position: 'relative', zIndex: 2, maxWidth: 1260, margin: '0 auto', padding: '0 28px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: 100 }}>
             <div style={{ fontSize: 11, letterSpacing: '0.2em', color: '#94A3B8', textTransform: 'uppercase', marginBottom: 24 }}>
-              USE · SHEET 01 · COMPANY OVERVIEW
+              UNITED SERVICES EGYPT · EST. 2005
             </div>
             <h1 style={{ fontSize: 'clamp(42px, 7vw, 88px)', fontWeight: 800, color: '#fff', lineHeight: 1.0, letterSpacing: '-0.03em', marginBottom: 24, maxWidth: 760 }}>
               Time leaves<br />its mark.

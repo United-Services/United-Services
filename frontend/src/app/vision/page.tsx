@@ -1,9 +1,11 @@
-'use client'
+import type { Metadata } from 'next'
+import VisionClient from './VisionClient'
 
-import Vision from '@/views/Vision'
-import { useAppNavigate } from '@/lib/navigate'
+export const metadata: Metadata = {
+  title: 'Vision & Mission | United Services Egypt',
+  description: 'Our strategic direction: engineering corrosion out of the region\'s oil, gas, and power infrastructure through certified, factory-manufactured protection systems.',
+}
 
 export default function VisionPage() {
-  const navigate = useAppNavigate()
-  return <Vision onNavigate={navigate} />
+  return <VisionClient />
 }
