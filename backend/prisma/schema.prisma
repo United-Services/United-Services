@@ -70,9 +70,44 @@ model User {
   candidateApplication CandidateApplication?  @relation("CandidateApplicationUser")
   reviewedApplications CandidateApplication[] @relation("CandidateApplicationReviewedBy")
   auditLogEntries      AuditLog[]             @relation("AuditLogActor")
+  totpCredential       TotpCredential?
+  webAuthnCredentials  WebAuthnCredential[]
 
   @@index([role])
   @@index([companyName])
+}
+
+// One TOTP secret per admin. `secretEncrypted` is AES-256-GCM ciphertext
+// (see EncryptionService) — never stored or logged in plaintext.
+// `confirmedAt` is null until the admin proves possession of the
+// authenticator app during enrollment; unconfirmed secrets don't count
+// toward mfaEnrolled.
+model TotpCredential {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id])
+  secretEncrypted String
+  createdAt       DateTime  @default(now())
+  confirmedAt     DateTime?
+}
+
+// An admin may register more than one authenticator (e.g. a laptop
+// fingerprint reader and a phone). publicKey/counter are opaque to us —
+// only ever passed through to @simplewebauthn's verify functions.
+model WebAuthnCredential {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  credentialId String   @unique
+  publicKey    Bytes
+  counter      BigInt
+  deviceType   String
+  backedUp     Boolean
+  transports   String[]
+  label        String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────

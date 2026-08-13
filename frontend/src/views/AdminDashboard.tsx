@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { palette } from '../theme'
+import AdminSecuritySection from './AdminSecuritySection'
 
 interface Props { onLogout: () => void; onNavigate: (page: string) => void }
 
@@ -46,6 +47,7 @@ const NAV = [
   { id: 'candidates', label: 'Candidates', icon: '🎓' },
   { id: 'rfqs', label: 'RFQs', icon: '💼' },
   { id: 'bookings', label: 'Bookings', icon: '📅' },
+  { id: 'security', label: 'Security', icon: '🔒' },
 ]
 
 export default function AdminDashboard({ onLogout, onNavigate }: Props) {
@@ -317,6 +319,9 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
               </table>
             </div>
           )}
+
+          {/* SECURITY */}
+          {section === 'security' && <AdminSecuritySection />}
         </main>
       </div>
     </div>

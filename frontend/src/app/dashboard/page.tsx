@@ -15,7 +15,7 @@ export default async function DashboardRedirectPage() {
 
   try {
     const { data: me } = await api.get('/me', { headers: authHeader(token) })
-    if (me.role === 'admin') redirect('/admin-dashboard')
+    if (me.role === 'admin') redirect(me.mfaEnrolled ? '/admin-dashboard' : '/admin-mfa-setup')
     if (me.role === 'client') redirect('/client-dashboard')
     redirect('/application-status')
   } catch (error) {

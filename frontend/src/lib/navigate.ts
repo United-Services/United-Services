@@ -19,6 +19,7 @@ export const ROUTES: Record<string, string> = {
   'client-dashboard': '/client-dashboard',
   'candidate-signup': '/candidate-signup',
   'admin-dashboard': '/admin-dashboard',
+  'admin-mfa-setup': '/admin-mfa-setup',
 }
 
 export function useAppNavigate() {

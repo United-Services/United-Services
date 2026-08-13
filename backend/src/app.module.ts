@@ -13,6 +13,9 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { HealthController } from './health/health.controller';
 import { MeController } from './me/me.controller';
 import { UploadsController } from './uploads/uploads.controller';
+import { CryptoModule } from './crypto/crypto.module';
+import { RedisModule } from './redis/redis.module';
+import { MfaModule } from './mfa/mfa.module';
 
 @Module({
   imports: [
@@ -25,6 +28,9 @@ import { UploadsController } from './uploads/uploads.controller';
     AuditLogModule,
     AuthModule,
     S3Module,
+    CryptoModule,
+    RedisModule,
+    MfaModule,
   ],
   controllers: [HealthController, MeController, UploadsController],
   providers: [

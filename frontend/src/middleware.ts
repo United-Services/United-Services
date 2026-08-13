@@ -5,8 +5,9 @@ const isProtectedRoute = createRouteMatcher([
   "/dashboard(.*)",
   "/client-dashboard(.*)",
   "/admin-dashboard(.*)",
+  "/admin-mfa-setup(.*)",
 ]);
-const isAdminRoute = createRouteMatcher(["/admin-dashboard(.*)"]);
+const isAdminRoute = createRouteMatcher(["/admin-dashboard(.*)", "/admin-mfa-setup(.*)"]);
 
 // Coarse, fast gating at the edge — every actual data access is
 // independently re-checked against our own DB by the backend's
