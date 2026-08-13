@@ -16,6 +16,8 @@ import { UploadsController } from './uploads/uploads.controller';
 import { CryptoModule } from './crypto/crypto.module';
 import { RedisModule } from './redis/redis.module';
 import { MfaModule } from './mfa/mfa.module';
+import { ServicesModule } from './services/services.module';
+import { FileAccessModule } from './file-access/file-access.module';
 
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { MfaModule } from './mfa/mfa.module';
     CryptoModule,
     RedisModule,
     MfaModule,
+    ServicesModule,
+    FileAccessModule,
   ],
   controllers: [HealthController, MeController, UploadsController],
   providers: [
