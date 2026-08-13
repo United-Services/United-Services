@@ -11,13 +11,18 @@ import type { User } from '../generated/prisma';
 describe('AppointmentsController.book', () => {
   const client = { id: 'client-1' } as User;
 
+  type Tx = {
+    appointmentSlot: { updateMany: jest.Mock };
+    appointment: { create: jest.Mock };
+  };
+
   function makePrisma(count: number) {
-    const tx = {
+    const tx: Tx = {
       appointmentSlot: { updateMany: jest.fn().mockResolvedValue({ count }) },
       appointment: { create: jest.fn().mockResolvedValue({ id: 'appt-1', slotId: 'slot-1', clientId: client.id }) },
     };
     const prisma = {
-      $transaction: jest.fn((fn: (tx: typeof tx) => unknown) => fn(tx)),
+      $transaction: jest.fn((fn: (tx: Tx) => unknown) => fn(tx)),
     } as unknown as PrismaService;
     return { prisma, tx };
   }
