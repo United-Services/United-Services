@@ -15,7 +15,9 @@ describe('TotpCryptoService', () => {
     expect(envelope.totpKekKeyId).toBe('kek-test-1');
     expect(envelope.totpCiphertext).not.toContain('JBSWY3DPEHPK3PXP');
 
-    await expect(crypto.decryptSecret(envelope)).resolves.toBe('JBSWY3DPEHPK3PXP');
+    await expect(crypto.decryptSecret(envelope)).resolves.toBe(
+      'JBSWY3DPEHPK3PXP',
+    );
   });
 
   it('still decrypts a secret wrapped under a key that has since moved to "retiring"', async () => {
@@ -30,7 +32,9 @@ describe('TotpCryptoService', () => {
     // deleted) so old ciphertexts stay decryptable.
     store.addActiveKey('kek-2026-01-01');
 
-    await expect(crypto.decryptSecret(envelope)).resolves.toBe('OLDSECRETVALUE');
+    await expect(crypto.decryptSecret(envelope)).resolves.toBe(
+      'OLDSECRETVALUE',
+    );
   });
 
   it('throws when the auth tag has been tampered with', async () => {
@@ -39,7 +43,10 @@ describe('TotpCryptoService', () => {
     const crypto = new TotpCryptoService(store.asKekKeyStore());
 
     const envelope = await crypto.encryptSecret('JBSWY3DPEHPK3PXP');
-    const tampered = { ...envelope, totpAuthTag: Buffer.from('0'.repeat(32), 'hex').toString('base64') };
+    const tampered = {
+      ...envelope,
+      totpAuthTag: Buffer.from('0'.repeat(32), 'hex').toString('base64'),
+    };
 
     await expect(crypto.decryptSecret(tampered)).rejects.toThrow();
   });
@@ -52,7 +59,10 @@ describe('TotpCryptoService', () => {
     const envelope = await crypto.encryptSecret('JBSWY3DPEHPK3PXP');
     const flipped = Buffer.from(envelope.totpCiphertext, 'base64');
     flipped[0] ^= 0xff;
-    const tampered = { ...envelope, totpCiphertext: flipped.toString('base64') };
+    const tampered = {
+      ...envelope,
+      totpCiphertext: flipped.toString('base64'),
+    };
 
     await expect(crypto.decryptSecret(tampered)).rejects.toThrow();
   });
@@ -65,6 +75,8 @@ describe('TotpCryptoService', () => {
     const envelope = await crypto.encryptSecret('JBSWY3DPEHPK3PXP');
     store.removeKey('kek-test-1'); // simulate the key having been retired and its file deleted
 
-    await expect(crypto.decryptSecret(envelope)).rejects.toThrow(/No private key loaded/);
+    await expect(crypto.decryptSecret(envelope)).rejects.toThrow(
+      /No private key loaded/,
+    );
   });
 });

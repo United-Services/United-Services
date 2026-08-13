@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  OnModuleInit,
+} from '@nestjs/common';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import sodium from 'libsodium-wrappers';
@@ -17,7 +21,8 @@ export class KekKeyStore implements OnModuleInit {
 
   private get keysDir(): string {
     const dir = process.env.KEK_KEYS_DIR;
-    if (!dir) throw new InternalServerErrorException('KEK_KEYS_DIR is not configured');
+    if (!dir)
+      throw new InternalServerErrorException('KEK_KEYS_DIR is not configured');
     return dir;
   }
 
@@ -27,8 +32,13 @@ export class KekKeyStore implements OnModuleInit {
       where: { status: { in: ['active', 'retiring'] } },
     });
     for (const row of rows) {
-      const raw = await fs.readFile(path.join(this.keysDir, `${row.keyId}.key`));
-      this.privateKeys.set(row.keyId, sodium.from_base64(raw.toString('utf8').trim()));
+      const raw = await fs.readFile(
+        path.join(this.keysDir, `${row.keyId}.key`),
+      );
+      this.privateKeys.set(
+        row.keyId,
+        sodium.from_base64(raw.toString('utf8').trim()),
+      );
     }
   }
 
@@ -48,9 +58,17 @@ export class KekKeyStore implements OnModuleInit {
     return sodium.from_base64(row.publicKey);
   }
 
-  async getActivePublicKey(): Promise<{ keyId: string; publicKey: Uint8Array }> {
-    const row = await this.prisma.kekRegistry.findFirst({ where: { status: 'active' } });
-    if (!row) throw new InternalServerErrorException('No active KEK — run `pnpm run kek:generate`');
+  async getActivePublicKey(): Promise<{
+    keyId: string;
+    publicKey: Uint8Array;
+  }> {
+    const row = await this.prisma.kekRegistry.findFirst({
+      where: { status: 'active' },
+    });
+    if (!row)
+      throw new InternalServerErrorException(
+        'No active KEK — run `pnpm run kek:generate`',
+      );
     return { keyId: row.keyId, publicKey: sodium.from_base64(row.publicKey) };
   }
 }

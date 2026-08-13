@@ -9,7 +9,8 @@
     "clientPortal": "بوابة العملاء",
     "requestConsultation": "طلب استشارة",
     "brand": "يونايتد سيرفيسز",
-    "brandSub": "مصر · تأسست عام 2005"
+    "brandSub": "مصر · تأسست عام 2005",
+    "menuToggle": "القائمة"
   },
   "language": {
     "label": "اللغة",
@@ -769,7 +770,12 @@
       "totalBooked": "Total booked",
       "recentActivity": "Recent Audit Activity",
       "noActivity": "No activity yet.",
-      "viewFullLog": "View full audit log →"
+      "viewFullLog": "View full audit log →",
+      "requestsByCountry": "Requests by Country",
+      "requestsByCountrySub": "Page views over the last 90 days, resolved from visitor IP",
+      "requests": "requests",
+      "noRequests": "No requests",
+      "noGeoData": "No geo data yet — check back once the site has some traffic."
     },
     "clients": {
       "searchPlaceholder": "Search clients by name, email, or company",

@@ -19,7 +19,13 @@ describe('AppointmentsController.book', () => {
   function makePrisma(count: number) {
     const tx: Tx = {
       appointmentSlot: { updateMany: jest.fn().mockResolvedValue({ count }) },
-      appointment: { create: jest.fn().mockResolvedValue({ id: 'appt-1', slotId: 'slot-1', clientId: client.id }) },
+      appointment: {
+        create: jest.fn().mockResolvedValue({
+          id: 'appt-1',
+          slotId: 'slot-1',
+          clientId: client.id,
+        }),
+      },
     };
     const prisma = {
       $transaction: jest.fn((fn: (tx: Tx) => unknown) => fn(tx)),
@@ -48,7 +54,9 @@ describe('AppointmentsController.book', () => {
     const { prisma, tx } = makePrisma(0);
     const controller = new AppointmentsController(prisma);
 
-    await expect(controller.book(client, { slotId: 'slot-1' })).rejects.toThrow(ConflictException);
+    await expect(controller.book(client, { slotId: 'slot-1' })).rejects.toThrow(
+      ConflictException,
+    );
     expect(tx.appointment.create).not.toHaveBeenCalled();
   });
 });

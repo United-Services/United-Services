@@ -9,7 +9,11 @@ export class AuditLogController {
   constructor(private readonly auditLog: AuditLogService) {}
 
   @Get()
-  search(@Query('q') q?: string, @Query('actorUserId') actorUserId?: string, @Query('action') action?: string) {
+  search(
+    @Query('q') q?: string,
+    @Query('actorUserId') actorUserId?: string,
+    @Query('action') action?: string,
+  ) {
     return this.auditLog.search({ q, actorUserId, action });
   }
 }

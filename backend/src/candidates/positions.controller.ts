@@ -14,19 +14,26 @@ export class PositionsController {
   @Public()
   @Get()
   listOpen() {
-    return this.prisma.openPosition.findMany({ where: { isOpen: true }, orderBy: { createdAt: 'desc' } });
+    return this.prisma.openPosition.findMany({
+      where: { isOpen: true },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   @Roles(Role.admin)
   @Get('all')
   listAll() {
-    return this.prisma.openPosition.findMany({ orderBy: { createdAt: 'desc' } });
+    return this.prisma.openPosition.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   @Roles(Role.admin)
   @Post()
   create(@CurrentUser() admin: User, @Body() dto: CreatePositionDto) {
-    return this.prisma.openPosition.create({ data: { ...dto, createdByAdminId: admin.id } });
+    return this.prisma.openPosition.create({
+      data: { ...dto, createdByAdminId: admin.id },
+    });
   }
 
   @Roles(Role.admin)

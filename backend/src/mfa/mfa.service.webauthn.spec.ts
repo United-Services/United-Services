@@ -12,10 +12,14 @@ const verifyRegistrationResponseMock = jest.fn();
 const generateAuthenticationOptionsMock = jest.fn();
 const verifyAuthenticationResponseMock = jest.fn();
 jest.mock('@simplewebauthn/server', () => ({
-  generateRegistrationOptions: (...args: unknown[]) => generateRegistrationOptionsMock(...args),
-  verifyRegistrationResponse: (...args: unknown[]) => verifyRegistrationResponseMock(...args),
-  generateAuthenticationOptions: (...args: unknown[]) => generateAuthenticationOptionsMock(...args),
-  verifyAuthenticationResponse: (...args: unknown[]) => verifyAuthenticationResponseMock(...args),
+  generateRegistrationOptions: (...args: unknown[]) =>
+    generateRegistrationOptionsMock(...args),
+  verifyRegistrationResponse: (...args: unknown[]) =>
+    verifyRegistrationResponseMock(...args),
+  generateAuthenticationOptions: (...args: unknown[]) =>
+    generateAuthenticationOptionsMock(...args),
+  verifyAuthenticationResponse: (...args: unknown[]) =>
+    verifyAuthenticationResponseMock(...args),
 }));
 
 // WebAuthn is the biometric MFA path for admins. @simplewebauthn/server
@@ -24,7 +28,12 @@ jest.mock('@simplewebauthn/server', () => ({
 // Redis with a TTL, one-time consumption, credential-ownership checks) is
 // real MfaService logic under test.
 describe('MfaService — WebAuthn', () => {
-  const user = { id: 'admin-1', email: 'admin@use-eg.com', firstName: 'Ad', lastName: 'Min' } as User;
+  const user = {
+    id: 'admin-1',
+    email: 'admin@use-eg.com',
+    firstName: 'Ad',
+    lastName: 'Min',
+  } as User;
   let prisma: any;
   let redis: { get: jest.Mock; set: jest.Mock; del: jest.Mock };
   let service: MfaService;
@@ -36,7 +45,12 @@ describe('MfaService — WebAuthn', () => {
     verifyAuthenticationResponseMock.mockReset();
 
     prisma = {
-      webAuthnCredential: { findMany: jest.fn().mockResolvedValue([]), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
+      webAuthnCredential: {
+        findMany: jest.fn().mockResolvedValue([]),
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
       user: { update: jest.fn() },
       $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
     };
@@ -44,7 +58,7 @@ describe('MfaService — WebAuthn', () => {
     const kekStore = await FakeKekKeyStore.create();
     kekStore.addActiveKey('kek-test-1');
     service = new MfaService(
-      prisma as unknown as PrismaService,
+      prisma,
       redis as unknown as RedisService,
       new TotpCryptoService(kekStore.asKekKeyStore()),
       { record: jest.fn() } as unknown as AuditLogService,
@@ -53,18 +67,27 @@ describe('MfaService — WebAuthn', () => {
 
   describe('webauthnRegisterOptions', () => {
     it('stores the challenge in Redis with a TTL so it can be verified later', async () => {
-      generateRegistrationOptionsMock.mockResolvedValue({ challenge: 'chal-1' });
+      generateRegistrationOptionsMock.mockResolvedValue({
+        challenge: 'chal-1',
+      });
 
       await service.webauthnRegisterOptions(user);
 
-      expect(redis.set).toHaveBeenCalledWith('webauthn:reg:admin-1', 'chal-1', 'EX', 300);
+      expect(redis.set).toHaveBeenCalledWith(
+        'webauthn:reg:admin-1',
+        'chal-1',
+        'EX',
+        300,
+      );
     });
   });
 
   describe('webauthnRegisterVerify', () => {
     it('rejects when the registration challenge has expired (or was never issued)', async () => {
       redis.get.mockResolvedValue(null);
-      await expect(service.webauthnRegisterVerify(user, {} as any)).rejects.toThrow(BadRequestException);
+      await expect(
+        service.webauthnRegisterVerify(user, {} as any),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('creates the credential and marks the user mfaEnrolled on success', async () => {
@@ -72,13 +95,22 @@ describe('MfaService — WebAuthn', () => {
       verifyRegistrationResponseMock.mockResolvedValue({
         verified: true,
         registrationInfo: {
-          credential: { id: 'cred-1', publicKey: new Uint8Array([1, 2, 3]), counter: 0, transports: ['internal'] },
+          credential: {
+            id: 'cred-1',
+            publicKey: new Uint8Array([1, 2, 3]),
+            counter: 0,
+            transports: ['internal'],
+          },
           credentialDeviceType: 'singleDevice',
           credentialBackedUp: false,
         },
       });
 
-      const result = await service.webauthnRegisterVerify(user, {} as any, 'My laptop');
+      const result = await service.webauthnRegisterVerify(
+        user,
+        {} as any,
+        'My laptop',
+      );
 
       expect(result).toEqual({ success: true });
       expect(prisma.$transaction).toHaveBeenCalled();
@@ -90,14 +122,21 @@ describe('MfaService — WebAuthn', () => {
       verifyRegistrationResponseMock.mockResolvedValue({
         verified: true,
         registrationInfo: {
-          credential: { id: 'cred-1', publicKey: new Uint8Array(), counter: 0, transports: [] },
+          credential: {
+            id: 'cred-1',
+            publicKey: new Uint8Array(),
+            counter: 0,
+            transports: [],
+          },
           credentialDeviceType: 'singleDevice',
           credentialBackedUp: false,
         },
       });
       prisma.$transaction.mockRejectedValue(new Error('unique constraint'));
 
-      await expect(service.webauthnRegisterVerify(user, {} as any)).rejects.toThrow(ConflictException);
+      await expect(
+        service.webauthnRegisterVerify(user, {} as any),
+      ).rejects.toThrow(ConflictException);
       expect(redis.del).toHaveBeenCalledWith('webauthn:reg:admin-1'); // still consumed even on failure
     });
 
@@ -105,50 +144,84 @@ describe('MfaService — WebAuthn', () => {
       redis.get.mockResolvedValue('chal-1');
       verifyRegistrationResponseMock.mockResolvedValue({ verified: false });
 
-      await expect(service.webauthnRegisterVerify(user, {} as any)).rejects.toThrow(BadRequestException);
+      await expect(
+        service.webauthnRegisterVerify(user, {} as any),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
   describe('webauthnAuthOptions', () => {
     it('refuses to start a challenge for a user with no registered credentials', async () => {
       prisma.webAuthnCredential.findMany.mockResolvedValue([]);
-      await expect(service.webauthnAuthOptions(user)).rejects.toThrow(BadRequestException);
+      await expect(service.webauthnAuthOptions(user)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
   describe('webauthnAuthVerify', () => {
     it('returns false (not an error) when the auth challenge has expired', async () => {
       redis.get.mockResolvedValue(null);
-      await expect(service.webauthnAuthVerify(user, { id: 'cred-1' } as any)).resolves.toBe(false);
+      await expect(
+        service.webauthnAuthVerify(user, { id: 'cred-1' } as any),
+      ).resolves.toBe(false);
     });
 
     it('returns false when the credential belongs to a different user — never trust the response id alone', async () => {
       redis.get.mockResolvedValue('chal-1');
-      prisma.webAuthnCredential.findUnique.mockResolvedValue({ id: 'row-1', userId: 'someone-else', credentialId: 'cred-1' });
+      prisma.webAuthnCredential.findUnique.mockResolvedValue({
+        id: 'row-1',
+        userId: 'someone-else',
+        credentialId: 'cred-1',
+      });
 
-      await expect(service.webauthnAuthVerify(user, { id: 'cred-1' } as any)).resolves.toBe(false);
+      await expect(
+        service.webauthnAuthVerify(user, { id: 'cred-1' } as any),
+      ).resolves.toBe(false);
       expect(verifyAuthenticationResponseMock).not.toHaveBeenCalled();
     });
 
     it('bumps the stored counter after a successful verification (replay-attack detection)', async () => {
       redis.get.mockResolvedValue('chal-1');
       prisma.webAuthnCredential.findUnique.mockResolvedValue({
-        id: 'row-1', userId: user.id, credentialId: 'cred-1', publicKey: Buffer.from([1, 2]), counter: 5n, transports: [],
+        id: 'row-1',
+        userId: user.id,
+        credentialId: 'cred-1',
+        publicKey: Buffer.from([1, 2]),
+        counter: 5n,
+        transports: [],
       });
-      verifyAuthenticationResponseMock.mockResolvedValue({ verified: true, authenticationInfo: { newCounter: 6 } });
+      verifyAuthenticationResponseMock.mockResolvedValue({
+        verified: true,
+        authenticationInfo: { newCounter: 6 },
+      });
 
-      const result = await service.webauthnAuthVerify(user, { id: 'cred-1' } as any);
+      const result = await service.webauthnAuthVerify(user, {
+        id: 'cred-1',
+      } as any);
 
       expect(result).toBe(true);
-      expect(prisma.webAuthnCredential.update).toHaveBeenCalledWith({ where: { id: 'row-1' }, data: { counter: 6n } });
+      expect(prisma.webAuthnCredential.update).toHaveBeenCalledWith({
+        where: { id: 'row-1' },
+        data: { counter: 6n },
+      });
     });
 
     it('always consumes the one-time challenge, even when verification throws', async () => {
       redis.get.mockResolvedValue('chal-1');
-      prisma.webAuthnCredential.findUnique.mockResolvedValue({ id: 'row-1', userId: user.id, credentialId: 'cred-1', publicKey: Buffer.from([1]), counter: 0n, transports: [] });
+      prisma.webAuthnCredential.findUnique.mockResolvedValue({
+        id: 'row-1',
+        userId: user.id,
+        credentialId: 'cred-1',
+        publicKey: Buffer.from([1]),
+        counter: 0n,
+        transports: [],
+      });
       verifyAuthenticationResponseMock.mockRejectedValue(new Error('boom'));
 
-      await expect(service.webauthnAuthVerify(user, { id: 'cred-1' } as any)).rejects.toThrow('boom');
+      await expect(
+        service.webauthnAuthVerify(user, { id: 'cred-1' } as any),
+      ).rejects.toThrow('boom');
       expect(redis.del).toHaveBeenCalledWith('webauthn:auth:admin-1');
     });
   });

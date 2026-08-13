@@ -1,4 +1,8 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 import { TOTP } from '@otplib/totp';
 import { NobleCryptoPlugin } from '@otplib/plugin-crypto-noble';
 import { ScureBase32Plugin } from '@otplib/plugin-base32-scure';
@@ -11,6 +15,7 @@ import {
 } from '@simplewebauthn/server';
 import type {
   AuthenticationResponseJSON,
+  AuthenticatorTransportFuture,
   PublicKeyCredentialCreationOptionsJSON,
   PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON,
@@ -23,6 +28,12 @@ import type { User } from '../generated/prisma';
 
 const CHALLENGE_TTL_SECONDS = 300;
 const RP_NAME = 'United Services Egypt';
+
+// Prisma stores this as a plain string[] (no enum at the DB level); cast
+// once at the boundary to @simplewebauthn's stricter literal-union type
+// rather than sprinkling `as any` at every call site.
+const asTransports = (transports: string[]) =>
+  transports as AuthenticatorTransportFuture[];
 
 @Injectable()
 export class MfaService {
@@ -86,25 +97,40 @@ export class MfaService {
   }
 
   async confirmTotp(user: User, code: string) {
-    const credential = await this.prisma.totpCredential.findUnique({ where: { userId: user.id } });
-    if (!credential) throw new BadRequestException('No TOTP enrollment in progress');
+    const credential = await this.prisma.totpCredential.findUnique({
+      where: { userId: user.id },
+    });
+    if (!credential)
+      throw new BadRequestException('No TOTP enrollment in progress');
 
     const secret = await this.totpCrypto.decryptSecret(credential);
-    const result = await this.makeTotp(user.email, secret).verify(code, { epochTolerance: 30 });
+    const result = await this.makeTotp(user.email, secret).verify(code, {
+      epochTolerance: 30,
+    });
     if (!result.valid) throw new BadRequestException('Invalid code');
 
     await this.prisma.$transaction([
-      this.prisma.totpCredential.update({ where: { userId: user.id }, data: { confirmedAt: new Date() } }),
-      this.prisma.user.update({ where: { id: user.id }, data: { mfaEnrolled: true } }),
+      this.prisma.totpCredential.update({
+        where: { userId: user.id },
+        data: { confirmedAt: new Date() },
+      }),
+      this.prisma.user.update({
+        where: { id: user.id },
+        data: { mfaEnrolled: true },
+      }),
     ]);
     return { success: true };
   }
 
   async verifyTotp(user: User, code: string): Promise<boolean> {
-    const credential = await this.prisma.totpCredential.findUnique({ where: { userId: user.id } });
+    const credential = await this.prisma.totpCredential.findUnique({
+      where: { userId: user.id },
+    });
     if (!credential?.confirmedAt) return false;
     const secret = await this.totpCrypto.decryptSecret(credential);
-    const result = await this.makeTotp(user.email, secret).verify(code, { epochTolerance: 30 });
+    const result = await this.makeTotp(user.email, secret).verify(code, {
+      epochTolerance: 30,
+    });
     if (!result.valid) return false;
 
     await this.rewrapIfKekRetiring(user, credential.totpKekKeyId, secret);
@@ -115,13 +141,22 @@ export class MfaService {
   // still wrapped under a "retiring" KEK, re-wrap it under the current
   // active key right away rather than waiting for a background job. Never
   // logs key material or the plaintext secret — only which key ids moved.
-  private async rewrapIfKekRetiring(user: User, currentKeyId: string, plainSecret: string) {
-    const kek = await this.prisma.kekRegistry.findUnique({ where: { keyId: currentKeyId } });
+  private async rewrapIfKekRetiring(
+    user: User,
+    currentKeyId: string,
+    plainSecret: string,
+  ) {
+    const kek = await this.prisma.kekRegistry.findUnique({
+      where: { keyId: currentKeyId },
+    });
     if (kek?.status !== 'retiring') return;
 
     const envelope = await this.totpCrypto.encryptSecret(plainSecret);
     await this.prisma.$transaction([
-      this.prisma.totpCredential.update({ where: { userId: user.id }, data: envelope }),
+      this.prisma.totpCredential.update({
+        where: { userId: user.id },
+        data: envelope,
+      }),
     ]);
     await this.auditLog.record({
       actorUserId: user.id,
@@ -134,24 +169,48 @@ export class MfaService {
 
   // ── WebAuthn ─────────────────────────────────────────────────────────
 
-  async webauthnRegisterOptions(user: User): Promise<PublicKeyCredentialCreationOptionsJSON> {
-    const existing = await this.prisma.webAuthnCredential.findMany({ where: { userId: user.id } });
+  async webauthnRegisterOptions(
+    user: User,
+  ): Promise<PublicKeyCredentialCreationOptionsJSON> {
+    const existing = await this.prisma.webAuthnCredential.findMany({
+      where: { userId: user.id },
+    });
     const options = await generateRegistrationOptions({
       rpName: RP_NAME,
       rpID: this.rpId,
       userName: user.email,
       userDisplayName: `${user.firstName} ${user.lastName}`,
       attestationType: 'none',
-      excludeCredentials: existing.map((c) => ({ id: c.credentialId, transports: c.transports as any })),
-      authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
+      excludeCredentials: existing.map((c) => ({
+        id: c.credentialId,
+        transports: asTransports(c.transports),
+      })),
+      authenticatorSelection: {
+        residentKey: 'preferred',
+        userVerification: 'preferred',
+      },
     });
-    await this.redis.set(this.challengeKey(user.id, 'reg'), options.challenge, 'EX', CHALLENGE_TTL_SECONDS);
+    await this.redis.set(
+      this.challengeKey(user.id, 'reg'),
+      options.challenge,
+      'EX',
+      CHALLENGE_TTL_SECONDS,
+    );
     return options;
   }
 
-  async webauthnRegisterVerify(user: User, response: RegistrationResponseJSON, label?: string) {
-    const expectedChallenge = await this.redis.get(this.challengeKey(user.id, 'reg'));
-    if (!expectedChallenge) throw new BadRequestException('Registration challenge expired — please try again');
+  async webauthnRegisterVerify(
+    user: User,
+    response: RegistrationResponseJSON,
+    label?: string,
+  ) {
+    const expectedChallenge = await this.redis.get(
+      this.challengeKey(user.id, 'reg'),
+    );
+    if (!expectedChallenge)
+      throw new BadRequestException(
+        'Registration challenge expired — please try again',
+      );
 
     const verification = await verifyRegistrationResponse({
       response,
@@ -163,7 +222,8 @@ export class MfaService {
       throw new BadRequestException('Could not verify registration');
     }
 
-    const { credential, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
+    const { credential, credentialDeviceType, credentialBackedUp } =
+      verification.registrationInfo;
     try {
       await this.prisma.$transaction([
         this.prisma.webAuthnCredential.create({
@@ -178,7 +238,10 @@ export class MfaService {
             label,
           },
         }),
-        this.prisma.user.update({ where: { id: user.id }, data: { mfaEnrolled: true } }),
+        this.prisma.user.update({
+          where: { id: user.id },
+          data: { mfaEnrolled: true },
+        }),
       ]);
     } catch {
       throw new ConflictException('This authenticator is already registered');
@@ -189,24 +252,44 @@ export class MfaService {
     return { success: true };
   }
 
-  async webauthnAuthOptions(user: User): Promise<PublicKeyCredentialRequestOptionsJSON> {
-    const credentials = await this.prisma.webAuthnCredential.findMany({ where: { userId: user.id } });
-    if (credentials.length === 0) throw new BadRequestException('No WebAuthn credentials registered');
+  async webauthnAuthOptions(
+    user: User,
+  ): Promise<PublicKeyCredentialRequestOptionsJSON> {
+    const credentials = await this.prisma.webAuthnCredential.findMany({
+      where: { userId: user.id },
+    });
+    if (credentials.length === 0)
+      throw new BadRequestException('No WebAuthn credentials registered');
 
     const options = await generateAuthenticationOptions({
       rpID: this.rpId,
       userVerification: 'preferred',
-      allowCredentials: credentials.map((c) => ({ id: c.credentialId, transports: c.transports as any })),
+      allowCredentials: credentials.map((c) => ({
+        id: c.credentialId,
+        transports: asTransports(c.transports),
+      })),
     });
-    await this.redis.set(this.challengeKey(user.id, 'auth'), options.challenge, 'EX', CHALLENGE_TTL_SECONDS);
+    await this.redis.set(
+      this.challengeKey(user.id, 'auth'),
+      options.challenge,
+      'EX',
+      CHALLENGE_TTL_SECONDS,
+    );
     return options;
   }
 
-  async webauthnAuthVerify(user: User, response: AuthenticationResponseJSON): Promise<boolean> {
-    const expectedChallenge = await this.redis.get(this.challengeKey(user.id, 'auth'));
+  async webauthnAuthVerify(
+    user: User,
+    response: AuthenticationResponseJSON,
+  ): Promise<boolean> {
+    const expectedChallenge = await this.redis.get(
+      this.challengeKey(user.id, 'auth'),
+    );
     if (!expectedChallenge) return false;
 
-    const stored = await this.prisma.webAuthnCredential.findUnique({ where: { credentialId: response.id } });
+    const stored = await this.prisma.webAuthnCredential.findUnique({
+      where: { credentialId: response.id },
+    });
     if (!stored || stored.userId !== user.id) return false;
 
     try {
@@ -219,7 +302,7 @@ export class MfaService {
           id: stored.credentialId,
           publicKey: new Uint8Array(stored.publicKey),
           counter: Number(stored.counter),
-          transports: stored.transports as any,
+          transports: asTransports(stored.transports),
         },
       });
       if (verification.verified) {

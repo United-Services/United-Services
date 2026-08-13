@@ -12,7 +12,24 @@ import { AppModule } from './app.module';
 import { BetterstackLogger } from './logging/betterstack.logger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { rawBody: true, logger: new BetterstackLogger() });
+  const logger = new BetterstackLogger();
+  const app = await NestFactory.create(AppModule, { rawBody: true, logger });
+
+  // Belt-and-braces for anything that escapes both a request's try/catch
+  // and the global AllExceptionsFilter (e.g. a rejected promise not tied
+  // to any HTTP request, like a fire-and-forget background task). Logged
+  // rather than silently dropped, but never crashes the process on its
+  // own — losing one background operation shouldn't take the whole API
+  // down with it.
+  process.on('unhandledRejection', (reason) => {
+    logger.error(
+      'Unhandled promise rejection',
+      reason instanceof Error ? reason.stack : String(reason),
+    );
+  });
+  process.on('uncaughtException', (err) => {
+    logger.error('Uncaught exception', err.stack);
+  });
 
   app.use(cookieParser());
   app.use(

@@ -9,7 +9,12 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UpdateServiceDto } from './dto/update-service.dto';
 import { PresignServiceFileDto } from './dto/presign-service-file.dto';
 import { ConfirmServiceFileDto } from './dto/confirm-service-file.dto';
-import { Role, type User } from '../generated/prisma';
+import {
+  Role,
+  type User,
+  type Service,
+  type Prisma,
+} from '../generated/prisma';
 
 const SERVICES_LIST_CACHE_KEY = 'cache:services:list';
 const CACHE_TTL_SECONDS = 300;
@@ -30,10 +35,17 @@ export class ServicesController {
   @Get()
   async list() {
     const cached = await this.redis.get(SERVICES_LIST_CACHE_KEY);
-    if (cached) return JSON.parse(cached);
+    if (cached) return JSON.parse(cached) as Service[];
 
-    const services = await this.prisma.service.findMany({ orderBy: { order: 'asc' } });
-    await this.redis.set(SERVICES_LIST_CACHE_KEY, JSON.stringify(services), 'EX', CACHE_TTL_SECONDS);
+    const services = await this.prisma.service.findMany({
+      orderBy: { order: 'asc' },
+    });
+    await this.redis.set(
+      SERVICES_LIST_CACHE_KEY,
+      JSON.stringify(services),
+      'EX',
+      CACHE_TTL_SECONDS,
+    );
     return services;
   }
 
@@ -45,7 +57,11 @@ export class ServicesController {
 
   @Roles(Role.admin)
   @Patch(':id')
-  async update(@CurrentUser() admin: User, @Param('id') id: string, @Body() dto: UpdateServiceDto) {
+  async update(
+    @CurrentUser() admin: User,
+    @Param('id') id: string,
+    @Body() dto: UpdateServiceDto,
+  ) {
     const updated = await this.prisma.service.update({
       where: { id },
       data: { ...dto, updatedByAdminId: admin.id },
@@ -56,7 +72,7 @@ export class ServicesController {
       action: 'service.updated',
       targetType: 'Service',
       targetId: id,
-      metadata: dto as any,
+      metadata: dto as unknown as Prisma.InputJsonValue,
     });
     return updated;
   }
@@ -66,7 +82,10 @@ export class ServicesController {
   // record the object without the file ever transiting this server.
   @Roles(Role.admin)
   @Post(':id/files/presign')
-  async presignFile(@Param('id') serviceId: string, @Body() dto: PresignServiceFileDto) {
+  async presignFile(
+    @Param('id') serviceId: string,
+    @Body() dto: PresignServiceFileDto,
+  ) {
     const safeName = dto.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
     const key = `service-specs/${serviceId}/${Date.now()}-${safeName}`;
     const url = await this.s3.createUploadUrl(key, dto.contentType);
@@ -75,8 +94,14 @@ export class ServicesController {
 
   @Roles(Role.admin)
   @Post(':id/files')
-  async confirmFile(@CurrentUser() admin: User, @Param('id') serviceId: string, @Body() dto: ConfirmServiceFileDto) {
-    const existingCount = await this.prisma.serviceFile.count({ where: { serviceId } });
+  async confirmFile(
+    @CurrentUser() admin: User,
+    @Param('id') serviceId: string,
+    @Body() dto: ConfirmServiceFileDto,
+  ) {
+    const existingCount = await this.prisma.serviceFile.count({
+      where: { serviceId },
+    });
     const file = await this.prisma.serviceFile.create({
       data: {
         serviceId,
@@ -99,7 +124,10 @@ export class ServicesController {
   @Roles(Role.admin)
   @Get(':id/files')
   listFiles(@Param('id') serviceId: string) {
-    return this.prisma.serviceFile.findMany({ where: { serviceId }, orderBy: { uploadedAt: 'desc' } });
+    return this.prisma.serviceFile.findMany({
+      where: { serviceId },
+      orderBy: { uploadedAt: 'desc' },
+    });
   }
 
   // Any signed-in user can see which spec file exists for a service (just
@@ -111,7 +139,12 @@ export class ServicesController {
     return this.prisma.serviceFile.findFirst({
       where: { serviceId },
       orderBy: { uploadedAt: 'desc' },
-      select: { id: true, originalFilename: true, version: true, uploadedAt: true },
+      select: {
+        id: true,
+        originalFilename: true,
+        version: true,
+        uploadedAt: true,
+      },
     });
   }
 }

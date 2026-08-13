@@ -19,7 +19,13 @@ export class AuditLogService {
     return this.prisma.auditLog.create({ data: params });
   }
 
-  search(params: { q?: string; actorUserId?: string; action?: string; skip?: number; take?: number }) {
+  search(params: {
+    q?: string;
+    actorUserId?: string;
+    action?: string;
+    skip?: number;
+    take?: number;
+  }) {
     const { q, actorUserId, action, skip = 0, take = 25 } = params;
     return this.prisma.auditLog.findMany({
       where: {
@@ -38,7 +44,11 @@ export class AuditLogService {
       orderBy: { createdAt: 'desc' },
       skip,
       take,
-      include: { actor: { select: { firstName: true, lastName: true, email: true, role: true } } },
+      include: {
+        actor: {
+          select: { firstName: true, lastName: true, email: true, role: true },
+        },
+      },
     });
   }
 }

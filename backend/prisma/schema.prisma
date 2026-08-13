@@ -301,12 +301,17 @@ model AuditLog {
   @@index([createdAt])
 }
 
+// `country` is always resolved server-side from the request IP via
+// GeoService (MaxMind GeoLite2) — never trusted from client input. Powers
+// the admin dashboard's requests-by-country world map.
 model AnalyticsEvent {
   id         String   @id @default(cuid())
   eventType  String
   metadata   Json?
+  country    String?
   occurredAt DateTime @default(now())
 
   @@index([eventType])
   @@index([occurredAt])
+  @@index([country])
 }

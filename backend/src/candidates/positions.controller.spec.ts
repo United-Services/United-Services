@@ -7,7 +7,11 @@ describe('PositionsController', () => {
 
   function makeController() {
     const prisma = {
-      openPosition: { findMany: jest.fn(), create: jest.fn(), update: jest.fn() },
+      openPosition: {
+        findMany: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
     } as unknown as PrismaService;
     return { controller: new PositionsController(prisma), prisma };
   }
@@ -27,23 +31,40 @@ describe('PositionsController', () => {
     expect(call.where).toBeUndefined();
   });
 
-  it('create attaches the posting admin\'s id', async () => {
+  it("create attaches the posting admin's id", async () => {
     const { controller, prisma } = makeController();
-    (prisma.openPosition.create as jest.Mock).mockResolvedValue({ id: 'pos-1' });
+    (prisma.openPosition.create as jest.Mock).mockResolvedValue({
+      id: 'pos-1',
+    });
 
-    await controller.create(admin, { title: 'Engineer', department: 'Engineering', description: 'desc' });
+    await controller.create(admin, {
+      title: 'Engineer',
+      department: 'Engineering',
+      description: 'desc',
+    });
 
     expect(prisma.openPosition.create).toHaveBeenCalledWith({
-      data: { title: 'Engineer', department: 'Engineering', description: 'desc', createdByAdminId: admin.id },
+      data: {
+        title: 'Engineer',
+        department: 'Engineering',
+        description: 'desc',
+        createdByAdminId: admin.id,
+      },
     });
   });
 
   it('update can close a position via isOpen: false', async () => {
     const { controller, prisma } = makeController();
-    (prisma.openPosition.update as jest.Mock).mockResolvedValue({ id: 'pos-1', isOpen: false });
+    (prisma.openPosition.update as jest.Mock).mockResolvedValue({
+      id: 'pos-1',
+      isOpen: false,
+    });
 
     await controller.update('pos-1', { isOpen: false });
 
-    expect(prisma.openPosition.update).toHaveBeenCalledWith({ where: { id: 'pos-1' }, data: { isOpen: false } });
+    expect(prisma.openPosition.update).toHaveBeenCalledWith({
+      where: { id: 'pos-1' },
+      data: { isOpen: false },
+    });
   });
 });

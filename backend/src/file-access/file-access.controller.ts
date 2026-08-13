@@ -1,4 +1,14 @@
-import { Body, ConflictException, Controller, ForbiddenException, Get, NotFoundException, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  ConflictException,
+  Controller,
+  ForbiddenException,
+  Get,
+  NotFoundException,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -24,11 +34,21 @@ export class FileAccessController {
 
   @Roles(Role.client)
   @Post()
-  async create(@CurrentUser() client: User, @Body() dto: CreateFileAccessRequestDto) {
+  async create(
+    @CurrentUser() client: User,
+    @Body() dto: CreateFileAccessRequestDto,
+  ) {
     const existing = await this.prisma.fileAccessRequest.findFirst({
-      where: { clientId: client.id, serviceFileId: dto.serviceFileId, status: { in: [FileAccessStatus.pending, FileAccessStatus.approved] } },
+      where: {
+        clientId: client.id,
+        serviceFileId: dto.serviceFileId,
+        status: { in: [FileAccessStatus.pending, FileAccessStatus.approved] },
+      },
     });
-    if (existing) throw new ConflictException('You already have a pending or approved request for this file');
+    if (existing)
+      throw new ConflictException(
+        'You already have a pending or approved request for this file',
+      );
 
     return this.prisma.fileAccessRequest.create({
       data: { clientId: client.id, serviceFileId: dto.serviceFileId },
@@ -41,7 +61,11 @@ export class FileAccessController {
     return this.prisma.fileAccessRequest.findMany({
       where: { clientId: client.id },
       orderBy: { requestedAt: 'desc' },
-      include: { serviceFile: { include: { service: { select: { name: true, slug: true } } } } },
+      include: {
+        serviceFile: {
+          include: { service: { select: { name: true, slug: true } } },
+        },
+      },
     });
   }
 
@@ -57,30 +81,53 @@ export class FileAccessController {
                 { client: { firstName: { contains: q, mode: 'insensitive' } } },
                 { client: { lastName: { contains: q, mode: 'insensitive' } } },
                 { client: { email: { contains: q, mode: 'insensitive' } } },
-                { client: { companyName: { contains: q, mode: 'insensitive' } } },
-                { serviceFile: { originalFilename: { contains: q, mode: 'insensitive' } } },
+                {
+                  client: { companyName: { contains: q, mode: 'insensitive' } },
+                },
+                {
+                  serviceFile: {
+                    originalFilename: { contains: q, mode: 'insensitive' },
+                  },
+                },
               ],
             }
           : {}),
       },
       orderBy: { requestedAt: 'desc' },
       include: {
-        client: { select: { firstName: true, lastName: true, email: true, companyName: true } },
-        serviceFile: { include: { service: { select: { name: true, slug: true } } } },
+        client: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            companyName: true,
+          },
+        },
+        serviceFile: {
+          include: { service: { select: { name: true, slug: true } } },
+        },
       },
     });
   }
 
   @Roles(Role.admin)
   @Post(':id/decide')
-  async decide(@CurrentUser() admin: User, @Param('id') id: string, @Body() dto: DecideFileAccessRequestDto) {
-    const request = await this.prisma.fileAccessRequest.findUnique({ where: { id } });
+  async decide(
+    @CurrentUser() admin: User,
+    @Param('id') id: string,
+    @Body() dto: DecideFileAccessRequestDto,
+  ) {
+    const request = await this.prisma.fileAccessRequest.findUnique({
+      where: { id },
+    });
     if (!request) throw new NotFoundException('Request not found');
 
     const updated = await this.prisma.fileAccessRequest.update({
       where: { id },
       data: {
-        status: dto.approve ? FileAccessStatus.approved : FileAccessStatus.denied,
+        status: dto.approve
+          ? FileAccessStatus.approved
+          : FileAccessStatus.denied,
         decidedAt: new Date(),
         decidedByAdminId: admin.id,
       },
@@ -91,7 +138,10 @@ export class FileAccessController {
       action: dto.approve ? 'file_access.approved' : 'file_access.denied',
       targetType: 'FileAccessRequest',
       targetId: id,
-      metadata: { clientId: request.clientId, serviceFileId: request.serviceFileId },
+      metadata: {
+        clientId: request.clientId,
+        serviceFileId: request.serviceFileId,
+      },
     });
 
     return updated;
@@ -112,9 +162,15 @@ export class FileAccessController {
     }
 
     const expiresAt = new Date(Date.now() + DOWNLOAD_URL_TTL_SECONDS * 1000);
-    const url = await this.s3.createDownloadUrl(request.serviceFile.s3Key, DOWNLOAD_URL_TTL_SECONDS);
+    const url = await this.s3.createDownloadUrl(
+      request.serviceFile.s3Key,
+      DOWNLOAD_URL_TTL_SECONDS,
+    );
 
-    await this.prisma.fileAccessRequest.update({ where: { id }, data: { downloadTokenExpiresAt: expiresAt } });
+    await this.prisma.fileAccessRequest.update({
+      where: { id },
+      data: { downloadTokenExpiresAt: expiresAt },
+    });
     await this.auditLog.record({
       actorUserId: user.id,
       action: 'file_access.download_issued',

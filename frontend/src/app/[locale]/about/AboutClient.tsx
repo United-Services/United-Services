@@ -1,7 +1,7 @@
-'use client'
+"use client"
 
-import About from '@/views/About'
-import { useAppNavigate } from '@/lib/navigate'
+import About from "@/views/About"
+import { useAppNavigate } from "@/lib/navigate"
 
 export default function AboutClient() {
   const navigate = useAppNavigate()

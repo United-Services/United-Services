@@ -6,7 +6,9 @@ import type { User } from '../generated/prisma';
 
 const updateUserMock = jest.fn();
 jest.mock('@clerk/backend', () => ({
-  createClerkClient: () => ({ users: { updateUser: (...args: unknown[]) => updateUserMock(...args) } }),
+  createClerkClient: () => ({
+    users: { updateUser: (...args: unknown[]) => updateUserMock(...args) },
+  }),
 }));
 
 // Admin password reset is the one place a new password can be set outside
@@ -19,8 +21,13 @@ describe('MfaController.resetPassword', () => {
 
   function makeController() {
     updateUserMock.mockReset().mockResolvedValue({});
-    const mfa = { verifyTotp: jest.fn(), webauthnAuthVerify: jest.fn() } as unknown as MfaService;
-    const auditLog = { record: jest.fn().mockResolvedValue(undefined) } as unknown as AuditLogService;
+    const mfa = {
+      verifyTotp: jest.fn(),
+      webauthnAuthVerify: jest.fn(),
+    } as unknown as MfaService;
+    const auditLog = {
+      record: jest.fn().mockResolvedValue(undefined),
+    } as unknown as AuditLogService;
     return { controller: new MfaController(mfa, auditLog), mfa, auditLog };
   }
 
@@ -29,7 +36,11 @@ describe('MfaController.resetPassword', () => {
     (mfa.verifyTotp as jest.Mock).mockResolvedValue(false);
 
     await expect(
-      controller.resetPassword(user, { method: 'totp', totpCode: '000000', newPassword: 'newpw12345' } as any),
+      controller.resetPassword(user, {
+        method: 'totp',
+        totpCode: '000000',
+        newPassword: 'newpw12345',
+      } as any),
     ).rejects.toThrow(BadRequestException);
     expect(updateUserMock).not.toHaveBeenCalled();
   });
@@ -44,8 +55,13 @@ describe('MfaController.resetPassword', () => {
       newPassword: 'newpw12345',
     } as any);
 
-    expect(updateUserMock).toHaveBeenCalledWith('clerk-1', { password: 'newpw12345', signOutOfOtherSessions: true });
-    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'admin.password_reset' }));
+    expect(updateUserMock).toHaveBeenCalledWith('clerk-1', {
+      password: 'newpw12345',
+      signOutOfOtherSessions: true,
+    });
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'admin.password_reset' }),
+    );
     expect(result).toEqual({ success: true });
   });
 
@@ -54,7 +70,11 @@ describe('MfaController.resetPassword', () => {
     (mfa.webauthnAuthVerify as jest.Mock).mockResolvedValue(false);
 
     await expect(
-      controller.resetPassword(user, { method: 'webauthn', webauthnResponse: {}, newPassword: 'newpw12345' } as any),
+      controller.resetPassword(user, {
+        method: 'webauthn',
+        webauthnResponse: {},
+        newPassword: 'newpw12345',
+      } as any),
     ).rejects.toThrow(BadRequestException);
     expect(updateUserMock).not.toHaveBeenCalled();
   });
@@ -63,7 +83,11 @@ describe('MfaController.resetPassword', () => {
     const { controller, mfa } = makeController();
     (mfa.webauthnAuthVerify as jest.Mock).mockResolvedValue(true);
 
-    await controller.resetPassword(user, { method: 'webauthn', webauthnResponse: {}, newPassword: 'newpw12345' } as any);
+    await controller.resetPassword(user, {
+      method: 'webauthn',
+      webauthnResponse: {},
+      newPassword: 'newpw12345',
+    } as any);
 
     expect(mfa.verifyTotp).not.toHaveBeenCalled();
     expect(updateUserMock).toHaveBeenCalled();

@@ -1,7 +1,7 @@
-'use client'
+"use client"
 
-import Contact from '@/views/Contact'
-import { useAppNavigate } from '@/lib/navigate'
+import Contact from "@/views/Contact"
+import { useAppNavigate } from "@/lib/navigate"
 
 export default function ContactClient() {
   const navigate = useAppNavigate()

@@ -3,8 +3,28 @@ import { join } from 'node:path';
 import { open, type CountryResponse, type Reader } from 'maxmind';
 
 const ARABIC_COUNTRIES = new Set([
-  'EG', 'SA', 'AE', 'IQ', 'KW', 'QA', 'BH', 'OM', 'JO', 'LB', 'SY', 'YE',
-  'LY', 'TN', 'DZ', 'MA', 'SD', 'PS', 'MR', 'SO', 'DJ', 'KM',
+  'EG',
+  'SA',
+  'AE',
+  'IQ',
+  'KW',
+  'QA',
+  'BH',
+  'OM',
+  'JO',
+  'LB',
+  'SY',
+  'YE',
+  'LY',
+  'TN',
+  'DZ',
+  'MA',
+  'SD',
+  'PS',
+  'MR',
+  'SO',
+  'DJ',
+  'KM',
 ]);
 const CHINESE_COUNTRIES = new Set(['CN', 'TW', 'HK', 'MO']);
 
@@ -19,7 +39,9 @@ export class GeoService implements OnModuleInit {
   async onModuleInit() {
     const dbDir = process.env.GEOIP_MAXMIND_DB_DIR ?? './geoip-db';
     try {
-      this.reader = await open(join(process.cwd(), dbDir, 'GeoLite2-Country.mmdb'));
+      this.reader = await open(
+        join(process.cwd(), dbDir, 'GeoLite2-Country.mmdb'),
+      );
     } catch {
       // Missing/unreadable DB (e.g. not yet downloaded in this environment)
       // — localeForIp() falls back to 'en' rather than failing requests.
@@ -28,12 +50,19 @@ export class GeoService implements OnModuleInit {
   }
 
   localeForIp(ip: string): SupportedLocale {
-    if (!this.reader) return 'en';
-    const result = this.reader.get(ip);
-    const countryCode = result?.country?.iso_code;
+    const countryCode = this.countryForIp(ip);
     if (!countryCode) return 'en';
     if (ARABIC_COUNTRIES.has(countryCode)) return 'ar';
     if (CHINESE_COUNTRIES.has(countryCode)) return 'zh';
     return 'en';
+  }
+
+  // Raw ISO 3166-1 alpha-2 country code (e.g. "EG", "US") — used for the
+  // admin dashboard's requests-by-country world map, which needs real
+  // per-country granularity rather than the 3-way locale bucketing above.
+  countryForIp(ip: string): string | null {
+    if (!this.reader || !ip) return null;
+    const result = this.reader.get(ip);
+    return result?.country?.iso_code ?? null;
   }
 }

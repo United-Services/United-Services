@@ -1,4 +1,11 @@
-import { BadRequestException, Controller, Get, Param, Patch, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Query,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -46,16 +53,33 @@ export class AdminUsersController {
 
   @Patch(':id/disable')
   async disable(@CurrentUser() admin: User, @Param('id') id: string) {
-    if (id === admin.id) throw new BadRequestException('You cannot disable your own account');
-    const updated = await this.prisma.user.update({ where: { id }, data: { disabledAt: new Date() } });
-    await this.auditLog.record({ actorUserId: admin.id, action: 'user.disabled', targetType: 'User', targetId: id });
+    if (id === admin.id)
+      throw new BadRequestException('You cannot disable your own account');
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: { disabledAt: new Date() },
+    });
+    await this.auditLog.record({
+      actorUserId: admin.id,
+      action: 'user.disabled',
+      targetType: 'User',
+      targetId: id,
+    });
     return updated;
   }
 
   @Patch(':id/enable')
   async enable(@CurrentUser() admin: User, @Param('id') id: string) {
-    const updated = await this.prisma.user.update({ where: { id }, data: { disabledAt: null } });
-    await this.auditLog.record({ actorUserId: admin.id, action: 'user.enabled', targetType: 'User', targetId: id });
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: { disabledAt: null },
+    });
+    await this.auditLog.record({
+      actorUserId: admin.id,
+      action: 'user.enabled',
+      targetType: 'User',
+      targetId: id,
+    });
     return updated;
   }
 }

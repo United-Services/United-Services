@@ -30,9 +30,16 @@ async function main() {
   const prisma = new PrismaClient({ adapter });
   try {
     await prisma.$transaction([
-      prisma.kekRegistry.updateMany({ where: { status: 'active' }, data: { status: 'retiring' } }),
+      prisma.kekRegistry.updateMany({
+        where: { status: 'active' },
+        data: { status: 'retiring' },
+      }),
       prisma.kekRegistry.create({
-        data: { keyId, publicKey: sodium.to_base64(publicKey), status: 'active' },
+        data: {
+          keyId,
+          publicKey: sodium.to_base64(publicKey),
+          status: 'active',
+        },
       }),
     ]);
   } finally {

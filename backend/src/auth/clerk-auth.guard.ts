@@ -1,9 +1,17 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import type { Request } from 'express';
 import { createClerkClient, verifyToken } from '@clerk/backend';
 import { IS_PUBLIC_KEY } from '../common/decorators/public.decorator';
 import { PrismaService } from '../prisma/prisma.service';
-import { Role } from '../generated/prisma';
+import { Role, type User } from '../generated/prisma';
+
+type AuthedRequest = Request & { user?: User };
 
 // Verifies the Clerk session cookie/token on every request and attaches the
 // corresponding local User row (never a raw Clerk claim) to req.user, so
@@ -28,7 +36,7 @@ export class ClerkAuthGuard implements CanActivate {
     ]);
     if (isPublic) return true;
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<AuthedRequest>();
     const token = this.extractToken(request);
     if (!token) throw new UnauthorizedException('Missing session token');
 
@@ -55,9 +63,11 @@ export class ClerkAuthGuard implements CanActivate {
       const primaryEmail = clerkUser.emailAddresses.find(
         (e) => e.id === clerkUser.primaryEmailAddressId,
       )?.emailAddress;
-      if (!primaryEmail) throw new UnauthorizedException('Clerk account has no primary email');
+      if (!primaryEmail)
+        throw new UnauthorizedException('Clerk account has no primary email');
 
-      const unsafeMetadata = clerkUser.unsafeMetadata as { companyName?: string; phone?: string } | undefined;
+      const unsafeMetadata = clerkUser.unsafeMetadata as
+        { companyName?: string; phone?: string } | undefined;
       user = await this.prisma.user.upsert({
         where: { clerkId },
         update: {},
@@ -66,7 +76,8 @@ export class ClerkAuthGuard implements CanActivate {
           email: primaryEmail,
           firstName: clerkUser.firstName ?? '',
           lastName: clerkUser.lastName ?? '',
-          phone: clerkUser.phoneNumbers?.[0]?.phoneNumber ?? unsafeMetadata?.phone,
+          phone:
+            clerkUser.phoneNumbers?.[0]?.phoneNumber ?? unsafeMetadata?.phone,
           companyName: unsafeMetadata?.companyName,
           role: Role.client,
         },
@@ -81,12 +92,13 @@ export class ClerkAuthGuard implements CanActivate {
     return true;
   }
 
-  private extractToken(request: any): string | undefined {
-    const cookieToken = request.cookies?.__session;
+  private extractToken(request: AuthedRequest): string | undefined {
+    const cookieToken = request.cookies?.__session as string | undefined;
     if (cookieToken) return cookieToken;
 
-    const authHeader = request.headers?.authorization;
-    if (authHeader?.startsWith('Bearer ')) return authHeader.slice('Bearer '.length);
+    const authHeader = request.headers.authorization;
+    if (authHeader?.startsWith('Bearer '))
+      return authHeader.slice('Bearer '.length);
 
     return undefined;
   }

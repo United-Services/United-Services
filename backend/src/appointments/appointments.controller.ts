@@ -1,4 +1,11 @@
-import { Body, ConflictException, Controller, Get, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  ConflictException,
+  Controller,
+  Get,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -28,7 +35,10 @@ export class AppointmentsController {
   @Get('slots')
   openSlots() {
     return this.prisma.appointmentSlot.findMany({
-      where: { isBooked: false, date: { gte: new Date(new Date().toDateString()) } },
+      where: {
+        isBooked: false,
+        date: { gte: new Date(new Date().toDateString()) },
+      },
       orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
     });
   }
@@ -38,7 +48,20 @@ export class AppointmentsController {
   allSlots() {
     return this.prisma.appointmentSlot.findMany({
       orderBy: [{ date: 'desc' }, { startTime: 'asc' }],
-      include: { appointment: { include: { client: { select: { firstName: true, lastName: true, email: true, companyName: true } } } } },
+      include: {
+        appointment: {
+          include: {
+            client: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true,
+                companyName: true,
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -53,7 +76,10 @@ export class AppointmentsController {
         where: { id: dto.slotId, isBooked: false },
         data: { isBooked: true },
       });
-      if (count === 0) throw new ConflictException('This slot was just booked by someone else — please pick another.');
+      if (count === 0)
+        throw new ConflictException(
+          'This slot was just booked by someone else — please pick another.',
+        );
 
       return tx.appointment.create({
         data: { slotId: dto.slotId, clientId: client.id },
@@ -88,7 +114,17 @@ export class AppointmentsController {
           }
         : {},
       orderBy: { createdAt: 'desc' },
-      include: { slot: true, client: { select: { firstName: true, lastName: true, email: true, companyName: true } } },
+      include: {
+        slot: true,
+        client: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            companyName: true,
+          },
+        },
+      },
     });
   }
 }

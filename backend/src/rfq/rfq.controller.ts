@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -18,7 +26,11 @@ export class RfqController {
   @Post()
   create(@CurrentUser() client: User, @Body() dto: CreateRfqDto) {
     return this.prisma.serviceRequest.create({
-      data: { clientId: client.id, serviceId: dto.serviceId, projectDetails: dto.projectDetails },
+      data: {
+        clientId: client.id,
+        serviceId: dto.serviceId,
+        projectDetails: dto.projectDetails,
+      },
     });
   }
 
@@ -48,7 +60,14 @@ export class RfqController {
         : {},
       orderBy: { createdAt: 'desc' },
       include: {
-        client: { select: { firstName: true, lastName: true, email: true, companyName: true } },
+        client: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            companyName: true,
+          },
+        },
         service: { select: { name: true, slug: true } },
       },
     });
@@ -56,8 +75,15 @@ export class RfqController {
 
   @Roles(Role.admin)
   @Patch(':id/status')
-  async updateStatus(@CurrentUser() admin: User, @Param('id') id: string, @Body() dto: UpdateRfqStatusDto) {
-    const updated = await this.prisma.serviceRequest.update({ where: { id }, data: { status: dto.status } });
+  async updateStatus(
+    @CurrentUser() admin: User,
+    @Param('id') id: string,
+    @Body() dto: UpdateRfqStatusDto,
+  ) {
+    const updated = await this.prisma.serviceRequest.update({
+      where: { id },
+      data: { status: dto.status },
+    });
     await this.auditLog.record({
       actorUserId: admin.id,
       action: 'rfq.status_updated',

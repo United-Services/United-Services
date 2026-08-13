@@ -10,46 +10,71 @@ describe('CandidatesController', () => {
 
   function makeController() {
     const prisma = {
-      candidateApplication: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+      candidateApplication: {
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      },
     } as unknown as PrismaService;
-    const s3 = { createDownloadUrl: jest.fn().mockResolvedValue('https://s3.example/signed') } as unknown as S3Service;
-    const auditLog = { record: jest.fn().mockResolvedValue(undefined) } as unknown as AuditLogService;
-    return { controller: new CandidatesController(prisma, s3, auditLog), prisma, s3, auditLog };
+    const s3 = {
+      createDownloadUrl: jest
+        .fn()
+        .mockResolvedValue('https://s3.example/signed'),
+    } as unknown as S3Service;
+    const auditLog = {
+      record: jest.fn().mockResolvedValue(undefined),
+    } as unknown as AuditLogService;
+    return {
+      controller: new CandidatesController(prisma, s3, auditLog),
+      prisma,
+      s3,
+      auditLog,
+    };
   }
 
   describe('decide', () => {
     it('approves and records reviewer + audit entry', async () => {
       const { controller, prisma, auditLog } = makeController();
-      (prisma.candidateApplication.update as jest.Mock).mockImplementation(({ data }) =>
-        Promise.resolve({ id: 'app-1', ...data }),
+      (prisma.candidateApplication.update as jest.Mock).mockImplementation(
+        ({ data }) => Promise.resolve({ id: 'app-1', ...data }),
       );
 
       const result = await controller.decide(admin, 'app-1', { approve: true });
 
       expect(result.status).toBe(ApplicationStatus.approved);
       expect(result.reviewedByAdminId).toBe(admin.id);
-      expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'candidate.approved' }));
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'candidate.approved' }),
+      );
     });
 
     it('denies and records the corresponding audit action', async () => {
       const { controller, prisma, auditLog } = makeController();
-      (prisma.candidateApplication.update as jest.Mock).mockImplementation(({ data }) =>
-        Promise.resolve({ id: 'app-1', ...data }),
+      (prisma.candidateApplication.update as jest.Mock).mockImplementation(
+        ({ data }) => Promise.resolve({ id: 'app-1', ...data }),
       );
 
-      const result = await controller.decide(admin, 'app-1', { approve: false });
+      const result = await controller.decide(admin, 'app-1', {
+        approve: false,
+      });
 
       expect(result.status).toBe(ApplicationStatus.denied);
-      expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'candidate.denied' }));
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'candidate.denied' }),
+      );
     });
   });
 
   describe('documents', () => {
     it('throws 404 for a nonexistent application rather than issuing URLs', async () => {
       const { controller, prisma, s3 } = makeController();
-      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue(
+        null,
+      );
 
-      await expect(controller.documents('missing')).rejects.toThrow(NotFoundException);
+      await expect(controller.documents('missing')).rejects.toThrow(
+        NotFoundException,
+      );
       expect(s3.createDownloadUrl).not.toHaveBeenCalled();
     });
 
@@ -63,9 +88,19 @@ describe('CandidatesController', () => {
 
       const result = await controller.documents('app-1');
 
-      expect(s3.createDownloadUrl).toHaveBeenCalledWith('candidates/x/id.png', 300);
-      expect(s3.createDownloadUrl).toHaveBeenCalledWith('candidates/x/cv.pdf', 300);
-      expect(result).toEqual({ idPhotoUrl: 'https://s3.example/signed', cvUrl: 'https://s3.example/signed', expiresInSeconds: 300 });
+      expect(s3.createDownloadUrl).toHaveBeenCalledWith(
+        'candidates/x/id.png',
+        300,
+      );
+      expect(s3.createDownloadUrl).toHaveBeenCalledWith(
+        'candidates/x/cv.pdf',
+        300,
+      );
+      expect(result).toEqual({
+        idPhotoUrl: 'https://s3.example/signed',
+        cvUrl: 'https://s3.example/signed',
+        expiresInSeconds: 300,
+      });
     });
   });
 });

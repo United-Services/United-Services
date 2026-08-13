@@ -42,4 +42,19 @@ describe('GeoService', () => {
     expect(() => service.localeForIp('1.2.3.4')).not.toThrow();
     expect(service.localeForIp('1.2.3.4')).toBe('en');
   });
+
+  describe('countryForIp', () => {
+    it('returns the raw ISO country code, not a locale bucket', () => {
+      expect(withReader('DE').countryForIp('1.2.3.4')).toBe('DE');
+    });
+
+    it('returns null when the reader never loaded', () => {
+      const service = new GeoService();
+      expect(service.countryForIp('1.2.3.4')).toBeNull();
+    });
+
+    it('returns null for an empty IP rather than looking it up', () => {
+      expect(withReader('EG').countryForIp('')).toBeNull();
+    });
+  });
 });

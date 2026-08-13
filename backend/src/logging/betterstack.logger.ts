@@ -12,11 +12,15 @@ export class BetterstackLogger extends ConsoleLogger {
     if (!this.ingestUrl || !this.token) return;
     fetch(this.ingestUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.token}`,
+      },
       body: JSON.stringify({
         dt: new Date().toISOString().replace('T', ' ').replace('Z', ' UTC'),
         level,
-        message: typeof message === 'string' ? message : JSON.stringify(message),
+        message:
+          typeof message === 'string' ? message : JSON.stringify(message),
         context,
         service: 'backend',
       }),
@@ -26,17 +30,17 @@ export class BetterstackLogger extends ConsoleLogger {
   }
 
   log(message: unknown, context?: string) {
-    super.log(message as string, context);
+    super.log(message, context);
     this.ship('info', message, context);
   }
 
   error(message: unknown, stack?: string, context?: string) {
-    super.error(message as string, stack, context);
+    super.error(message, stack, context);
     this.ship('error', message, context);
   }
 
   warn(message: unknown, context?: string) {
-    super.warn(message as string, context);
+    super.warn(message, context);
     this.ship('warn', message, context);
   }
 }

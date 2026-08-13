@@ -130,3 +130,18 @@ html { scroll-behavior: smooth; }
   .dashboard-sidebar .sidebar-nav-btn { justify-content: center !important; }
 }
 
+/* PublicNav: real hamburger menu below 860px. The nav previously had a
+   `menuOpen` state with no actual mobile UI wired to it at all — six link
+   buttons + language switcher + two CTAs would just overflow/wrap on a
+   phone. Desktop link/action rows hide, the toggle button and its panel
+   (both `display: none` by default, both inline-styled in the component)
+   take over. */
+.public-nav-desktop { display: flex; }
+.public-nav-toggle { display: none; }
+.public-nav-mobile-panel { display: none; }
+@media (max-width: 860px) {
+  .public-nav-desktop { display: none !important; }
+  .public-nav-toggle { display: flex !important; }
+  .public-nav-mobile-panel { display: flex !important; }
+}
+

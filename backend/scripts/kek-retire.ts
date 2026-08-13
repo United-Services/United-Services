@@ -30,7 +30,9 @@ async function main() {
       return;
     }
 
-    const stillInUse = await prisma.totpCredential.count({ where: { totpKekKeyId: keyId } });
+    const stillInUse = await prisma.totpCredential.count({
+      where: { totpKekKeyId: keyId },
+    });
     if (stillInUse > 0) {
       throw new Error(
         `Refusing to retire "${keyId}" — ${stillInUse} TOTP credential(s) still reference it. ` +
@@ -39,7 +41,10 @@ async function main() {
       );
     }
 
-    await prisma.kekRegistry.update({ where: { keyId }, data: { status: 'retired', retiredAt: new Date() } });
+    await prisma.kekRegistry.update({
+      where: { keyId },
+      data: { status: 'retired', retiredAt: new Date() },
+    });
 
     const keyPath = path.join(dir, `${keyId}.key`);
     try {
@@ -47,8 +52,12 @@ async function main() {
       await fs.writeFile(keyPath, randomBytes(stat.size)); // overwrite before unlink
       await fs.unlink(keyPath);
       console.log(`Deleted private key file: ${keyPath}`);
-    } catch (err: any) {
-      if (err.code !== 'ENOENT') throw err;
+    } catch (err) {
+      if (
+        !(err instanceof Error) ||
+        (err as NodeJS.ErrnoException).code !== 'ENOENT'
+      )
+        throw err;
       console.log(`(private key file already absent: ${keyPath})`);
     }
 
@@ -58,7 +67,7 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(err.message ?? err);
+main().catch((err: unknown) => {
+  console.error(err instanceof Error ? err.message : err);
   process.exit(1);
 });

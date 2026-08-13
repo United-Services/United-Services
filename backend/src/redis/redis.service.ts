@@ -7,7 +7,7 @@ export class RedisService extends Redis implements OnModuleDestroy {
     super(process.env.REDIS_URL ?? 'redis://localhost:6379');
   }
 
-  async onModuleDestroy() {
+  onModuleDestroy() {
     this.disconnect();
   }
 }

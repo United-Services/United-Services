@@ -3,11 +3,17 @@
 // style rules explicitly disallow anywhere in the UI. Each icon inherits
 // `color` from its parent so the existing active/inactive nav button
 // styling keeps working unchanged.
-'use client'
+"use client"
 
 type IconProps = { size?: number }
 
-const base = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+const base = {
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.8,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+}
 
 export function IconGear({ size = 16 }: IconProps) {
   return (

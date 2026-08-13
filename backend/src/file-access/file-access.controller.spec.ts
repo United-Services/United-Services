@@ -1,4 +1,8 @@
-import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { FileAccessController } from './file-access.controller';
 import { FileAccessStatus, Role, type User } from '../generated/prisma';
 import type { PrismaService } from '../prisma/prisma.service';
@@ -15,24 +19,45 @@ describe('FileAccessController', () => {
   const otherClient = { id: 'client-2', role: Role.client } as User;
   const admin = { id: 'admin-1', role: Role.admin } as User;
 
-  function makeController(overrides: { findUnique?: any; findFirst?: any } = {}) {
+  function makeController(
+    overrides: { findUnique?: any; findFirst?: any } = {},
+  ) {
     const prisma = {
       fileAccessRequest: {
         findFirst: overrides.findFirst ?? jest.fn().mockResolvedValue(null),
         findUnique: overrides.findUnique ?? jest.fn(),
         create: jest.fn().mockResolvedValue({ id: 'req-1' }),
-        update: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'req-1', ...data })),
+        update: jest
+          .fn()
+          .mockImplementation(({ data }) =>
+            Promise.resolve({ id: 'req-1', ...data }),
+          ),
       },
     } as unknown as PrismaService;
-    const s3 = { createDownloadUrl: jest.fn().mockResolvedValue('https://s3.example/signed') } as unknown as S3Service;
-    const auditLog = { record: jest.fn().mockResolvedValue(undefined) } as unknown as AuditLogService;
-    return { controller: new FileAccessController(prisma, s3, auditLog), prisma, s3, auditLog };
+    const s3 = {
+      createDownloadUrl: jest
+        .fn()
+        .mockResolvedValue('https://s3.example/signed'),
+    } as unknown as S3Service;
+    const auditLog = {
+      record: jest.fn().mockResolvedValue(undefined),
+    } as unknown as AuditLogService;
+    return {
+      controller: new FileAccessController(prisma, s3, auditLog),
+      prisma,
+      s3,
+      auditLog,
+    };
   }
 
   describe('create', () => {
     it('rejects a duplicate request for the same file', async () => {
-      const { controller } = makeController({ findFirst: jest.fn().mockResolvedValue({ id: 'existing' }) });
-      await expect(controller.create(client, { serviceFileId: 'file-1' })).rejects.toThrow(ConflictException);
+      const { controller } = makeController({
+        findFirst: jest.fn().mockResolvedValue({ id: 'existing' }),
+      });
+      await expect(
+        controller.create(client, { serviceFileId: 'file-1' }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
@@ -46,7 +71,9 @@ describe('FileAccessController', () => {
           serviceFile: { s3Key: 'key' },
         }),
       });
-      await expect(controller.download(client, 'req-1')).rejects.toThrow(ForbiddenException);
+      await expect(controller.download(client, 'req-1')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('rejects downloading a request that has not been approved', async () => {
@@ -58,12 +85,18 @@ describe('FileAccessController', () => {
           serviceFile: { s3Key: 'key' },
         }),
       });
-      await expect(controller.download(client, 'req-1')).rejects.toThrow(ForbiddenException);
+      await expect(controller.download(client, 'req-1')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('throws 404 for a nonexistent request', async () => {
-      const { controller } = makeController({ findUnique: jest.fn().mockResolvedValue(null) });
-      await expect(controller.download(client, 'missing')).rejects.toThrow(NotFoundException);
+      const { controller } = makeController({
+        findUnique: jest.fn().mockResolvedValue(null),
+      });
+      await expect(controller.download(client, 'missing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('issues a presigned URL for the owning client once approved', async () => {
@@ -89,7 +122,9 @@ describe('FileAccessController', () => {
           serviceFile: { s3Key: 'specs/gre.pdf' },
         }),
       });
-      await expect(controller.download(admin, 'req-1')).resolves.toMatchObject({ url: expect.any(String) });
+      await expect(controller.download(admin, 'req-1')).resolves.toMatchObject({
+        url: expect.any(String),
+      });
     });
   });
 });

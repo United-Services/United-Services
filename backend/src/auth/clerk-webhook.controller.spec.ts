@@ -5,7 +5,9 @@ import type { PrismaService } from '../prisma/prisma.service';
 
 const verifyMock = jest.fn();
 jest.mock('svix', () => ({
-  Webhook: jest.fn().mockImplementation(() => ({ verify: (...args: unknown[]) => verifyMock(...args) })),
+  Webhook: jest.fn().mockImplementation(() => ({
+    verify: (...args: unknown[]) => verifyMock(...args),
+  })),
 }));
 
 // This is the ONLY place in the app a user's role is ever set from Clerk
@@ -16,7 +18,11 @@ jest.mock('svix', () => ({
 describe('ClerkWebhookController', () => {
   let prisma: { user: any };
   let controller: ClerkWebhookController;
-  const headers = { 'svix-id': 'id', 'svix-timestamp': 't', 'svix-signature': 's' };
+  const headers = {
+    'svix-id': 'id',
+    'svix-timestamp': 't',
+    'svix-signature': 's',
+  };
 
   beforeEach(() => {
     verifyMock.mockReset();
@@ -27,18 +33,24 @@ describe('ClerkWebhookController', () => {
 
   it('rejects when CLERK_WEBHOOK_SECRET is not configured', async () => {
     delete process.env.CLERK_WEBHOOK_SECRET;
-    await expect(controller.handle({ rawBody: Buffer.from('{}') }, headers)).rejects.toThrow(BadRequestException);
+    await expect(
+      controller.handle({ rawBody: Buffer.from('{}') }, headers),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it('rejects a request with no raw body', async () => {
-    await expect(controller.handle({}, headers)).rejects.toThrow(BadRequestException);
+    await expect(controller.handle({}, headers)).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   it('rejects when svix signature verification fails', async () => {
     verifyMock.mockImplementation(() => {
       throw new Error('bad signature');
     });
-    await expect(controller.handle({ rawBody: Buffer.from('{}') }, headers)).rejects.toThrow(BadRequestException);
+    await expect(
+      controller.handle({ rawBody: Buffer.from('{}') }, headers),
+    ).rejects.toThrow(BadRequestException);
     expect(prisma.user.upsert).not.toHaveBeenCalled();
   });
 
@@ -59,7 +71,11 @@ describe('ClerkWebhookController', () => {
 
     expect(prisma.user.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        create: expect.objectContaining({ role: Role.client, email: 'client@co.com', companyName: 'Acme' }),
+        create: expect.objectContaining({
+          role: Role.client,
+          email: 'client@co.com',
+          companyName: 'Acme',
+        }),
       }),
     );
   });
@@ -80,7 +96,9 @@ describe('ClerkWebhookController', () => {
     await controller.handle({ rawBody: Buffer.from('{}') }, headers);
 
     expect(prisma.user.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ create: expect.objectContaining({ role: Role.admin }) }),
+      expect.objectContaining({
+        create: expect.objectContaining({ role: Role.admin }),
+      }),
     );
   });
 
@@ -106,15 +124,26 @@ describe('ClerkWebhookController', () => {
   it('rejects when the Clerk payload has no primary email', async () => {
     verifyMock.mockReturnValue({
       type: 'user.created',
-      data: { id: 'clerk-3', email_addresses: [], primary_email_address_id: 'missing', first_name: '', last_name: '' },
+      data: {
+        id: 'clerk-3',
+        email_addresses: [],
+        primary_email_address_id: 'missing',
+        first_name: '',
+        last_name: '',
+      },
     });
 
-    await expect(controller.handle({ rawBody: Buffer.from('{}') }, headers)).rejects.toThrow(BadRequestException);
+    await expect(
+      controller.handle({ rawBody: Buffer.from('{}') }, headers),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it('ignores event types other than user.created/user.updated without touching the DB', async () => {
     verifyMock.mockReturnValue({ type: 'session.created', data: {} });
-    const result = await controller.handle({ rawBody: Buffer.from('{}') }, headers);
+    const result = await controller.handle(
+      { rawBody: Buffer.from('{}') },
+      headers,
+    );
     expect(result).toEqual({ received: true });
     expect(prisma.user.upsert).not.toHaveBeenCalled();
   });

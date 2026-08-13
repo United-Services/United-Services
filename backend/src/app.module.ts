@@ -1,20 +1,21 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
-import Redis from 'ioredis';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
 import { AuthModule } from './auth/auth.module';
 import { S3Module } from './s3/s3.module';
 import { ClerkAuthGuard } from './auth/clerk-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { HealthController } from './health/health.controller';
 import { MeController } from './me/me.controller';
 import { UploadsController } from './uploads/uploads.controller';
 import { CryptoModule } from './crypto/crypto.module';
 import { RedisModule } from './redis/redis.module';
+import { RedisService } from './redis/redis.service';
 import { MfaModule } from './mfa/mfa.module';
 import { ServicesModule } from './services/services.module';
 import { FileAccessModule } from './file-access/file-access.module';
@@ -28,16 +29,23 @@ import { GeoModule } from './geo/geo.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    ThrottlerModule.forRoot({
-      throttlers: [{ ttl: 60_000, limit: 100 }],
-      storage: new ThrottlerStorageRedisService(new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379')),
+    RedisModule,
+    // Reuses the same RedisService connection RedisModule already manages
+    // (services-list caching etc.) instead of opening a second, separate
+    // ioredis connection just for throttler storage.
+    ThrottlerModule.forRootAsync({
+      imports: [RedisModule],
+      inject: [RedisService],
+      useFactory: (redis: RedisService) => ({
+        throttlers: [{ ttl: 60_000, limit: 100 }],
+        storage: new ThrottlerStorageRedisService(redis),
+      }),
     }),
     PrismaModule,
     AuditLogModule,
     AuthModule,
     S3Module,
     CryptoModule,
-    RedisModule,
     MfaModule,
     ServicesModule,
     FileAccessModule,
@@ -55,6 +63,10 @@ import { GeoModule } from './geo/geo.module';
     { provide: APP_GUARD, useClass: ClerkAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Catches anything that escapes a controller/service unhandled —
+    // logs it, and always returns a safe, generic JSON body (never a
+    // stack trace or raw error message) for a non-HttpException error.
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
   ],
 })
 export class AppModule {}

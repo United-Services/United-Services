@@ -8,12 +8,16 @@ import type { User } from '../generated/prisma';
 // server-controlled extension for the S3 key — never trusted for anything
 // else (e.g. Content-Type on the object is still what S3 was told at PUT
 // time by the presigned URL itself).
-const ALLOWED_CONTENT_TYPES: Record<PresignUploadDto['kind'], Record<string, string>> = {
+const ALLOWED_CONTENT_TYPES: Record<
+  PresignUploadDto['kind'],
+  Record<string, string>
+> = {
   'candidate-id-photo': { 'image/jpeg': 'jpg', 'image/png': 'png' },
   'candidate-cv': {
     'application/pdf': 'pdf',
     'application/msword': 'doc',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+      'docx',
   },
 };
 
@@ -24,7 +28,10 @@ export class UploadsController {
   @Post('presign')
   async presign(@CurrentUser() user: User, @Body() dto: PresignUploadDto) {
     const extension = ALLOWED_CONTENT_TYPES[dto.kind]?.[dto.contentType];
-    if (!extension) throw new BadRequestException('Unsupported contentType for this upload kind');
+    if (!extension)
+      throw new BadRequestException(
+        'Unsupported contentType for this upload kind',
+      );
 
     const key = `candidates/${user.id}/${dto.kind}-${Date.now()}.${extension}`;
     const url = await this.s3.createUploadUrl(key, dto.contentType);

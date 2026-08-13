@@ -1,4 +1,12 @@
-import { Controller, Get, Param, Patch, Body, Query, NotFoundException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Body,
+  Query,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -39,7 +47,9 @@ export class CandidatesController {
       },
       orderBy: { id: 'desc' },
       include: {
-        candidateUser: { select: { firstName: true, lastName: true, email: true } },
+        candidateUser: {
+          select: { firstName: true, lastName: true, email: true },
+        },
         position: { select: { title: true, department: true } },
       },
     });
@@ -47,22 +57,33 @@ export class CandidatesController {
 
   @Get(':id/documents')
   async documents(@Param('id') id: string) {
-    const application = await this.prisma.candidateApplication.findUnique({ where: { id } });
+    const application = await this.prisma.candidateApplication.findUnique({
+      where: { id },
+    });
     if (!application) throw new NotFoundException('Application not found');
 
     const [idPhotoUrl, cvUrl] = await Promise.all([
-      this.s3.createDownloadUrl(application.idPhotoS3Key, DOCUMENT_URL_TTL_SECONDS),
+      this.s3.createDownloadUrl(
+        application.idPhotoS3Key,
+        DOCUMENT_URL_TTL_SECONDS,
+      ),
       this.s3.createDownloadUrl(application.cvS3Key, DOCUMENT_URL_TTL_SECONDS),
     ]);
     return { idPhotoUrl, cvUrl, expiresInSeconds: DOCUMENT_URL_TTL_SECONDS };
   }
 
   @Patch(':id/decide')
-  async decide(@CurrentUser() admin: User, @Param('id') id: string, @Body() dto: DecideApplicationDto) {
+  async decide(
+    @CurrentUser() admin: User,
+    @Param('id') id: string,
+    @Body() dto: DecideApplicationDto,
+  ) {
     const updated = await this.prisma.candidateApplication.update({
       where: { id },
       data: {
-        status: dto.approve ? ApplicationStatus.approved : ApplicationStatus.denied,
+        status: dto.approve
+          ? ApplicationStatus.approved
+          : ApplicationStatus.denied,
         reviewedByAdminId: admin.id,
         reviewedAt: new Date(),
       },

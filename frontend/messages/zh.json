@@ -9,7 +9,8 @@
     "clientPortal": "客户门户",
     "requestConsultation": "申请咨询",
     "brand": "United Services",
-    "brandSub": "埃及 · 成立于 2005 年"
+    "brandSub": "埃及 · 成立于 2005 年",
+    "menuToggle": "菜单"
   },
   "language": {
     "label": "语言",
@@ -769,7 +770,12 @@
       "totalBooked": "Total booked",
       "recentActivity": "Recent Audit Activity",
       "noActivity": "No activity yet.",
-      "viewFullLog": "View full audit log →"
+      "viewFullLog": "View full audit log →",
+      "requestsByCountry": "Requests by Country",
+      "requestsByCountrySub": "Page views over the last 90 days, resolved from visitor IP",
+      "requests": "requests",
+      "noRequests": "No requests",
+      "noGeoData": "No geo data yet — check back once the site has some traffic."
     },
     "clients": {
       "searchPlaceholder": "Search clients by name, email, or company",

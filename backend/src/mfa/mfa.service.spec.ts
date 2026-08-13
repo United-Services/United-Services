@@ -16,16 +16,27 @@ import type { User } from '../generated/prisma';
 // generated from a *different* secret must never verify.
 describe('MfaService — TOTP', () => {
   const user = { id: 'admin-1', email: 'admin@use-eg.com' } as User;
-  let prisma: { totpCredential: any; user: any; kekRegistry: any; $transaction: jest.Mock };
+  let prisma: {
+    totpCredential: any;
+    user: any;
+    kekRegistry: any;
+    $transaction: jest.Mock;
+  };
   let auditLog: { record: jest.Mock };
   let kekStore: FakeKekKeyStore;
   let service: MfaService;
 
   beforeEach(async () => {
     prisma = {
-      totpCredential: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
+      totpCredential: {
+        findUnique: jest.fn(),
+        upsert: jest.fn(),
+        update: jest.fn(),
+      },
       user: { update: jest.fn() },
-      kekRegistry: { findUnique: jest.fn().mockResolvedValue({ status: 'active' }) },
+      kekRegistry: {
+        findUnique: jest.fn().mockResolvedValue({ status: 'active' }),
+      },
       $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
     };
     auditLog = { record: jest.fn().mockResolvedValue(undefined) };
@@ -77,23 +88,33 @@ describe('MfaService — TOTP', () => {
       base32: new ScureBase32Plugin(),
     }).generate(); // fresh random secret, unrelated to the enrolled one
 
-    await expect(service.confirmTotp(user, wrongCode)).rejects.toThrow(BadRequestException);
+    await expect(service.confirmTotp(user, wrongCode)).rejects.toThrow(
+      BadRequestException,
+    );
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('rejects confirmation when no enrollment exists', async () => {
     prisma.totpCredential.findUnique.mockResolvedValue(null);
-    await expect(service.confirmTotp(user, '123456')).rejects.toThrow(BadRequestException);
+    await expect(service.confirmTotp(user, '123456')).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   it('verifyTotp returns false for an unconfirmed credential', async () => {
-    prisma.totpCredential.findUnique.mockResolvedValue({ confirmedAt: null, totpKekKeyId: 'kek-test-1' });
+    prisma.totpCredential.findUnique.mockResolvedValue({
+      confirmedAt: null,
+      totpKekKeyId: 'kek-test-1',
+    });
     await expect(service.verifyTotp(user, '123456')).resolves.toBe(false);
   });
 
   it('re-wraps the secret under the active key on successful verify when the stored key is "retiring"', async () => {
     const { secret } = await service.enrollTotp(user);
-    const stored = { ...prisma.totpCredential.upsert.mock.calls[0][0].update, confirmedAt: new Date() };
+    const stored = {
+      ...prisma.totpCredential.upsert.mock.calls[0][0].update,
+      confirmedAt: new Date(),
+    };
     prisma.totpCredential.findUnique.mockResolvedValue(stored);
     prisma.kekRegistry.findUnique.mockResolvedValue({ status: 'retiring' });
 
@@ -125,7 +146,10 @@ describe('MfaService — TOTP', () => {
 
   it('does not re-wrap when the stored key is still active', async () => {
     const { secret } = await service.enrollTotp(user);
-    const stored = { ...prisma.totpCredential.upsert.mock.calls[0][0].update, confirmedAt: new Date() };
+    const stored = {
+      ...prisma.totpCredential.upsert.mock.calls[0][0].update,
+      confirmedAt: new Date(),
+    };
     prisma.totpCredential.findUnique.mockResolvedValue(stored);
     prisma.kekRegistry.findUnique.mockResolvedValue({ status: 'active' });
 

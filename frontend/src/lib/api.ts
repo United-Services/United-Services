@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios from "axios"
 
 // Every backend call goes through this instance — no raw fetch. In the
 // browser, withCredentials carries the Clerk session cookie once the
@@ -6,7 +6,7 @@ import axios from 'axios'
 // for Server Components, which have no browser cookie jar to rely on),
 // callers attach a bearer token explicitly via authHeader() below.
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1',
+  baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1",
   withCredentials: true,
 })
 

@@ -1,4 +1,11 @@
-import { IsIn, IsObject, IsString, Length, MinLength, ValidateIf } from 'class-validator';
+import {
+  IsIn,
+  IsObject,
+  IsString,
+  Length,
+  MinLength,
+  ValidateIf,
+} from 'class-validator';
 
 // Admin password reset never goes through an email link — a fresh MFA
 // verification (TOTP code or WebAuthn assertion) must accompany the new
@@ -10,12 +17,12 @@ export class AdminPasswordResetDto {
   @IsIn(['totp', 'webauthn'])
   method!: 'totp' | 'webauthn';
 
-  @ValidateIf((o) => o.method === 'totp')
+  @ValidateIf((o: AdminPasswordResetDto) => o.method === 'totp')
   @IsString()
   @Length(6, 6)
   totpCode?: string;
 
-  @ValidateIf((o) => o.method === 'webauthn')
+  @ValidateIf((o: AdminPasswordResetDto) => o.method === 'webauthn')
   @IsObject()
   webauthnResponse?: object;
 }

@@ -6,7 +6,10 @@ import type { KekKeyStore } from '../kek-key-store.service';
 // exactly as it runs in production, including multi-key rotation
 // scenarios (an "active" key plus one or more "retiring" ones).
 export class FakeKekKeyStore {
-  private keys = new Map<string, { publicKey: Uint8Array; privateKey: Uint8Array }>();
+  private keys = new Map<
+    string,
+    { publicKey: Uint8Array; privateKey: Uint8Array }
+  >();
   private activeKeyId: string | null = null;
 
   static async create(): Promise<FakeKekKeyStore> {
@@ -16,14 +19,20 @@ export class FakeKekKeyStore {
 
   addActiveKey(keyId: string): { keyId: string } {
     const pair = sodium.crypto_box_keypair();
-    this.keys.set(keyId, { publicKey: pair.publicKey, privateKey: pair.privateKey });
+    this.keys.set(keyId, {
+      publicKey: pair.publicKey,
+      privateKey: pair.privateKey,
+    });
     this.activeKeyId = keyId;
     return { keyId };
   }
 
   addRetiringKey(keyId: string): { keyId: string } {
     const pair = sodium.crypto_box_keypair();
-    this.keys.set(keyId, { publicKey: pair.publicKey, privateKey: pair.privateKey });
+    this.keys.set(keyId, {
+      publicKey: pair.publicKey,
+      privateKey: pair.privateKey,
+    });
     return { keyId };
   }
 
@@ -37,16 +46,19 @@ export class FakeKekKeyStore {
     return key.privateKey;
   }
 
-  async getPublicKey(keyId: string): Promise<Uint8Array> {
+  getPublicKey(keyId: string): Promise<Uint8Array> {
     const key = this.keys.get(keyId);
     if (!key) throw new Error(`Unknown KEK "${keyId}"`);
-    return key.publicKey;
+    return Promise.resolve(key.publicKey);
   }
 
-  async getActivePublicKey(): Promise<{ keyId: string; publicKey: Uint8Array }> {
+  getActivePublicKey(): Promise<{ keyId: string; publicKey: Uint8Array }> {
     if (!this.activeKeyId) throw new Error('No active KEK');
     const key = this.keys.get(this.activeKeyId)!;
-    return { keyId: this.activeKeyId, publicKey: key.publicKey };
+    return Promise.resolve({
+      keyId: this.activeKeyId,
+      publicKey: key.publicKey,
+    });
   }
 
   asKekKeyStore(): KekKeyStore {

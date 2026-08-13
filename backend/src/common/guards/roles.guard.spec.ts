@@ -15,7 +15,9 @@ describe('RolesGuard', () => {
   }
 
   function guardRequiring(roles: string[] | undefined) {
-    const reflector = { getAllAndOverride: jest.fn().mockReturnValue(roles) } as unknown as Reflector;
+    const reflector = {
+      getAllAndOverride: jest.fn().mockReturnValue(roles),
+    } as unknown as Reflector;
     return new RolesGuard(reflector);
   }
 
@@ -31,11 +33,15 @@ describe('RolesGuard', () => {
 
   it('rejects a client hitting an admin-only route', () => {
     const guard = guardRequiring(['admin']);
-    expect(() => guard.canActivate(contextWithUser({ role: 'client' }))).toThrow(ForbiddenException);
+    expect(() =>
+      guard.canActivate(contextWithUser({ role: 'client' })),
+    ).toThrow(ForbiddenException);
   });
 
   it('rejects an unauthenticated request on a role-gated route', () => {
     const guard = guardRequiring(['admin']);
-    expect(() => guard.canActivate(contextWithUser(undefined))).toThrow(ForbiddenException);
+    expect(() => guard.canActivate(contextWithUser(undefined))).toThrow(
+      ForbiddenException,
+    );
   });
 });

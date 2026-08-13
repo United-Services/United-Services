@@ -30,7 +30,10 @@ export class TotpCryptoService {
     const dek = sodium.randombytes_buf(32);
     const nonce = randomBytes(NONCE_LENGTH);
     const cipher = createCipheriv(ALGORITHM, dek, nonce);
-    const ciphertext = Buffer.concat([cipher.update(plainSecret, 'utf8'), cipher.final()]);
+    const ciphertext = Buffer.concat([
+      cipher.update(plainSecret, 'utf8'),
+      cipher.final(),
+    ]);
     const authTag = cipher.getAuthTag();
 
     const { keyId, publicKey } = await this.kekStore.getActivePublicKey();
@@ -53,13 +56,23 @@ export class TotpCryptoService {
     const privateKey = this.kekStore.getPrivateKey(record.totpKekKeyId);
     const publicKey = await this.kekStore.getPublicKey(record.totpKekKeyId);
 
-    const dek = sodium.crypto_box_seal_open(sodium.from_base64(record.totpWrappedDek), publicKey, privateKey);
+    const dek = sodium.crypto_box_seal_open(
+      sodium.from_base64(record.totpWrappedDek),
+      publicKey,
+      privateKey,
+    );
     if (!dek) {
-      throw new InternalServerErrorException('Failed to unwrap DEK — corrupted data or wrong key');
+      throw new InternalServerErrorException(
+        'Failed to unwrap DEK — corrupted data or wrong key',
+      );
     }
 
     try {
-      const decipher = createDecipheriv(ALGORITHM, dek, Buffer.from(record.totpNonce, 'base64'));
+      const decipher = createDecipheriv(
+        ALGORITHM,
+        dek,
+        Buffer.from(record.totpNonce, 'base64'),
+      );
       decipher.setAuthTag(Buffer.from(record.totpAuthTag, 'base64'));
       const plaintext = Buffer.concat([
         decipher.update(Buffer.from(record.totpCiphertext, 'base64')),

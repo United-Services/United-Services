@@ -1,4 +1,10 @@
-import { BadRequestException, Controller, Headers, Post, Req } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Headers,
+  Post,
+  Req,
+} from '@nestjs/common';
 import { Webhook } from 'svix';
 import { Public } from '../common/decorators/public.decorator';
 import { PrismaService } from '../prisma/prisma.service';
@@ -29,7 +35,10 @@ export class ClerkWebhookController {
 
   @Public()
   @Post()
-  async handle(@Req() req: { rawBody?: Buffer }, @Headers() headers: Record<string, string>) {
+  async handle(
+    @Req() req: { rawBody?: Buffer },
+    @Headers() headers: Record<string, string>,
+  ) {
     const secret = process.env.CLERK_WEBHOOK_SECRET;
     if (!secret) throw new BadRequestException('Webhook not configured');
     if (!req.rawBody) throw new BadRequestException('Missing raw body');
@@ -48,8 +57,11 @@ export class ClerkWebhookController {
 
     if (event.type === 'user.created' || event.type === 'user.updated') {
       const data = event.data;
-      const primaryEmail = data.email_addresses.find((e) => e.id === data.primary_email_address_id)?.email_address;
-      if (!primaryEmail) throw new BadRequestException('No primary email on Clerk user');
+      const primaryEmail = data.email_addresses.find(
+        (e) => e.id === data.primary_email_address_id,
+      )?.email_address;
+      if (!primaryEmail)
+        throw new BadRequestException('No primary email on Clerk user');
 
       await this.prisma.user.upsert({
         where: { clerkId: data.id },
@@ -58,7 +70,9 @@ export class ClerkWebhookController {
           email: primaryEmail,
           firstName: data.first_name ?? '',
           lastName: data.last_name ?? '',
-          phone: data.phone_numbers?.[0]?.phone_number ?? data.unsafe_metadata?.phone,
+          phone:
+            data.phone_numbers?.[0]?.phone_number ??
+            data.unsafe_metadata?.phone,
           role: data.public_metadata?.role ?? Role.client,
           companyName: data.unsafe_metadata?.companyName,
         },
@@ -66,7 +80,9 @@ export class ClerkWebhookController {
           email: primaryEmail,
           firstName: data.first_name ?? '',
           lastName: data.last_name ?? '',
-          phone: data.phone_numbers?.[0]?.phone_number ?? data.unsafe_metadata?.phone,
+          phone:
+            data.phone_numbers?.[0]?.phone_number ??
+            data.unsafe_metadata?.phone,
         },
       });
     }
