@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl'
 import { palette, inputStyle } from '../theme'
 import PublicNav from '../components/PublicNav'
 import PublicFooter from '../components/PublicFooter'
+import { InlineSpinner } from '../components/Spinner'
 
 interface Props { onNavigate: (page: string) => void }
 
@@ -134,7 +135,7 @@ export default function Contact({ onNavigate }: Props) {
                   onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = palette.accent }} onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = '#E2E8F0' }} />
               </div>
               <button type="submit" disabled={loading} style={{ width: '100%', padding: '14px', borderRadius: 9999, border: 'none', background: loading ? '#9CA3AF' : palette.accent, color: '#fff', fontWeight: 700, fontSize: 16, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-                {loading ? t('form.sending') : t('form.submit')}
+                {loading ? <><InlineSpinner size={14} /> {t('form.sending')}</> : t('form.submit')}
               </button>
             </form>
           )}

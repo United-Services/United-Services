@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { useTranslations } from 'next-intl'
 import { palette, inputStyle } from '../theme'
+import { InlineSpinner } from '../components/Spinner'
 import { api, authHeader } from '../lib/api'
 
 const FALLBACK_IMG = '/images/bp-valves.jpg'
@@ -180,7 +181,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
             </div>
             <div style={{ overflow: 'hidden' }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {me ? `${me.firstName} ${me.lastName}` : t('loading')}
+                {me ? `${me.firstName} ${me.lastName}` : <InlineSpinner size={12} />}
               </div>
               <div style={{ fontSize: 11, color: '#475569' }}>{me?.companyName ?? ''}</div>
             </div>
@@ -225,7 +226,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                         )}
                         {hasFile && status === 'none' && (
                           <button onClick={() => requestSpec(s.id)} disabled={requestingId === s.id} style={{ width: '100%', padding: '9px', background: '#4B5563', color: '#fff', border: 'none', borderRadius: 9999, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-                            {requestingId === s.id ? t('services.requesting') : t('services.requestSpecFile')}
+                            {requestingId === s.id ? <><InlineSpinner size={13} /> {t('services.requesting')}</> : t('services.requestSpecFile')}
                           </button>
                         )}
                         {hasFile && status === 'pending' && (
@@ -286,7 +287,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                       onFocus={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = palette.accent }} onBlur={(e) => { (e.target as HTMLTextAreaElement).style.borderColor = '#E2E8F0' }} />
                   </div>
                   <button type="submit" disabled={rfqLoading} style={{ width: '100%', padding: '13px', borderRadius: 9999, border: 'none', background: rfqLoading ? '#9CA3AF' : palette.accent, color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-                    {rfqLoading ? t('rfq.submitting') : t('rfq.submit')}
+                    {rfqLoading ? <><InlineSpinner size={14} /> {t('rfq.submitting')}</> : t('rfq.submit')}
                   </button>
                 </form>
               )}
@@ -339,7 +340,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                   {apptError && <p style={{ fontSize: 13, color: '#DC2626', marginBottom: 16 }}>{apptError}</p>}
 
                   <button type="submit" disabled={apptLoading || !selectedSlotId} style={{ width: '100%', padding: '13px', borderRadius: 9999, border: 'none', background: apptLoading ? '#9CA3AF' : '#4B5563', color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-                    {apptLoading ? t('appointments.booking') : t('appointments.book')}
+                    {apptLoading ? <><InlineSpinner size={14} /> {t('appointments.booking')}</> : t('appointments.book')}
                   </button>
                 </form>
               )}
@@ -355,7 +356,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                     {me?.firstName?.[0] ?? '·'}
                   </div>
                   <div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: palette.navy }}>{me ? `${me.firstName} ${me.lastName}` : t('loading')}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: palette.navy }}>{me ? `${me.firstName} ${me.lastName}` : <InlineSpinner size={12} />}</div>
                     <div style={{ fontSize: 13, color: palette.muted }}>{me?.companyName ?? ''}</div>
                   </div>
                 </div>

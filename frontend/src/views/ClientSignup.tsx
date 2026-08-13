@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useSignUp } from '@clerk/nextjs'
 import { useTranslations } from 'next-intl'
 import { palette, inputStyle } from '../theme'
+import { InlineSpinner } from '../components/Spinner'
 const worldImg = 'https://images.unsplash.com/photo-1602860109208-613d39362844?w=1200&q=85'
 
 interface Props {
@@ -263,7 +264,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                 </button>
               )}
               <button type="submit" disabled={loading} style={{ flex: 1, padding: '13px', borderRadius: 9999, border: 'none', background: loading ? '#9CA3AF' : palette.accent, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-                {loading ? t('pleaseWait') : step === 8 ? t('verifyAndCreate') : t('next')}
+                {loading ? <><InlineSpinner size={14} /> {t('pleaseWait')}</> : step === 8 ? t('verifyAndCreate') : t('next')}
               </button>
             </div>
           </form>

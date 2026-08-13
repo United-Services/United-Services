@@ -3,6 +3,7 @@ import { useState, useRef } from 'react'
 import { useSignUp, useAuth } from '@clerk/nextjs'
 import { useTranslations } from 'next-intl'
 import { palette, inputStyle } from '../theme'
+import { InlineSpinner } from '../components/Spinner'
 import { api, authHeader } from '../lib/api'
 
 interface Props { onNavigate: (page: string) => void }
@@ -158,7 +159,7 @@ export default function CandidateSignup({ onNavigate }: Props) {
               </div>
               {error && <p style={{ fontSize: 12, color: '#DC2626', marginBottom: 16, fontWeight: 600 }}>{error}</p>}
               <button type="submit" disabled={loading} style={{ width: '100%', padding: '14px', borderRadius: 9999, border: 'none', background: loading ? '#9CA3AF' : palette.accent, color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-                {loading ? t('verify.submitting') : t('verify.submit')}
+                {loading ? <><InlineSpinner size={14} /> {t('verify.submitting')}</> : t('verify.submit')}
               </button>
             </form>
           ) : (
@@ -218,7 +219,7 @@ export default function CandidateSignup({ onNavigate }: Props) {
             {error && <p style={{ fontSize: 12, color: '#DC2626', marginBottom: 16, fontWeight: 600 }}>{error}</p>}
 
             <button type="submit" disabled={loading || !idFile || !cvFile} style={{ width: '100%', padding: '14px', borderRadius: 9999, border: 'none', background: loading || !idFile || !cvFile ? '#9CA3AF' : palette.accent, color: '#fff', fontWeight: 700, fontSize: 15, cursor: loading || !idFile || !cvFile ? 'not-allowed' : 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-              {loading ? t('form.creatingAccount') : t('form.continue')}
+              {loading ? <><InlineSpinner size={14} /> {t('form.creatingAccount')}</> : t('form.continue')}
             </button>
 
             <p style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 14, lineHeight: 1.5 }}>

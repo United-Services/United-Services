@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { useTranslations } from 'next-intl'
 import { palette } from '../theme'
+import { InlineSpinner } from '../components/Spinner'
 import { api, authHeader } from '../lib/api'
 import AdminSecuritySection from './AdminSecuritySection'
 
@@ -388,7 +389,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                       onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelected(svc.id, f) }}
                     />
                     <button onClick={() => uploadSpec(svc.id)} disabled={uploadingId === svc.id} style={{ width: '100%', padding: '9px', background: latest ? '#F1F5F9' : palette.accent, color: latest ? palette.slate : '#fff', border: 'none', borderRadius: 9999, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-                      {uploadingId === svc.id ? t('specs.uploading') : latest ? t('specs.replaceFile') : t('specs.uploadFile')}
+                      {uploadingId === svc.id ? <><InlineSpinner size={13} /> {t('specs.uploading')}</> : latest ? t('specs.replaceFile') : t('specs.uploadFile')}
                     </button>
                   </div>
                 )

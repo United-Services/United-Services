@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/nextjs'
 import { useTranslations } from 'next-intl'
 import { startRegistration } from '@simplewebauthn/browser'
 import { palette, inputStyle } from '../theme'
+import Spinner, { InlineSpinner } from '../components/Spinner'
 import { api, authHeader } from '../lib/api'
 
 interface Props {
@@ -123,7 +124,7 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
               onFocus={(e) => { e.target.style.borderColor = palette.accent }} onBlur={(e) => { e.target.style.borderColor = '#E2E8F0' }} />
             {error && <p style={{ fontSize: 13, color: '#DC2626', marginTop: 14 }}>{error}</p>}
             <button type="submit" disabled={loading} style={{ width: '100%', marginTop: 20, padding: '13px', borderRadius: 9999, border: 'none', background: loading ? '#9CA3AF' : palette.accent, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
-              {loading ? t('verifying') : t('verifyAndEnable')}
+              {loading ? <><InlineSpinner size={14} /> {t('verifying')}</> : t('verifyAndEnable')}
             </button>
             <button type="button" onClick={() => setMethod('choose')} style={{ width: '100%', marginTop: 10, padding: '10px', borderRadius: 9999, border: 'none', background: 'none', color: palette.muted, fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'Poppins, sans-serif' }}>
               {t('back')}
@@ -133,7 +134,7 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
 
         {method === 'webauthn' && (
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <p style={{ fontSize: 14, color: palette.muted }}>{loading ? t('followPrompt') : t('waiting')}</p>
+            <Spinner size="sm" message={loading ? t('followPrompt') : t('waiting')} />
             {error && <p style={{ fontSize: 13, color: '#DC2626', marginTop: 14 }}>{error}</p>}
           </div>
         )}

@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/nextjs'
 import { useTranslations } from 'next-intl'
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser'
 import { palette, inputStyle } from '../theme'
+import Spinner, { InlineSpinner } from '../components/Spinner'
 import { api, authHeader } from '../lib/api'
 
 interface WebAuthnCredentialSummary {
@@ -132,7 +133,7 @@ export default function AdminSecuritySection() {
     }
   }
 
-  if (!status) return <div style={{ fontSize: 13, color: palette.muted }}>{t('loading')}</div>
+  if (!status) return <Spinner message={t('loading')} />
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 640 }}>
