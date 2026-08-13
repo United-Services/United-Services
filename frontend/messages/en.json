@@ -157,5 +157,55 @@
       "integrated": { "title": "Integrated Capability", "desc": "Factory manufacturing and field application under one management system, ensuring quality continuity from mill to installed asset." },
       "partnership": { "title": "Client Partnership", "desc": "We embed in our clients' project teams, offering engineering support from concept through commissioning and beyond." }
     }
+  },
+  "servicesPage": {
+    "eyebrow": "USE · SHEET 02 · SYS-INDEX",
+    "title": "Systems Index",
+    "subtitle": "Six integrated corrosion-control and pipeline-integrity systems, each engineered to international standards at our 6,000 m² Cairo facility.",
+    "diagram": {
+      "eyebrow": "USE · CROSS-SECTION DETAIL · REV.03",
+      "title": "Layered Pipeline Protection",
+      "body": "A complete USE-engineered pipeline assembly integrates all protection layers into one specification, designed as a system — not as separate products.",
+      "layers": {
+        "wrap": { "label": "External Wrap / Mechanical Protection", "short": "EXTERNAL" },
+        "coating": { "label": "Anti-Corrosion Coating (FBE / Epoxy)", "short": "ANTI-CORROSION" },
+        "steel": { "label": "Steel Substrate", "short": "STEEL" },
+        "lining": { "label": "GRE / HDPE Internal Lining", "short": "GRE" },
+        "flow": { "label": "Protected Flow Zone", "short": "PROTECTED" }
+      }
+    },
+    "requestSpecFile": "Request Spec File",
+    "tags": {
+      "gre": "API 15CLT · Internal Corrosion Barrier",
+      "wrap": "ISO 21809 · Multi-Layer Tape Systems",
+      "coating": "FBE / NACE · Fusion-Bonded & Liquid Epoxy",
+      "hdpe": "PE100 / ASTM · Water Injection & Chemical Lines",
+      "rtp": "DN40–200 · 0.6–32 MPa · Reinforced Thermoplastic",
+      "rtv": "IEC 62073 · High-Voltage Insulator Protection"
+    },
+    "imgAlt": {
+      "gre": "Technicians applying GRE lining to a steel pipe at the USE factory",
+      "wrap": "Welder performing external wrapping application on steel pipe",
+      "coating": "Industrial pipeline factory with coating equipment",
+      "hdpe": "Stacked HDPE plastic pipes ready for installation",
+      "rtp": "Large industrial spool of reinforced thermoplastic pipe",
+      "rtv": "High-voltage transmission towers at sunset"
+    },
+    "desc": {
+      "gre": "Glass Reinforced Epoxy (GRE) tubular lining provides a chemically inert internal barrier for steel pipelines carrying crude oil, produced water, and corrosive hydrocarbons. Applied in our 6,000 m² factory under API 15CLT and ISO 15996 quality regimes, USE GRE liners deliver service life exceeding 20 years in H₂S and CO₂ environments.",
+      "wrap": "Multi-layer cold-applied and heat-shrink tape systems for external pipeline protection against soil corrosion, mechanical damage, and UV degradation. USE external wrap systems are qualified to ISO 21809-3 and DIN 30672 and are used for both onshore buried pipelines and subsea risers across Egypt, Iraq, KSA, and UAE.",
+      "coating": "Fusion Bonded Epoxy (FBE) and liquid epoxy coating systems for internal and external pipeline protection. Applied at the USE facility using induction-heated pipe rotation equipment, our coatings meet NACE SP0188 and CSA Z245.20 standards. Suitable for water injection, crude service, and gas distribution pipelines.",
+      "hdpe": "High-Density Polyethylene (HDPE) slip-lining and factory-installed liner systems for water injection pipelines, chemical transport lines, and produced water reinjection systems. PE100 grade material conforming to ASTM D3350 and ISO 4427, providing full corrosion immunity and hydraulic efficiency improvement.",
+      "rtp": "Reinforced Thermoplastic Pipe (RTP) systems for oil, gas, and water service in corrosive environments where steel pipelines are uneconomical. USE RTP covers sizes DN40 to DN200 at operating pressures from 0.6 MPa to 32 MPa. Continuous-length manufacture minimises field joints; lightweight spooled delivery accelerates installation by up to 40% versus steel.",
+      "rtv": "Room Temperature Vulcanising (RTV) silicone coating for high-voltage ceramic and glass insulators operating in polluted environments including desert dust, salt fog, and industrial contamination. USE RTV coatings meet IEC 62073 and IEC 60815, extending insulator service life from 5 to 20+ years and eliminating scheduled insulator washing on transmission lines."
+    },
+    "specs": {
+      "gre": ["API 15CLT Compliant", "DN50 – DN600", "Temp. up to 120°C", "pH 2–12", "Factory & field jointing"],
+      "wrap": ["ISO 21809-3 / DIN 30672", "Mechanical peel ≥ 40 N/10mm", "Operating temp −20°C to 80°C", "Cathodic disbondment resistant", "Holiday detection included"],
+      "coating": ["NACE SP0188", "CSA Z245.20", "DFT 300–500 µm FBE", "Holiday free @ 3 kV/mm", "Chemical cure verification"],
+      "hdpe": ["PE100 / ASTM D3350", "ISO 4427 Compliant", "Pressure rating to 25 bar", "Temp. −40°C to 60°C", "Electrofusion or butt-fusion joints"],
+      "rtp": ["DN40 – DN200", "0.6 – 32 MPa", "Oil / gas / water service", "Continuous spool lengths", "ISO 18226 / API 15S"],
+      "rtv": ["IEC 62073 / IEC 60815", "Pollution class IV", "Hydrophobicity class HC1", "Operating 11 kV – 500 kV", "Brush / spray application"]
+    }
   }
 }
