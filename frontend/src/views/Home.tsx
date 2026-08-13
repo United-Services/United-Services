@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { palette } from '../theme'
 import PublicNav from '../components/PublicNav'
 import PublicFooter from '../components/PublicFooter'
+import Spinner from '../components/Spinner'
 import { useReveal } from '../hooks/useReveal'
 
 const ldImg = '/images/LD-03.png'
@@ -84,20 +85,8 @@ export default function Home({ onNavigate }: Props) {
 
   return (
     <>
-      {/* Calibration screen */}
-      {loading && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: palette.navy, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: palette.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 18, color: '#fff', letterSpacing: '0.04em', marginBottom: 32 }}>
-            USE
-          </div>
-          <div style={{ fontSize: 12, color: '#64748B', letterSpacing: '0.15em' }}>
-            {t('loading.calibrating')}<span className="blink">_</span>
-          </div>
-          <div style={{ marginTop: 40, width: 180, height: 2, background: '#1E293B', borderRadius: 9999, overflow: 'hidden' }}>
-            <div style={{ height: '100%', background: palette.accent, borderRadius: 9999, animation: 'shimmer 1.4s ease forwards', width: '100%' }} />
-          </div>
-        </div>
-      )}
+      {/* Loading screen */}
+      {loading && <Spinner fullScreen size="lg" />}
 
       <div style={{ fontFamily: 'Poppins, sans-serif', background: '#fff', opacity: loading ? 0 : 1, transition: 'opacity 0.4s' }}>
         <PublicNav current="home" onNavigate={onNavigate} />

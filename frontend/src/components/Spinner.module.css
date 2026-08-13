@@ -1,0 +1,57 @@
+/* Spinner Component Styles */
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinnerContainer {
+  text-align: center;
+}
+
+.spinner {
+  border-style: solid;
+  border-color: #e0e0e0;
+  border-top-color: #00c853;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.message {
+  color: #64748b;
+  font-size: 14px;
+  margin: 0;
+}
+
+.fullScreenOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.inlineWrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+}
+
+.inlineSpinner {
+  display: inline-block;
+  border: 2px solid #e0e0e0;
+  border-top-color: #00c853;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+}
