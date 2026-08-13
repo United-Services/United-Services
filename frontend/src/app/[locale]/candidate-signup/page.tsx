@@ -1,9 +1,11 @@
-'use client'
+import type { Metadata } from 'next'
+import CandidateSignupClient from './CandidateSignupClient'
 
-import CandidateSignup from '@/views/CandidateSignup'
-import { useAppNavigate } from '@/lib/navigate'
+export const metadata: Metadata = {
+  title: 'Candidate Registration | United Services Egypt',
+  description: 'Apply to join the USE talent pipeline.',
+}
 
 export default function CandidateSignupPage() {
-  const navigate = useAppNavigate()
-  return <CandidateSignup onNavigate={navigate} />
+  return <CandidateSignupClient />
 }

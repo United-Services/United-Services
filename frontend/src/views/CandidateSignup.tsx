@@ -6,9 +6,9 @@ import { palette, inputStyle } from '../theme'
 import { InlineSpinner } from '../components/Spinner'
 import { api, authHeader } from '../lib/api'
 
-interface Props { onNavigate: (page: string) => void }
+interface Props { onNavigate: (page: string) => void; positionId?: string | null }
 
-export default function CandidateSignup({ onNavigate }: Props) {
+export default function CandidateSignup({ onNavigate, positionId }: Props) {
   const { signUp } = useSignUp()
   const { getToken } = useAuth()
   const t = useTranslations('candidateSignup')
@@ -82,7 +82,7 @@ export default function CandidateSignup({ onNavigate }: Props) {
       ])
       await api.post(
         '/me/become-candidate',
-        { dateOfBirth: form.dob, idPhotoS3Key, cvS3Key },
+        { dateOfBirth: form.dob, idPhotoS3Key, cvS3Key, ...(positionId ? { positionId } : {}) },
         { headers: authHeader(token) },
       )
 

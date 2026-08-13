@@ -338,7 +338,8 @@
         "dept": "التجارية",
         "location": "الإمارات / عن بُعد"
       }
-    }
+    },
+    "noOpenings": "لا توجد وظائف شاغرة حاليًا — يرجى المراجعة لاحقًا."
   },
   "contact": {
     "eyebrow": "USE · التواصل",
@@ -740,7 +741,8 @@
       "rfqs": "RFQs",
       "bookings": "Bookings",
       "audit": "Audit Log",
-      "security": "Security"
+      "security": "Security",
+      "positions": "Open Positions"
     },
     "status": {
       "pending": "Pending",
@@ -748,7 +750,8 @@
       "denied": "Denied",
       "in_review": "In Review",
       "quoted": "Quoted",
-      "closed": "Closed"
+      "closed": "Closed",
+      "open": "Open"
     },
     "approve": "Approve",
     "deny": "Deny",
@@ -849,6 +852,28 @@
         "When"
       ],
       "none": "No audit log entries found."
+    },
+    "positions": {
+      "createHeading": "Post a New Position",
+      "editHeading": "Edit Position",
+      "titleLabel": "Job Title",
+      "departmentLabel": "Department",
+      "descriptionLabel": "Description",
+      "saving": "Saving…",
+      "create": "Post Position",
+      "saveChanges": "Save Changes",
+      "cancel": "Cancel",
+      "cols": [
+        "Title",
+        "Department",
+        "Status",
+        "Posted",
+        "Action"
+      ],
+      "edit": "Edit",
+      "close": "Close",
+      "reopen": "Reopen",
+      "none": "No positions posted yet."
     }
   },
   "adminMfaSetup": {

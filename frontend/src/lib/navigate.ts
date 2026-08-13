@@ -22,12 +22,19 @@ export const ROUTES: Record<string, string> = {
   'admin-mfa-setup': '/admin-mfa-setup',
 }
 
+// Pages that accept an optional param carry it as this query key.
+const PARAM_KEY: Record<string, string> = {
+  projects: 'company',
+  'candidate-signup': 'position',
+}
+
 export function useAppNavigate() {
   const router = useRouter()
   return (page: string, param?: string) => {
     const base = ROUTES[page] ?? '/'
-    if (page === 'projects' && param) {
-      router.push(`${base}?company=${encodeURIComponent(param)}`)
+    const paramKey = PARAM_KEY[page]
+    if (paramKey && param) {
+      router.push(`${base}?${paramKey}=${encodeURIComponent(param)}`)
     } else {
       router.push(base)
     }

@@ -43,4 +43,13 @@ describe('useAppNavigate', () => {
     result.current('about', 'ignored-param')
     expect(push).toHaveBeenLastCalledWith('/about')
   })
+
+  it('appends an encoded ?position= param for candidate-signup', () => {
+    const { result } = renderHook(() => useAppNavigate())
+    result.current('candidate-signup', 'pos-123')
+    expect(push).toHaveBeenCalledWith('/candidate-signup?position=pos-123')
+
+    result.current('candidate-signup')
+    expect(push).toHaveBeenLastCalledWith('/candidate-signup')
+  })
 })
