@@ -12,7 +12,10 @@ describe('AdminUsersController.disable', () => {
 
   function makeController() {
     const prisma = {
-      user: { update: jest.fn().mockResolvedValue({ id: 'client-1', disabledAt: new Date() }) },
+      user: {
+        update: jest.fn().mockResolvedValue({ id: 'client-1', disabledAt: new Date() }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
     } as unknown as PrismaService;
     const auditLog = { record: jest.fn().mockResolvedValue(undefined) } as unknown as AuditLogService;
     return { controller: new AdminUsersController(prisma, auditLog), prisma, auditLog };
@@ -31,5 +34,38 @@ describe('AdminUsersController.disable', () => {
     expect(auditLog.record).toHaveBeenCalledWith(
       expect.objectContaining({ actorUserId: admin.id, action: 'user.disabled', targetId: 'client-1' }),
     );
+  });
+
+  it('enable clears disabledAt and records an audit entry', async () => {
+    const { controller, prisma, auditLog } = makeController();
+    (prisma.user.update as jest.Mock).mockResolvedValue({ id: 'client-1', disabledAt: null });
+
+    await controller.enable(admin, 'client-1');
+
+    expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: 'client-1' }, data: { disabledAt: null } });
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({ actorUserId: admin.id, action: 'user.enabled', targetId: 'client-1' }),
+    );
+  });
+
+  it('list filters by role when given', async () => {
+    const { controller, prisma } = makeController();
+    await controller.list(undefined, Role.client);
+    expect((prisma.user.findMany as jest.Mock).mock.calls[0][0].where).toEqual({ role: Role.client });
+  });
+
+  it('list combines a role filter with a free-text search across name/email/company', async () => {
+    const { controller, prisma } = makeController();
+    await controller.list('acme', Role.client);
+    const where = (prisma.user.findMany as jest.Mock).mock.calls[0][0].where;
+    expect(where.role).toBe(Role.client);
+    expect(where.OR).toBeDefined();
+  });
+
+  it('list never selects a password or credential field', async () => {
+    const { controller, prisma } = makeController();
+    await controller.list();
+    const select = (prisma.user.findMany as jest.Mock).mock.calls[0][0].select;
+    expect(Object.keys(select)).not.toContain('password');
   });
 });
