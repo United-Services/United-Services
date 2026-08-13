@@ -7,8 +7,15 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
+    seed: "ts-node prisma/seed.ts",
   },
+  // Migrations need a direct (non-pgbouncer) connection — the pooled
+  // DATABASE_URL doesn't support the advisory locks `prisma migrate` uses
+  // and will hang. PrismaService (the actual app) connects separately via
+  // an explicit @prisma/adapter-pg adapter reading DATABASE_URL — see
+  // src/prisma/prisma.service.ts. Prisma 7 no longer supports a schema-level
+  // datasource url/directUrl, so this file is the only place either is set.
   datasource: {
-    url: process.env["DATABASE_URL"],
+    url: process.env["DIRECT_URL"],
   },
 });

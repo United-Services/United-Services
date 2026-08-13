@@ -2,7 +2,7 @@ import { BadRequestException, Controller, Headers, Post, Req } from '@nestjs/com
 import { Webhook } from 'svix';
 import { Public } from '../common/decorators/public.decorator';
 import { PrismaService } from '../prisma/prisma.service';
-import { Role } from '../../generated/prisma';
+import { Role } from '../generated/prisma';
 
 interface ClerkUserPayload {
   id: string;

@@ -1,3 +1,9 @@
+// Must be the first import: PrismaService reads process.env.DATABASE_URL at
+// module-load time (to build its @prisma/adapter-pg adapter), which happens
+// as soon as AppModule is imported below — before Nest's ConfigModule has
+// had a chance to run. Loading dotenv here first guarantees env vars are
+// already in process.env by then.
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';

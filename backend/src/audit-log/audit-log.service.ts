@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '../../generated/prisma';
+import { Prisma } from '../generated/prisma';
 
 // Every admin action that changes state must call this — see
 // docs/BUSINESS_RULES.md rule 8. Kept as a thin wrapper so call sites read
