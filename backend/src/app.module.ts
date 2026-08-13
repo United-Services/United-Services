@@ -11,6 +11,7 @@ import { S3Module } from './s3/s3.module';
 import { ClerkAuthGuard } from './auth/clerk-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { HealthController } from './health/health.controller';
+import { MeController } from './me/me.controller';
 
 @Module({
   imports: [
@@ -24,7 +25,7 @@ import { HealthController } from './health/health.controller';
     AuthModule,
     S3Module,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, MeController],
   providers: [
     // Order matters: ClerkAuthGuard runs first and attaches req.user, then
     // RolesGuard can read it, then ThrottlerGuard applies rate limits.

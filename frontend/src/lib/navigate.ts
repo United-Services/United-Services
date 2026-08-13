@@ -10,13 +10,14 @@ export const ROUTES: Record<string, string> = {
   projects: '/projects',
   contact: '/contact',
   careers: '/careers',
-  'client-login': '/client-login',
-  'client-signup': '/client-signup',
-  reset1: '/reset-password',
-  reset2: '/reset-password/confirm',
+  // There is a single unified login/signup (Clerk) for every role — no
+  // separate admin login route or button. Post-auth, /dashboard decides
+  // where to send the user based on their role in our own DB.
+  'client-login': '/sign-in',
+  'admin-login': '/sign-in',
+  'client-signup': '/sign-up',
   'client-dashboard': '/client-dashboard',
   'candidate-signup': '/candidate-signup',
-  'admin-login': '/admin-login',
   'admin-dashboard': '/admin-dashboard',
 }
 
