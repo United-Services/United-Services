@@ -85,9 +85,18 @@
       "eyebrow": "03 — THE METHODOLOGY",
       "title": "A three-phase discipline.",
       "subtitle": "Every USE engagement follows the same rigorous sequence — no shortcuts, no compromises.",
-      "assess": { "title": "Assess", "desc": "Detailed pipeline inspection, corrosion mapping, and condition assessment using API-compliant protocols. We quantify the threat before we prescribe the solution." },
-      "engineer": { "title": "Engineer", "desc": "Material selection, system design, and application engineering tailored to operating pressure, temperature, chemistry, and regulatory requirements." },
-      "execute": { "title": "Execute", "desc": "Factory application and on-site installation by certified USE technicians, backed by full QA documentation, third-party inspection, and lifecycle support." }
+      "assess": {
+        "title": "Assess",
+        "desc": "Detailed pipeline inspection, corrosion mapping, and condition assessment using API-compliant protocols. We quantify the threat before we prescribe the solution."
+      },
+      "engineer": {
+        "title": "Engineer",
+        "desc": "Material selection, system design, and application engineering tailored to operating pressure, temperature, chemistry, and regulatory requirements."
+      },
+      "execute": {
+        "title": "Execute",
+        "desc": "Factory application and on-site installation by certified USE technicians, backed by full QA documentation, third-party inspection, and lifecycle support."
+      }
     },
     "servicesPreview": {
       "eyebrow": "04 — OUR SERVICES",
@@ -125,20 +134,39 @@
     "certs": {
       "eyebrow": "QUALITY CREDENTIALS",
       "title": "Certified to international standards.",
-      "apiQ1": { "body": "American Petroleum Institute", "detail": "Quality Management System for petroleum equipment manufacturers" },
-      "iso9001": { "body": "DNV · Quality Management", "detail": "International quality management standard, certified by DNV GL" },
-      "iso14001": { "body": "Environmental Management", "detail": "Environmental management system conformance" },
-      "iso45001": { "body": "Occupational H&S", "detail": "Occupational health and safety management system" },
-      "egpc": { "body": "Egyptian General Petroleum", "detail": "Registered vendor to the Egyptian General Petroleum Corporation" }
+      "apiQ1": {
+        "body": "American Petroleum Institute",
+        "detail": "Quality Management System for petroleum equipment manufacturers"
+      },
+      "iso9001": {
+        "body": "DNV · Quality Management",
+        "detail": "International quality management standard, certified by DNV GL"
+      },
+      "iso14001": {
+        "body": "Environmental Management",
+        "detail": "Environmental management system conformance"
+      },
+      "iso45001": {
+        "body": "Occupational H&S",
+        "detail": "Occupational health and safety management system"
+      },
+      "egpc": {
+        "body": "Egyptian General Petroleum",
+        "detail": "Registered vendor to the Egyptian General Petroleum Corporation"
+      }
     },
     "facility": {
       "eyebrow": "OUR FACILITY",
       "title": "6,000 m² integrated manufacturing and application facility.",
       "body": "The USE facility in Cairo houses factory lining and coating lines, pipe preparation and blast-cleaning equipment, quality control laboratory, and a field operations staging area — all on a single site.",
-      "stat1Value": "6,000 m²", "stat1Label": "Facility footprint",
-      "stat2Value": "Factory + Field", "stat2Label": "Integrated capability",
-      "stat3Value": "Egypt · Iraq · KSA · UAE", "stat3Label": "Operating regions",
-      "stat4Value": "15+ majors", "stat4Label": "Client portfolio"
+      "stat1Value": "6,000 m²",
+      "stat1Label": "Facility footprint",
+      "stat2Value": "Factory + Field",
+      "stat2Label": "Integrated capability",
+      "stat3Value": "Egypt · Iraq · KSA · UAE",
+      "stat3Label": "Operating regions",
+      "stat4Value": "15+ majors",
+      "stat4Label": "Client portfolio"
     }
   },
   "vision": {
@@ -152,10 +180,22 @@
     "missionBody": "Our mission is to protect the infrastructure that powers the region — by applying rigorous engineering, qualified materials, and certified workmanship to every project, regardless of scale or location.",
     "pillarsLabel": "STRATEGIC PILLARS",
     "pillars": {
-      "technical": { "title": "Technical Excellence", "desc": "Every engineer, inspector, and applicator at USE is trained to international standards. We do not compromise on competence." },
-      "regional": { "title": "Regional Presence", "desc": "Local engineering knowledge combined with international standards — deployed across Egypt, Iraq, KSA, and UAE." },
-      "integrated": { "title": "Integrated Capability", "desc": "Factory manufacturing and field application under one management system, ensuring quality continuity from mill to installed asset." },
-      "partnership": { "title": "Client Partnership", "desc": "We embed in our clients' project teams, offering engineering support from concept through commissioning and beyond." }
+      "technical": {
+        "title": "Technical Excellence",
+        "desc": "Every engineer, inspector, and applicator at USE is trained to international standards. We do not compromise on competence."
+      },
+      "regional": {
+        "title": "Regional Presence",
+        "desc": "Local engineering knowledge combined with international standards — deployed across Egypt, Iraq, KSA, and UAE."
+      },
+      "integrated": {
+        "title": "Integrated Capability",
+        "desc": "Factory manufacturing and field application under one management system, ensuring quality continuity from mill to installed asset."
+      },
+      "partnership": {
+        "title": "Client Partnership",
+        "desc": "We embed in our clients' project teams, offering engineering support from concept through commissioning and beyond."
+      }
     }
   },
   "servicesPage": {
@@ -167,11 +207,26 @@
       "title": "Layered Pipeline Protection",
       "body": "A complete USE-engineered pipeline assembly integrates all protection layers into one specification, designed as a system — not as separate products.",
       "layers": {
-        "wrap": { "label": "External Wrap / Mechanical Protection", "short": "EXTERNAL" },
-        "coating": { "label": "Anti-Corrosion Coating (FBE / Epoxy)", "short": "ANTI-CORROSION" },
-        "steel": { "label": "Steel Substrate", "short": "STEEL" },
-        "lining": { "label": "GRE / HDPE Internal Lining", "short": "GRE" },
-        "flow": { "label": "Protected Flow Zone", "short": "PROTECTED" }
+        "wrap": {
+          "label": "External Wrap / Mechanical Protection",
+          "short": "EXTERNAL"
+        },
+        "coating": {
+          "label": "Anti-Corrosion Coating (FBE / Epoxy)",
+          "short": "ANTI-CORROSION"
+        },
+        "steel": {
+          "label": "Steel Substrate",
+          "short": "STEEL"
+        },
+        "lining": {
+          "label": "GRE / HDPE Internal Lining",
+          "short": "GRE"
+        },
+        "flow": {
+          "label": "Protected Flow Zone",
+          "short": "PROTECTED"
+        }
       }
     },
     "requestSpecFile": "Request Spec File",
@@ -200,12 +255,48 @@
       "rtv": "Room Temperature Vulcanising (RTV) silicone coating for high-voltage ceramic and glass insulators operating in polluted environments including desert dust, salt fog, and industrial contamination. USE RTV coatings meet IEC 62073 and IEC 60815, extending insulator service life from 5 to 20+ years and eliminating scheduled insulator washing on transmission lines."
     },
     "specs": {
-      "gre": ["API 15CLT Compliant", "DN50 – DN600", "Temp. up to 120°C", "pH 2–12", "Factory & field jointing"],
-      "wrap": ["ISO 21809-3 / DIN 30672", "Mechanical peel ≥ 40 N/10mm", "Operating temp −20°C to 80°C", "Cathodic disbondment resistant", "Holiday detection included"],
-      "coating": ["NACE SP0188", "CSA Z245.20", "DFT 300–500 µm FBE", "Holiday free @ 3 kV/mm", "Chemical cure verification"],
-      "hdpe": ["PE100 / ASTM D3350", "ISO 4427 Compliant", "Pressure rating to 25 bar", "Temp. −40°C to 60°C", "Electrofusion or butt-fusion joints"],
-      "rtp": ["DN40 – DN200", "0.6 – 32 MPa", "Oil / gas / water service", "Continuous spool lengths", "ISO 18226 / API 15S"],
-      "rtv": ["IEC 62073 / IEC 60815", "Pollution class IV", "Hydrophobicity class HC1", "Operating 11 kV – 500 kV", "Brush / spray application"]
+      "gre": [
+        "API 15CLT Compliant",
+        "DN50 – DN600",
+        "Temp. up to 120°C",
+        "pH 2–12",
+        "Factory & field jointing"
+      ],
+      "wrap": [
+        "ISO 21809-3 / DIN 30672",
+        "Mechanical peel ≥ 40 N/10mm",
+        "Operating temp −20°C to 80°C",
+        "Cathodic disbondment resistant",
+        "Holiday detection included"
+      ],
+      "coating": [
+        "NACE SP0188",
+        "CSA Z245.20",
+        "DFT 300–500 µm FBE",
+        "Holiday free @ 3 kV/mm",
+        "Chemical cure verification"
+      ],
+      "hdpe": [
+        "PE100 / ASTM D3350",
+        "ISO 4427 Compliant",
+        "Pressure rating to 25 bar",
+        "Temp. −40°C to 60°C",
+        "Electrofusion or butt-fusion joints"
+      ],
+      "rtp": [
+        "DN40 – DN200",
+        "0.6 – 32 MPa",
+        "Oil / gas / water service",
+        "Continuous spool lengths",
+        "ISO 18226 / API 15S"
+      ],
+      "rtv": [
+        "IEC 62073 / IEC 60815",
+        "Pollution class IV",
+        "Hydrophobicity class HC1",
+        "Operating 11 kV – 500 kV",
+        "Brush / spray application"
+      ]
     }
   },
   "careers": {
@@ -217,12 +308,36 @@
     "typeContract": "Contract",
     "applyNow": "Apply Now",
     "roles": {
-      "eng01": { "title": "Senior Corrosion Engineer", "dept": "Engineering", "location": "Cairo, Egypt" },
-      "ops02": { "title": "GRE Lining Applicator – Level 3", "dept": "Operations", "location": "Cairo Factory" },
-      "qc03": { "title": "QC Inspector (NACE Level II)", "dept": "Quality", "location": "Cairo / Field" },
-      "ops04": { "title": "Field Coating Supervisor", "dept": "Operations", "location": "Iraq / KSA" },
-      "hse05": { "title": "HSE Officer", "dept": "Health & Safety", "location": "Cairo, Egypt" },
-      "com06": { "title": "Business Development Engineer – Gulf", "dept": "Commercial", "location": "UAE / Remote" }
+      "eng01": {
+        "title": "Senior Corrosion Engineer",
+        "dept": "Engineering",
+        "location": "Cairo, Egypt"
+      },
+      "ops02": {
+        "title": "GRE Lining Applicator – Level 3",
+        "dept": "Operations",
+        "location": "Cairo Factory"
+      },
+      "qc03": {
+        "title": "QC Inspector (NACE Level II)",
+        "dept": "Quality",
+        "location": "Cairo / Field"
+      },
+      "ops04": {
+        "title": "Field Coating Supervisor",
+        "dept": "Operations",
+        "location": "Iraq / KSA"
+      },
+      "hse05": {
+        "title": "HSE Officer",
+        "dept": "Health & Safety",
+        "location": "Cairo, Egypt"
+      },
+      "com06": {
+        "title": "Business Development Engineer – Gulf",
+        "dept": "Commercial",
+        "location": "UAE / Remote"
+      }
     }
   },
   "contact": {
@@ -257,6 +372,187 @@
     "sent": {
       "title": "Message Sent",
       "body": "Thank you, {name}. A USE engineer will contact you at <strong>{email}</strong> within one business day."
+    }
+  },
+  "projects": {
+    "eyebrow": "USE · SHEET 03 · PROJECT LOG",
+    "title": "Projects",
+    "titleWithCompany": "Projects with {company}",
+    "subtitle": "Pipeline integrity and corrosion-control work delivered for operators across Egypt and the region.",
+    "subtitleWithCompany": "A selection of pipeline integrity and corrosion-control work delivered for {company}.",
+    "viewAllClients": "← View all clients",
+    "companies": {
+      "adnoc": {
+        "region": "United Arab Emirates",
+        "projects": {
+          "p1": {
+            "title": "Offshore Water Injection Pipeline Lining",
+            "desc": "Factory-applied GRE lining for water injection flowlines servicing offshore production platforms, engineered for high-salinity produced water service."
+          },
+          "p2": {
+            "title": "Onshore Trunkline External Protection",
+            "desc": "Multi-layer tape wrapping system applied to buried onshore trunklines to guard against soil-side corrosion in coastal desert terrain."
+          }
+        }
+      },
+      "bp": {
+        "region": "Gulf of Suez, Egypt",
+        "projects": {
+          "p1": {
+            "title": "Gulf of Suez Riser Coating Programme",
+            "desc": "FBE coating applied to riser and topside piping across a Gulf of Suez production complex, meeting NACE SP0188 requirements."
+          },
+          "p2": {
+            "title": "Produced Water Reinjection Line",
+            "desc": "Slip-lined HDPE liner installed inside existing steel pipeline to extend service life of a produced water reinjection system."
+          }
+        }
+      },
+      "eni": {
+        "region": "Nile Delta, Egypt",
+        "projects": {
+          "p1": {
+            "title": "Nile Delta Gas Gathering Network",
+            "desc": "Reinforced thermoplastic pipe spooled and installed across a gas gathering network, reducing field joints and accelerating build schedule."
+          },
+          "p2": {
+            "title": "Substation Insulator Protection",
+            "desc": "RTV silicone coating applied to high-voltage insulators at a field substation to reduce flashover risk from desert dust and salt fog."
+          }
+        }
+      },
+      "petrobel": {
+        "region": "Sinai / Gulf of Suez",
+        "projects": {
+          "p1": {
+            "title": "Crude Gathering Line Rehabilitation",
+            "desc": "GRE lining specified for crude oil gathering lines exposed to H₂S and CO₂ service conditions across a mature field development."
+          },
+          "p2": {
+            "title": "Platform Piping External Wrap",
+            "desc": "Heat-shrink sleeve systems applied at pipeline tie-ins and field joints on offshore platform piping."
+          }
+        }
+      },
+      "apache": {
+        "region": "Western Desert, Egypt",
+        "projects": {
+          "p1": {
+            "title": "Western Desert Flowline Coating",
+            "desc": "FBE and liquid epoxy coating applied to flowlines connecting wellheads to central processing facilities in the Western Desert concession."
+          },
+          "p2": {
+            "title": "Chemical Injection Line Upgrade",
+            "desc": "HDPE-lined chemical transport lines installed to resist corrosive scale inhibitor and biocide chemistries."
+          }
+        }
+      },
+      "bapetco": {
+        "region": "Western Desert, Egypt",
+        "projects": {
+          "p1": {
+            "title": "Water Injection Network Expansion",
+            "desc": "RTP pipe systems deployed across an expanding water injection network to manage produced water reinjection at scale."
+          },
+          "p2": {
+            "title": "Wellhead Piping Corrosion Barrier",
+            "desc": "GRE tubular lining applied to wellhead flowlines to arrest internal corrosion in high-chloride produced fluids."
+          }
+        }
+      },
+      "khalda": {
+        "region": "Western Desert, Egypt",
+        "projects": {
+          "p1": {
+            "title": "Central Processing Facility Coating",
+            "desc": "NACE-compliant coating system applied across process piping at a central gathering and processing facility."
+          },
+          "p2": {
+            "title": "Buried Pipeline External Protection",
+            "desc": "ISO 21809-3 qualified tape wrap system applied to buried export pipelines in desert soil conditions."
+          }
+        }
+      },
+      "agiba": {
+        "region": "Western Desert, Egypt",
+        "projects": {
+          "p1": {
+            "title": "Flowline Internal Lining Programme",
+            "desc": "Multi-well flowline internal lining programme addressing internal corrosion across a mature concession."
+          },
+          "p2": {
+            "title": "Insulator Refurbishment",
+            "desc": "RTV coating applied to field power distribution insulators to extend maintenance intervals."
+          }
+        }
+      },
+      "osoco": {
+        "region": "Egypt",
+        "projects": {
+          "p1": {
+            "title": "Export Pipeline Coating Upgrade",
+            "desc": "FBE recoating and repair works on an export pipeline segment identified through corrosion mapping inspection."
+          },
+          "p2": {
+            "title": "Chemical Line HDPE Retrofit",
+            "desc": "Existing steel chemical lines retrofitted with HDPE liner to eliminate recurring corrosion failures."
+          }
+        }
+      },
+      "dara": {
+        "region": "Egypt",
+        "projects": {
+          "p1": {
+            "title": "Gathering Network RTP Installation",
+            "desc": "RTP systems installed across a low-pressure gathering network, reducing installation time versus conventional steel pipe."
+          }
+        }
+      },
+      "shell": {
+        "region": "Egypt",
+        "projects": {
+          "p1": {
+            "title": "Downstream Piping Coating Works",
+            "desc": "Coating works carried out on downstream process piping at a fuel distribution terminal."
+          }
+        }
+      },
+      "qarun": {
+        "region": "Western Desert, Egypt",
+        "projects": {
+          "p1": {
+            "title": "Flowline External Wrap Programme",
+            "desc": "External wrap protection applied across a wellhead-to-facility flowline network."
+          }
+        }
+      },
+      "qp": {
+        "region": "Qatar",
+        "projects": {
+          "p1": {
+            "title": "Onshore Pipeline Lining Study",
+            "desc": "GRE lining specification and application trials for onshore pipeline sections in corrosive service."
+          }
+        }
+      },
+      "west": {
+        "region": "Egypt",
+        "projects": {
+          "p1": {
+            "title": "Produced Water Line Rehabilitation",
+            "desc": "HDPE slip-lining used to rehabilitate a produced water pipeline nearing end of service life."
+          }
+        }
+      },
+      "petrosilah": {
+        "region": "Egypt",
+        "projects": {
+          "p1": {
+            "title": "Wellhead Insulator Coating",
+            "desc": "RTV silicone coating applied to wellhead-area high-voltage insulators to reduce pollution-related flashover."
+          }
+        }
+      }
     }
   }
 }
