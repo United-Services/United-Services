@@ -9,9 +9,10 @@ import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
+import { BetterstackLogger } from './logging/betterstack.logger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const app = await NestFactory.create(AppModule, { rawBody: true, logger: new BetterstackLogger() });
 
   app.use(cookieParser());
   app.use(
