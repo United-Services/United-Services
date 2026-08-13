@@ -52,6 +52,8 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec tsc --noEmit
+      - name: Unit tests
+        run: pnpm test
       # NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must be a syntactically valid test
       # key for the build to succeed even though no real Clerk instance is
       # reachable in CI.
