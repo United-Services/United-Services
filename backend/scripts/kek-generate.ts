@@ -19,7 +19,11 @@ async function main() {
   if (!dir) throw new Error('KEK_KEYS_DIR is not set');
   await fs.mkdir(dir, { recursive: true });
 
-  const keyId = `kek-${new Date().toISOString().slice(0, 10)}`;
+  // Full timestamp (not just the date) so an intentional same-day
+  // rotation never collides with the previous key's filename — a
+  // date-only id would try to overwrite that day's already-0400 file and
+  // fail with EACCES.
+  const keyId = `kek-${new Date().toISOString().replace(/[:.]/g, '-')}`;
   const { publicKey, privateKey } = sodium.crypto_box_keypair();
 
   const keyPath = path.join(dir, `${keyId}.key`);
