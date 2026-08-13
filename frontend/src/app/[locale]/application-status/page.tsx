@@ -16,9 +16,6 @@ export default function ApplicationStatusPage() {
       <div style={{ height: 68 }} />
       <section style={{ padding: '96px 28px', textAlign: 'center' }}>
         <div style={{ maxWidth: 560, margin: '0 auto' }}>
-          <div style={{ fontSize: 11, color: palette.accent, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 16 }}>
-            {t('eyebrow')}
-          </div>
           <h1 style={{ fontSize: 32, fontWeight: 800, color: palette.navy, marginBottom: 16 }}>
             {t('title')}
           </h1>

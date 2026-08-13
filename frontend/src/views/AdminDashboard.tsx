@@ -296,9 +296,8 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
 
       {/* Main */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <header style={{ height: 64, background: '#fff', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px' }}>
+        <header style={{ height: 64, background: '#fff', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', padding: '0 32px' }}>
           <h1 style={{ fontSize: 17, fontWeight: 700, color: palette.navy }}>{NAV.find((n) => n.id === section)?.label ?? t('headerFallback')}</h1>
-          <div style={{ fontSize: 11, color: palette.muted, letterSpacing: '0.1em' }}>{t('restrictedAccess')}</div>
         </header>
 
         <main style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>

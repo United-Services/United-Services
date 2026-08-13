@@ -40,7 +40,6 @@ export default function Contact({ onNavigate }: Props) {
         <div style={{ maxWidth: 1260, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 80 }}>
           {/* Info */}
           <div>
-            <div style={{ fontSize: 11, color: palette.accent, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 16 }}>{t('eyebrow')}</div>
             <h1 style={{ fontSize: 42, fontWeight: 800, color: palette.navy, letterSpacing: '-0.03em', marginBottom: 20, lineHeight: 1.1 }}>{t('title')}</h1>
             <p style={{ fontSize: 15, color: palette.slate, lineHeight: 1.8, marginBottom: 40 }}>
               {t('subtitle')}

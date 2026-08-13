@@ -143,7 +143,6 @@ export default function CandidateSignup({ onNavigate }: Props) {
         </button>
 
         <div style={{ background: '#fff', borderRadius: 24, padding: '48px', border: '1px solid #E2E8F0' }}>
-          <div style={{ fontSize: 11, color: palette.accent, fontWeight: 700, letterSpacing: '0.15em', marginBottom: 10 }}>{t('eyebrow')}</div>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: palette.navy, marginBottom: 8, letterSpacing: '-0.02em' }}>{t('title')}</h1>
           <p style={{ fontSize: 14, color: palette.muted, marginBottom: 36, lineHeight: 1.6 }}>
             {t('subtitle')}

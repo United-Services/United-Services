@@ -44,9 +44,6 @@ export default function Services({ onNavigate }: Props) {
       {/* Page header */}
       <section style={{ paddingTop: 68, background: palette.navy, padding: '120px 28px 80px' }}>
         <div style={{ maxWidth: 1260, margin: '0 auto' }}>
-          <div style={{ fontSize: 11, color: '#475569', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 20 }}>
-            {t('eyebrow')}
-          </div>
           <h1 style={{ fontSize: 'clamp(36px, 5vw, 64px)', fontWeight: 800, color: '#fff', letterSpacing: '-0.03em', marginBottom: 20, maxWidth: 700 }}>
             {t('title')}
           </h1>
@@ -60,9 +57,6 @@ export default function Services({ onNavigate }: Props) {
       <section style={{ background: '#F8FAFC', padding: '72px 28px', borderBottom: '1px solid #E2E8F0' }}>
         <div style={{ maxWidth: 1260, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 72, alignItems: 'center' }}>
           <div className="reveal-left">
-            <div style={{ fontSize: 11, color: palette.accent, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 20 }}>
-              {t('diagram.eyebrow')}
-            </div>
             <h2 style={{ fontSize: 32, fontWeight: 800, color: palette.navy, marginBottom: 12, letterSpacing: '-0.02em' }}>{t('diagram.title')}</h2>
             <p style={{ fontSize: 14, color: palette.muted, lineHeight: 1.7, marginBottom: 32 }}>
               {t('diagram.body')}

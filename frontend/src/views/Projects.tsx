@@ -173,9 +173,6 @@ export default function Projects({ onNavigate, company }: Props) {
         <img src={headerImg} alt="Industrial pipe corridor" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.5 }} />
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(15,23,42,0.75), rgba(15,23,42,0.96))' }} />
         <div style={{ position: 'relative', zIndex: 2, maxWidth: 1260, margin: '0 auto' }}>
-          <div style={{ fontSize: 11, color: '#94A3B8', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 20 }}>
-            {t('eyebrow')}
-          </div>
           <h1 style={{ fontSize: 'clamp(36px, 5vw, 64px)', fontWeight: 800, color: '#fff', letterSpacing: '-0.03em', marginBottom: 20, maxWidth: 700 }}>
             {filter ? t('titleWithCompany', { company: filter }) : t('title')}
           </h1>

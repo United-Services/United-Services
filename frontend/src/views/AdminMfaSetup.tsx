@@ -90,7 +90,6 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC', fontFamily: 'Poppins, sans-serif', padding: 24 }}>
       <div style={{ maxWidth: 480, width: '100%', background: '#fff', borderRadius: 24, padding: '48px', border: '1px solid #E2E8F0' }}>
-        <div style={{ fontSize: 11, color: palette.accent, fontWeight: 700, letterSpacing: '0.15em', marginBottom: 10 }}>{t('eyebrow')}</div>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: palette.navy, marginBottom: 8 }}>{t('title')}</h1>
         <p style={{ fontSize: 14, color: palette.muted, lineHeight: 1.7, marginBottom: 28 }}>
           {t('subtitle')}

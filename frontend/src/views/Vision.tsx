@@ -22,7 +22,6 @@ export default function Vision({ onNavigate }: Props) {
         <img src={heroImg} alt="Industrial pipe corridor" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.78)' }} />
         <div style={{ position: 'relative', zIndex: 2, maxWidth: 1260, margin: '0 auto', padding: '0 28px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', paddingBottom: 72 }}>
-          <div style={{ fontSize: 11, color: '#475569', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 20 }}>{t('eyebrow')}</div>
           <h1 style={{ fontSize: 'clamp(36px, 5vw, 64px)', fontWeight: 800, color: '#fff', letterSpacing: '-0.03em', maxWidth: 680 }}>
             {t('title')}
           </h1>

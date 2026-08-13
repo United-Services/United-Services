@@ -90,9 +90,6 @@ export default function Home({ onNavigate }: Props) {
           <div style={{ width: 52, height: 52, borderRadius: 14, background: palette.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 18, color: '#fff', letterSpacing: '0.04em', marginBottom: 32 }}>
             USE
           </div>
-          <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#475569', marginBottom: 12 }}>
-            {t('loading.portal')}
-          </div>
           <div style={{ fontSize: 12, color: '#64748B', letterSpacing: '0.15em' }}>
             {t('loading.calibrating')}<span className="blink">_</span>
           </div>
@@ -321,7 +318,6 @@ export default function Home({ onNavigate }: Props) {
           <div style={{ maxWidth: 1260, margin: '0 auto' }}>
             <div className="reveal" style={{ background: palette.accent, borderRadius: 28, padding: '64px 64px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 40, flexWrap: 'wrap' }}>
               <div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 16 }}>{t('cta.eyebrow')}</div>
                 <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em', marginBottom: 12 }}>
                   {t('cta.title')}
                 </h2>

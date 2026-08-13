@@ -30,7 +30,6 @@ export default function About({ onNavigate }: Props) {
       {/* Header */}
       <section style={{ background: palette.navy, padding: '120px 28px 80px' }}>
         <div style={{ maxWidth: 1260, margin: '0 auto' }}>
-          <div style={{ fontSize: 11, color: '#475569', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 20 }}>{t('eyebrow')}</div>
           <h1 style={{ fontSize: 'clamp(36px, 5vw, 64px)', fontWeight: 800, color: '#fff', letterSpacing: '-0.03em', maxWidth: 640, lineHeight: 1.05 }}>
             {t('title')}
           </h1>
