@@ -18,6 +18,11 @@ import { RedisModule } from './redis/redis.module';
 import { MfaModule } from './mfa/mfa.module';
 import { ServicesModule } from './services/services.module';
 import { FileAccessModule } from './file-access/file-access.module';
+import { RfqModule } from './rfq/rfq.module';
+import { AppointmentsModule } from './appointments/appointments.module';
+import { CandidatesModule } from './candidates/candidates.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { AdminUsersModule } from './admin-users/admin-users.module';
 
 @Module({
   imports: [
@@ -35,6 +40,11 @@ import { FileAccessModule } from './file-access/file-access.module';
     MfaModule,
     ServicesModule,
     FileAccessModule,
+    RfqModule,
+    AppointmentsModule,
+    CandidatesModule,
+    AnalyticsModule,
+    AdminUsersModule,
   ],
   controllers: [HealthController, MeController, UploadsController],
   providers: [
