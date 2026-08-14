@@ -241,24 +241,6 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
             padding: 52,
           }}
         >
-          <button
-            onClick={() => onNavigate("home")}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginBottom: 52,
-            }}
-          >
-            <img
-              src="/images/logo-footer.png"
-              alt="United Services Egypt"
-              style={{ height: 32, width: "auto", objectFit: "contain" }}
-            />
-          </button>
           <h2
             style={{
               fontSize: 36,

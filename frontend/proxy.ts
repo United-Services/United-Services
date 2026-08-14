@@ -1,20 +1,6 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
+import { clerkMiddleware } from "@clerk/nextjs/server"
 import createIntlMiddleware from "next-intl/middleware"
-import { NextResponse } from "next/server"
 import { routing } from "./i18n/routing"
-
-const LOCALE_PREFIX = /^\/(en|ar|zh)(\/|$)/
-
-const isProtectedRoute = createRouteMatcher([
-  "/(en|ar|zh)/dashboard(.*)",
-  "/(en|ar|zh)/client-dashboard(.*)",
-  "/(en|ar|zh)/admin-dashboard(.*)",
-  "/(en|ar|zh)/admin-mfa-setup(.*)",
-])
-const isAdminRoute = createRouteMatcher([
-  "/(en|ar|zh)/admin-dashboard(.*)",
-  "/(en|ar|zh)/admin-mfa-setup(.*)",
-])
 
 const intlMiddleware = createIntlMiddleware(routing)
 
@@ -22,28 +8,18 @@ const intlMiddleware = createIntlMiddleware(routing)
 // We don't auto-redirect based on geo IP anymore — instead a client-side
 // prompt (see components/LanguagePrompt.tsx) asks the visitor whether they'd
 // like to switch to their geo-detected language, and only switches on an
-// explicit "yes". Every actual data access is independently re-checked
-// against our own DB by the backend's ClerkAuthGuard/RolesGuard (see
-// docs/BUSINESS_RULES.md) — this layer only exists to keep signed-out or
-// wrong-role users from ever rendering a dashboard shell.
-export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) {
-    const { userId, sessionClaims, redirectToSignIn } = await auth()
-    if (!userId) return redirectToSignIn()
-
-    if (
-      isAdminRoute(req) &&
-      (sessionClaims?.publicMetadata as { role?: string } | undefined)?.role !==
-        "admin"
-    ) {
-      const locale =
-        req.nextUrl.pathname.match(LOCALE_PREFIX)?.[1] ?? routing.defaultLocale
-      return NextResponse.redirect(new URL(`/${locale}/dashboard`, req.url))
-    }
-  }
-
-  return intlMiddleware(req)
-})
+// explicit "yes".
+//
+// No route-matching auth gate here (previously createRouteMatcher-based,
+// now removed — see Clerk's deprecation notice: path matching can diverge
+// from how Next.js actually routes a request, e.g. this list never even
+// included /candidate-dashboard). Every actual data access is independently
+// re-checked against our own DB by the backend's ClerkAuthGuard/RolesGuard,
+// and every dashboard/admin-mfa-setup page.tsx already does its own
+// server-side auth()+role re-check and redirect before rendering (see
+// docs/BUSINESS_RULES.md) — that per-page check was always the real gate;
+// this file only ever added a redundant, incompletely-covered pre-filter.
+export default clerkMiddleware((_auth, req) => intlMiddleware(req))
 
 export const config = {
   matcher: [
