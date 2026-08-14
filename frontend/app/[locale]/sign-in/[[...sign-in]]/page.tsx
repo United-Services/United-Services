@@ -4,6 +4,10 @@ import { SignIn } from "@clerk/nextjs"
 import { useTranslations } from "next-intl"
 import { palette } from "@/theme"
 
+// Same photo used for the client-signup split panel (views/ClientSignup.tsx).
+const worldImg =
+  "https://images.unsplash.com/photo-1602860109208-613d39362844?w=1200&q=85"
+
 // No client-side "already signed in" redirect here — Clerk's <SignIn/>
 // already refuses to render for a signed-in single-session user and
 // redirects to afterSignIn on its own (see its dev-only console notice).
@@ -27,10 +31,8 @@ export default function SignInPage() {
         style={{
           flex: 1,
           position: "relative",
-          backgroundImage:
-            "linear-gradient(180deg, rgba(15,23,42,0.35), rgba(15,23,42,0.85)), url('/images/hero-petroleum-v001.webp')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
+          overflow: "hidden",
+          background: "#111",
           display: "flex",
           flexDirection: "column",
           justifyContent: "flex-end",
@@ -38,12 +40,27 @@ export default function SignInPage() {
         }}
       >
         <img
-          src="/images/logo-footer.png"
-          alt={t("brand")}
-          style={{ height: 32, width: "auto", marginBottom: 24 }}
+          src={worldImg}
+          alt="Industrial energy infrastructure"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            opacity: 0.75,
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: `linear-gradient(135deg, ${palette.accent}bb 0%, rgba(15,23,42,0.85) 100%)`,
+          }}
         />
         <p
           style={{
+            position: "relative",
             color: "#fff",
             fontSize: 20,
             fontWeight: 600,
