@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { palette, inputStyle } from "../theme"
 import { InlineSpinner } from "../components/Spinner"
 import PublicNav from "../components/PublicNav"
+import PhoneInput from "../components/PhoneInput"
 const worldImg =
   "https://images.unsplash.com/photo-1602860109208-613d39362844?w=1200&q=85"
 
@@ -456,22 +457,12 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                 >
                   {t("form.phone")}
                 </label>
-                <input
+                <PhoneInput
                   autoFocus
-                  name="phone"
-                  type="tel"
-                  autoComplete="tel"
                   value={form.phone}
-                  onChange={set("phone")}
+                  onChange={(phone) => setForm((f) => ({ ...f, phone }))}
                   placeholder={t("form.phonePlaceholder")}
                   required
-                  style={inputStyle}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = palette.accent
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = "#E2E8F0"
-                  }}
                 />
               </div>
             )}
