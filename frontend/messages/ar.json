@@ -1083,7 +1083,8 @@
     "errors": {
       "loadFailed": "Couldn't load this. Please try again.",
       "actionFailed": "Something went wrong. Please try again.",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "retry": "Retry"
     }
   },
   "auth": {

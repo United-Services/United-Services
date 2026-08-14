@@ -1,19 +1,16 @@
 "use client"
 
-import { SignUp, useUser } from "@clerk/nextjs"
+import { SignUp } from "@clerk/nextjs"
 import { useTranslations } from "next-intl"
-import { useEffect } from "react"
-import { useRouter } from "@/i18n/navigation"
 import { palette } from "@/theme"
 
+// No client-side "already signed in" redirect here — Clerk's <SignUp/>
+// already refuses to render for a signed-in single-session user and
+// redirects to afterSignUp on its own. See the matching comment in the
+// sign-in page for why stacking a second redirect trigger on top of
+// Clerk's own is what turns a one-time bounce into a ping-pong loop.
 export default function SignUpPage() {
   const t = useTranslations("auth")
-  const { isSignedIn, isLoaded } = useUser()
-  const router = useRouter()
-
-  useEffect(() => {
-    if (isLoaded && isSignedIn) router.replace("/dashboard")
-  }, [isLoaded, isSignedIn, router])
 
   return (
     <div

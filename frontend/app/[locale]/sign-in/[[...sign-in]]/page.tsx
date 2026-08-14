@@ -1,22 +1,18 @@
 "use client"
 
-import { SignIn, useUser } from "@clerk/nextjs"
+import { SignIn } from "@clerk/nextjs"
 import { useTranslations } from "next-intl"
-import { useEffect } from "react"
-import { useRouter } from "@/i18n/navigation"
 import { palette } from "@/theme"
 
+// No client-side "already signed in" redirect here — Clerk's <SignIn/>
+// already refuses to render for a signed-in single-session user and
+// redirects to afterSignIn on its own (see its dev-only console notice).
+// A second, independent redirect trigger on top of Clerk's own is exactly
+// what turns a legitimate one-time bounce into a fast ping-pong loop with
+// /dashboard whenever the backend briefly disagrees with Clerk about the
+// session being valid.
 export default function SignInPage() {
   const t = useTranslations("auth")
-  const { isSignedIn, isLoaded } = useUser()
-  const router = useRouter()
-
-  // Clerk already refuses to render <SignIn/> for an already-signed-in
-  // single-session user and redirects on its own — this just sends them
-  // straight to the dashboard instead of flashing the form first.
-  useEffect(() => {
-    if (isLoaded && isSignedIn) router.replace("/dashboard")
-  }, [isLoaded, isSignedIn, router])
 
   return (
     <div
