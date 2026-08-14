@@ -9,7 +9,7 @@ import type { Request } from 'express';
 import { createClerkClient, verifyToken } from '@clerk/backend';
 import { IS_PUBLIC_KEY } from '../common/decorators/public.decorator';
 import { PrismaService } from '../prisma/prisma.service';
-import { Role, type User } from '../generated/prisma';
+import { Role, Prisma, type User } from '../generated/prisma';
 
 type AuthedRequest = Request & { user?: User };
 
@@ -68,20 +68,44 @@ export class ClerkAuthGuard implements CanActivate {
 
       const unsafeMetadata = clerkUser.unsafeMetadata as
         { companyName?: string; phone?: string } | undefined;
-      user = await this.prisma.user.upsert({
-        where: { clerkId },
-        update: {},
-        create: {
-          clerkId,
-          email: primaryEmail,
-          firstName: clerkUser.firstName ?? '',
-          lastName: clerkUser.lastName ?? '',
-          phone:
-            clerkUser.phoneNumbers?.[0]?.phoneNumber ?? unsafeMetadata?.phone,
-          companyName: unsafeMetadata?.companyName,
-          role: Role.client,
-        },
-      });
+      try {
+        user = await this.prisma.user.upsert({
+          where: { clerkId },
+          update: {},
+          create: {
+            clerkId,
+            email: primaryEmail,
+            firstName: clerkUser.firstName ?? '',
+            lastName: clerkUser.lastName ?? '',
+            phone:
+              clerkUser.phoneNumbers?.[0]?.phoneNumber ?? unsafeMetadata?.phone,
+            companyName: unsafeMetadata?.companyName,
+            role: Role.client,
+          },
+        });
+      } catch (error) {
+        // Two of a newly-signed-up user's first authenticated requests can
+        // both land here concurrently (e.g. a dashboard firing several
+        // requests in parallel right after redirect) — both find no row,
+        // both race to create one. Whichever loses the race hits a unique
+        // constraint violation on the *insert half* of this upsert rather
+        // than transparently falling through to the update half — that's
+        // not this app being wrong, it's Prisma's upsert losing its usual
+        // atomicity guarantee over a transaction-pooled connection
+        // (Supabase's pgbouncer), which doesn't preserve the session state
+        // Prisma's upsert compilation normally relies on. Whoever won the
+        // race already created the row, so just fetch it instead of
+        // failing the request.
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          user = await this.prisma.user.findUnique({ where: { clerkId } });
+          if (!user) throw error;
+        } else {
+          throw error;
+        }
+      }
     }
 
     if (user.disabledAt) {

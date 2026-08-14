@@ -1,8 +1,15 @@
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ClerkAuthGuard } from './clerk-auth.guard';
-import { Role } from '../generated/prisma';
+import { Role, Prisma } from '../generated/prisma';
 import type { PrismaService } from '../prisma/prisma.service';
+
+function uniqueConstraintError() {
+  return new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+    code: 'P2002',
+    clientVersion: 'test',
+  });
+}
 
 const verifyTokenMock = jest.fn();
 const getUserMock = jest.fn();
@@ -155,6 +162,88 @@ describe('ClerkAuthGuard', () => {
       }),
     );
     expect(request.user).toBe(provisioned);
+  });
+
+  it('recovers when a concurrent self-heal request wins the create race (P2002)', async () => {
+    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1' });
+    getUserMock.mockResolvedValue({
+      id: 'clerk-1',
+      primaryEmailAddressId: 'em1',
+      emailAddresses: [{ id: 'em1', emailAddress: 'new@client.com' }],
+      firstName: 'New',
+      lastName: 'Client',
+      phoneNumbers: [],
+      unsafeMetadata: {},
+    });
+    const wonByOtherRequest = {
+      id: 'u2',
+      clerkId: 'clerk-1',
+      disabledAt: null,
+      role: Role.client,
+      email: 'new@client.com',
+    };
+    // First findUnique (before the self-heal branch) sees no row yet; the
+    // upsert then loses the create race to a concurrent request instead of
+    // transparently falling through to its update half (see the guard's
+    // comment on why: pgbouncer transaction pooling breaks that
+    // atomicity); the second findUnique (inside the P2002 recovery) picks
+    // up the row the other request just created.
+    prisma.user.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(wonByOtherRequest);
+    prisma.user.upsert.mockRejectedValue(uniqueConstraintError());
+    const request = {
+      headers: { authorization: 'Bearer t' },
+      cookies: {},
+    } as any;
+    const { g, context } = contextFor(request);
+
+    await expect(g.canActivate(context)).resolves.toBe(true);
+
+    expect(prisma.user.findUnique).toHaveBeenCalledTimes(2);
+    expect(request.user).toBe(wonByOtherRequest);
+  });
+
+  it('still rejects if the create race is lost but the row is somehow not found on re-fetch', async () => {
+    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1' });
+    getUserMock.mockResolvedValue({
+      id: 'clerk-1',
+      primaryEmailAddressId: 'em1',
+      emailAddresses: [{ id: 'em1', emailAddress: 'new@client.com' }],
+      firstName: 'New',
+      lastName: 'Client',
+      phoneNumbers: [],
+      unsafeMetadata: {},
+    });
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.upsert.mockRejectedValue(uniqueConstraintError());
+    const { g, context } = contextFor({
+      headers: { authorization: 'Bearer t' },
+      cookies: {},
+    });
+
+    await expect(g.canActivate(context)).rejects.toThrow();
+  });
+
+  it('propagates a non-P2002 upsert failure instead of swallowing it', async () => {
+    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1' });
+    getUserMock.mockResolvedValue({
+      id: 'clerk-1',
+      primaryEmailAddressId: 'em1',
+      emailAddresses: [{ id: 'em1', emailAddress: 'new@client.com' }],
+      firstName: 'New',
+      lastName: 'Client',
+      phoneNumbers: [],
+      unsafeMetadata: {},
+    });
+    prisma.user.findUnique.mockResolvedValue(null);
+    prisma.user.upsert.mockRejectedValue(new Error('database is on fire'));
+    const { g, context } = contextFor({
+      headers: { authorization: 'Bearer t' },
+      cookies: {},
+    });
+
+    await expect(g.canActivate(context)).rejects.toThrow('database is on fire');
   });
 
   it('rejects self-heal provisioning when the Clerk account has no primary email', async () => {
