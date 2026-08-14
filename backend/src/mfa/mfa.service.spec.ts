@@ -286,4 +286,35 @@ describe('MfaService — TOTP', () => {
     expect(prisma.totpCredential.update).not.toHaveBeenCalled();
     expect(auditLog.record).not.toHaveBeenCalled();
   });
+
+  // Distinct from enrollment (mfaEnrolled, a permanent fact about the
+  // account): this tracks whether *this specific Clerk session* has
+  // proven the second factor, so a new sign-in — a new session id — is
+  // never treated as already verified just because the account enrolled
+  // once in the past. See MfaSessionVerifiedGuard.
+  describe('session verification', () => {
+    it('is not verified for a session that has never been marked', async () => {
+      await expect(service.isSessionVerified('sess_1')).resolves.toBe(false);
+    });
+
+    it('is verified after being marked', async () => {
+      await service.markSessionVerified('sess_1');
+      await expect(service.isSessionVerified('sess_1')).resolves.toBe(true);
+    });
+
+    it('scopes verification per session id — marking one session never verifies another', async () => {
+      await service.markSessionVerified('sess_1');
+      await expect(service.isSessionVerified('sess_2')).resolves.toBe(false);
+    });
+
+    it('sets an expiry on the verification record rather than storing it forever', async () => {
+      await service.markSessionVerified('sess_1');
+      expect(redis.set).toHaveBeenCalledWith(
+        expect.stringContaining('sess_1'),
+        expect.any(String),
+        'EX',
+        expect.any(Number),
+      );
+    });
+  });
 });

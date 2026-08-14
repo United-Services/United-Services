@@ -10,9 +10,11 @@ import {
   Post,
 } from '@nestjs/common';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { CurrentSessionId } from '../common/decorators/current-session-id.decorator';
 import { MfaExempt } from '../common/decorators/mfa-exempt.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
+import { MfaService } from '../mfa/mfa.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { BecomeCandidateDto } from './dto/become-candidate.dto';
 import { UploadCandidateDocumentsDto } from './dto/upload-candidate-documents.dto';
@@ -78,20 +80,23 @@ export class MeController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly s3: S3Service,
+    private readonly mfa: MfaService,
   ) {}
 
-  // Exempt from MfaEnrolledGuard: the frontend's /dashboard redirect calls
-  // this first to decide where an admin should go, including whether
-  // that's /admin-mfa-setup in the first place (me.mfaEnrolled === false).
-  // Without this exemption an unenrolled admin's very first request 403s
-  // here, before ever learning they need to enroll — a lockout, not a
-  // security boundary. Returns only basic profile/role info (toDto below),
-  // nothing admin-privileged, so this doesn't weaken what the guard
-  // actually protects.
+  // Exempt from MfaEnrolledGuard *and* MfaSessionVerifiedGuard: the
+  // frontend's /dashboard redirect calls this first to decide where an
+  // admin should go, including whether that's /admin-mfa-setup
+  // (me.mfaEnrolled === false) or /admin-mfa-challenge
+  // (me.mfaSessionVerified === false) in the first place. Without this
+  // exemption an admin's very first request in either state 403s here,
+  // before ever learning where to go — a lockout, not a security
+  // boundary. Returns only basic profile/role info (toDto below), nothing
+  // admin-privileged, so this doesn't weaken what either guard actually
+  // protects.
   @MfaExempt()
   @Get()
-  me(@CurrentUser() user: User) {
-    return this.toDto(user);
+  async me(@CurrentUser() user: User, @CurrentSessionId() sessionId: string) {
+    return this.toDto(user, sessionId);
   }
 
   // Client-only self-service profile completion, called right after
@@ -143,7 +148,10 @@ export class MeController {
           },
         }),
       ]);
-      return { user: this.toDto(updatedUser), applicationId: application.id };
+      return {
+        user: await this.toDto(updatedUser),
+        applicationId: application.id,
+      };
     } catch {
       throw new ConflictException(
         'An application already exists for this account',
@@ -231,7 +239,11 @@ export class MeController {
     };
   }
 
-  private toDto(user: User) {
+  // sessionId is only ever passed from me() — the other two callers
+  // (updateProfile, becomeCandidate) are client/candidate-only paths
+  // where mfaSessionVerified is meaningless, so they skip the Redis
+  // round-trip entirely rather than pass a sessionId nothing will read.
+  private async toDto(user: User, sessionId?: string) {
     return {
       id: user.id,
       role: user.role,
@@ -240,6 +252,9 @@ export class MeController {
       lastName: user.lastName,
       companyName: user.companyName,
       mfaEnrolled: user.mfaEnrolled,
+      mfaSessionVerified: sessionId
+        ? await this.mfa.isSessionVerified(sessionId)
+        : false,
     };
   }
 }

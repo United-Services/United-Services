@@ -8,9 +8,9 @@ import AdminMfaSetupClient from "./AdminMfaSetupClient"
 // Server-side gate, independent of the middleware's coarse Clerk-claim
 // check — re-derives role AND mfaEnrolled from our own DB so a non-admin
 // account can never reach the enrollment shell by navigating here
-// directly, and an admin who has already enrolled is sent straight to
-// their dashboard (further MFA management happens from
-// AdminSecuritySection inside it, not here).
+// directly, and an admin who has already enrolled is sent to the
+// per-session MFA challenge instead (further MFA management happens from
+// AdminSecuritySection inside the dashboard, not here).
 export default async function AdminMfaSetupPage({
   params,
 }: {
@@ -24,7 +24,7 @@ export default async function AdminMfaSetupPage({
   try {
     const { data: me } = await axios.get("/me", { headers: authHeader(token) })
     if (me.role !== Role.Admin) redirect({ href: "/dashboard", locale })
-    if (me.mfaEnrolled) redirect({ href: "/admin-dashboard", locale })
+    if (me.mfaEnrolled) redirect({ href: "/admin-mfa-challenge", locale })
   } catch (error) {
     if (error && typeof error === "object" && "digest" in error) throw error
     redirect({ href: "/sign-in", locale })

@@ -1097,5 +1097,23 @@
     "signInTagline": "Sign in to manage your services, requests, and documents.",
     "signUpTagline": "Create an account to request services, track RFQs, and manage your files.",
     "brand": "United Services Egypt"
+  },
+  "adminMfaChallenge": {
+    "title": "Verify Your Identity",
+    "subtitle": "This device or session hasn't been verified yet. Confirm it's you before continuing to the admin dashboard.",
+    "authenticatorApp": "Authenticator App",
+    "biometric": "Biometric / Security Key",
+    "enterCode": "Enter the 6-digit code from your app",
+    "codePlaceholder": "123456",
+    "verifying": "Verifying…",
+    "verify": "Verify",
+    "webauthnPrompt": "Use Touch ID, Face ID, Windows Hello, or a hardware security key to confirm it's you.",
+    "waiting": "Waiting…",
+    "verifyWithBiometric": "Verify with Biometric / Security Key",
+    "errors": {
+      "invalidCode": "Invalid code. Please try again.",
+      "webauthnFailed": "Could not verify your credential. Please try again, or use an authenticator app instead.",
+      "statusLoadFailed": "Could not load your MFA methods. Please refresh and try again."
+    }
   }
 }

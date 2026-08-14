@@ -11,7 +11,7 @@ import { IS_PUBLIC_KEY } from '../common/decorators/public.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role, Prisma, type User } from '../generated/prisma';
 
-type AuthedRequest = Request & { user?: User };
+type AuthedRequest = Request & { user?: User; sessionId?: string };
 
 // Verifies the Clerk session cookie/token on every request and attaches the
 // corresponding local User row (never a raw Clerk claim) to req.user, so
@@ -41,14 +41,18 @@ export class ClerkAuthGuard implements CanActivate {
     if (!token) throw new UnauthorizedException('Missing session token');
 
     let clerkId: string;
+    let sessionId: string | undefined;
     try {
       const verified = await verifyToken(token, {
         secretKey: process.env.CLERK_SECRET_KEY,
       });
       clerkId = verified.sub;
+      sessionId = verified.sid;
     } catch {
       throw new UnauthorizedException('Invalid or expired session');
     }
+    if (!sessionId)
+      throw new UnauthorizedException('Invalid or expired session');
 
     let user = await this.prisma.user.findUnique({ where: { clerkId } });
 
@@ -113,6 +117,7 @@ export class ClerkAuthGuard implements CanActivate {
     }
 
     request.user = user;
+    request.sessionId = sessionId;
     return true;
   }
 

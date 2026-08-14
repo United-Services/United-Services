@@ -27,6 +27,14 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import type { User } from '../generated/prisma';
 
 const CHALLENGE_TTL_SECONDS = 300;
+// Deliberately generous rather than trying to mirror Clerk's own session
+// lifetime (configurable in the Clerk Dashboard, not something this app
+// reads) — this key's real invalidation is that a *new* sign-in gets a
+// *new* Clerk session id, so a stale key from a long-dead session simply
+// never matches a current one. This TTL only exists so Redis doesn't hold
+// verification records forever for sessions that were abandoned rather
+// than explicitly signed out of.
+const SESSION_VERIFIED_TTL_SECONDS = 60 * 60 * 24 * 30;
 const RP_NAME = 'United Services Egypt';
 
 // Prisma stores this as a plain string[] (no enum at the DB level); cast
@@ -58,6 +66,27 @@ export class MfaService {
 
   private totpLastStepKey(userId: string) {
     return `totp:last-step:${userId}`;
+  }
+
+  private sessionVerifiedKey(sessionId: string) {
+    return `mfa:session-verified:${sessionId}`;
+  }
+
+  // Enrollment ("mfaEnrolled") only ever needs to happen once; this is the
+  // separate "did *this sign-in* prove the second factor" check that must
+  // happen again on every new session — see MfaSessionVerifiedGuard for
+  // why /me and the enrollment endpoints stay exempt from it.
+  async isSessionVerified(sessionId: string): Promise<boolean> {
+    return (await this.redis.get(this.sessionVerifiedKey(sessionId))) !== null;
+  }
+
+  async markSessionVerified(sessionId: string): Promise<void> {
+    await this.redis.set(
+      this.sessionVerifiedKey(sessionId),
+      '1',
+      'EX',
+      SESSION_VERIFIED_TTL_SECONDS,
+    );
   }
 
   // otplib's built-in replay guard: verification rejects any time step at

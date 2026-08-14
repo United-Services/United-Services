@@ -10,6 +10,7 @@ import { S3Module } from './s3/s3.module';
 import { ClerkAuthGuard } from './auth/clerk-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { MfaEnrolledGuard } from './common/guards/mfa-enrolled.guard';
+import { MfaSessionVerifiedGuard } from './common/guards/mfa-session-verified.guard';
 import { CsrfHeaderGuard } from './common/guards/csrf-header.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { HealthController } from './health/health.controller';
@@ -65,11 +66,16 @@ import { GeoModule } from './geo/geo.module';
     // custom header before any auth work happens. Then ClerkAuthGuard
     // attaches req.user, then RolesGuard can read it, then
     // MfaEnrolledGuard (only ever gates admin accounts, so it's safe to
-    // run after role checks), then ThrottlerGuard applies rate limits.
+    // run after role checks) rejects an admin who's never enrolled, then
+    // MfaSessionVerifiedGuard rejects an enrolled admin whose *current
+    // sign-in* hasn't proven the second factor yet (enrollment is once
+    // ever; verification is once per session — see that guard's comment),
+    // then ThrottlerGuard applies rate limits.
     { provide: APP_GUARD, useClass: CsrfHeaderGuard },
     { provide: APP_GUARD, useClass: ClerkAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: MfaEnrolledGuard },
+    { provide: APP_GUARD, useClass: MfaSessionVerifiedGuard },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     // Catches anything that escapes a controller/service unhandled —
     // logs it, and always returns a safe, generic JSON body (never a

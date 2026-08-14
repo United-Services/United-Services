@@ -23,6 +23,7 @@ export const ROUTES: Record<string, string> = {
   "candidate-dashboard": "/candidate-dashboard",
   "admin-dashboard": "/admin-dashboard",
   "admin-mfa-setup": "/admin-mfa-setup",
+  "admin-mfa-challenge": "/admin-mfa-challenge",
   privacy: "/privacy",
   terms: "/terms",
 }

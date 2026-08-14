@@ -24,6 +24,7 @@ describe('MfaController.resetPassword', () => {
     const mfa = {
       verifyTotp: jest.fn(),
       webauthnAuthVerify: jest.fn(),
+      markSessionVerified: jest.fn().mockResolvedValue(undefined),
     } as unknown as MfaService;
     const auditLog = {
       record: jest.fn().mockResolvedValue(undefined),
@@ -91,5 +92,75 @@ describe('MfaController.resetPassword', () => {
 
     expect(mfa.verifyTotp).not.toHaveBeenCalled();
     expect(updateUserMock).toHaveBeenCalled();
+  });
+});
+
+// These two endpoints are what /admin-mfa-challenge calls once per new
+// sign-in — a successful verification here is what actually satisfies
+// MfaSessionVerifiedGuard for the rest of that session (see its own
+// guard-level tests for the gating side of that).
+describe('MfaController — per-session MFA challenge', () => {
+  const user = { id: 'admin-1', clerkId: 'clerk-1' } as User;
+
+  function makeController() {
+    const mfa = {
+      verifyTotp: jest.fn(),
+      webauthnAuthVerify: jest.fn(),
+      markSessionVerified: jest.fn().mockResolvedValue(undefined),
+    } as unknown as MfaService;
+    const auditLog = {
+      record: jest.fn().mockResolvedValue(undefined),
+    } as unknown as AuditLogService;
+    return { controller: new MfaController(mfa, auditLog), mfa };
+  }
+
+  describe('challengeTotp', () => {
+    it('marks the session verified once the code checks out', async () => {
+      const { controller, mfa } = makeController();
+      (mfa.verifyTotp as jest.Mock).mockResolvedValue(true);
+
+      const result = await controller.challengeTotp(user, 'sess_1', {
+        code: '123456',
+      });
+
+      expect(mfa.markSessionVerified).toHaveBeenCalledWith('sess_1');
+      expect(result).toEqual({ verified: true });
+    });
+
+    it('rejects an invalid code without marking the session verified', async () => {
+      const { controller, mfa } = makeController();
+      (mfa.verifyTotp as jest.Mock).mockResolvedValue(false);
+
+      await expect(
+        controller.challengeTotp(user, 'sess_1', { code: '000000' }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mfa.markSessionVerified).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('webauthnAuthVerify', () => {
+    it('marks the session verified once the credential checks out', async () => {
+      const { controller, mfa } = makeController();
+      (mfa.webauthnAuthVerify as jest.Mock).mockResolvedValue(true);
+
+      const result = await controller.webauthnAuthVerify(user, 'sess_1', {
+        response: {},
+      });
+
+      expect(mfa.markSessionVerified).toHaveBeenCalledWith('sess_1');
+      expect(result).toEqual({ verified: true });
+    });
+
+    it('does not mark the session verified when the credential fails to verify', async () => {
+      const { controller, mfa } = makeController();
+      (mfa.webauthnAuthVerify as jest.Mock).mockResolvedValue(false);
+
+      const result = await controller.webauthnAuthVerify(user, 'sess_1', {
+        response: {},
+      });
+
+      expect(mfa.markSessionVerified).not.toHaveBeenCalled();
+      expect(result).toEqual({ verified: false });
+    });
   });
 });

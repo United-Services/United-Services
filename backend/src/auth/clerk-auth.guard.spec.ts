@@ -67,8 +67,36 @@ describe('ClerkAuthGuard', () => {
     await expect(g.canActivate(context)).rejects.toThrow(UnauthorizedException);
   });
 
-  it('reads the token from the __session cookie in preference to the Authorization header', async () => {
+  it('rejects a verified token that carries no session id (sid)', async () => {
     verifyTokenMock.mockResolvedValue({ sub: 'clerk-1' });
+    const { g, context } = contextFor({
+      headers: { authorization: 'Bearer t' },
+      cookies: {},
+    });
+    await expect(g.canActivate(context)).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('attaches the verified sid to the request for downstream MFA-session checks', async () => {
+    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1', sid: 'sess_42' });
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'u1',
+      clerkId: 'clerk-1',
+      disabledAt: null,
+      role: Role.client,
+    });
+    const request = {
+      headers: { authorization: 'Bearer t' },
+      cookies: {},
+    } as any;
+    const { g, context } = contextFor(request);
+
+    await g.canActivate(context);
+
+    expect(request.sessionId).toBe('sess_42');
+  });
+
+  it('reads the token from the __session cookie in preference to the Authorization header', async () => {
+    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1', sid: 'sess_1' });
     prisma.user.findUnique.mockResolvedValue({
       id: 'u1',
       clerkId: 'clerk-1',
@@ -89,7 +117,7 @@ describe('ClerkAuthGuard', () => {
   });
 
   it('attaches the local User row to the request for an existing user', async () => {
-    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1' });
+    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1', sid: 'sess_1' });
     const user = {
       id: 'u1',
       clerkId: 'clerk-1',
@@ -109,7 +137,7 @@ describe('ClerkAuthGuard', () => {
   });
 
   it('rejects a disabled account even with a valid token', async () => {
-    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1' });
+    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1', sid: 'sess_1' });
     prisma.user.findUnique.mockResolvedValue({
       id: 'u1',
       clerkId: 'clerk-1',
@@ -125,7 +153,7 @@ describe('ClerkAuthGuard', () => {
   });
 
   it('self-heals by provisioning a client-role user when the webhook has not landed yet', async () => {
-    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1' });
+    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1', sid: 'sess_1' });
     prisma.user.findUnique.mockResolvedValue(null);
     getUserMock.mockResolvedValue({
       id: 'clerk-1',
@@ -165,7 +193,7 @@ describe('ClerkAuthGuard', () => {
   });
 
   it('recovers when a concurrent self-heal request wins the create race (P2002)', async () => {
-    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1' });
+    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1', sid: 'sess_1' });
     getUserMock.mockResolvedValue({
       id: 'clerk-1',
       primaryEmailAddressId: 'em1',
@@ -205,7 +233,7 @@ describe('ClerkAuthGuard', () => {
   });
 
   it('still rejects if the create race is lost but the row is somehow not found on re-fetch', async () => {
-    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1' });
+    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1', sid: 'sess_1' });
     getUserMock.mockResolvedValue({
       id: 'clerk-1',
       primaryEmailAddressId: 'em1',
@@ -226,7 +254,7 @@ describe('ClerkAuthGuard', () => {
   });
 
   it('propagates a non-P2002 upsert failure instead of swallowing it', async () => {
-    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1' });
+    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1', sid: 'sess_1' });
     getUserMock.mockResolvedValue({
       id: 'clerk-1',
       primaryEmailAddressId: 'em1',
@@ -247,7 +275,7 @@ describe('ClerkAuthGuard', () => {
   });
 
   it('rejects self-heal provisioning when the Clerk account has no primary email', async () => {
-    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1' });
+    verifyTokenMock.mockResolvedValue({ sub: 'clerk-1', sid: 'sess_1' });
     prisma.user.findUnique.mockResolvedValue(null);
     getUserMock.mockResolvedValue({
       id: 'clerk-1',

@@ -19,7 +19,12 @@
 // "Cannot access before initialization".
 export function mockClerkBackend() {
   return {
-    verifyToken: (token: string) => Promise.resolve({ sub: token }),
+    // sid is derived from the token so the same "user" (bearerFor(clerkId))
+    // consistently maps to the same session id across requests within a
+    // test — needed for MfaSessionVerifiedGuard, which tracks verification
+    // per session id, not per user.
+    verifyToken: (token: string) =>
+      Promise.resolve({ sub: token, sid: `sess_${token}` }),
     createClerkClient: () => ({
       users: {
         getUser: () => {

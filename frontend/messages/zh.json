@@ -1097,5 +1097,23 @@
     "signInTagline": "登录以管理您的服务、请求和文件。",
     "signUpTagline": "创建账户以请求服务、跟踪询价单并管理您的文件。",
     "brand": "United Services Egypt"
+  },
+  "adminMfaChallenge": {
+    "title": "验证您的身份",
+    "subtitle": "此设备或会话尚未验证。请确认是您本人，然后再继续访问管理员仪表板。",
+    "authenticatorApp": "身份验证器应用",
+    "biometric": "生物识别 / 安全密钥",
+    "enterCode": "输入应用中的6位验证码",
+    "codePlaceholder": "123456",
+    "verifying": "正在验证…",
+    "verify": "验证",
+    "webauthnPrompt": "使用 Touch ID、Face ID、Windows Hello 或硬件安全密钥来确认是您本人。",
+    "waiting": "等待中…",
+    "verifyWithBiometric": "使用生物识别 / 安全密钥验证",
+    "errors": {
+      "invalidCode": "验证码无效，请重试。",
+      "webauthnFailed": "无法验证您的凭据。请重试，或改用身份验证器应用。",
+      "statusLoadFailed": "无法加载您的多因素验证方式。请刷新后重试。"
+    }
   }
 }

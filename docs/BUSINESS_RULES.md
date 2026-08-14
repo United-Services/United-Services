@@ -11,6 +11,15 @@ changes or a new one is discovered during implementation.
    rejects any request to an admin-scoped route from an admin account with
    `mfaEnrolled: false`, with an explicit exemption only for the MFA
    enrollment endpoints themselves (`MfaController`, `@MfaExempt()`).
+   Enrollment is a permanent, one-time fact about the account — it is
+   **not** proof that the current sign-in verified the second factor.
+   `MfaSessionVerifiedGuard` enforces the latter separately, keyed on the
+   Clerk session id (`sid` claim), not the user id: an admin must
+   re-verify (TOTP code or WebAuthn) once per new session — enrolling
+   once does not exempt every future login forever. `POST
+   /mfa/challenge/totp` and `POST /mfa/webauthn/auth-verify` are the two
+   endpoints that satisfy it; both mark only the session that called them,
+   via `MfaService.markSessionVerified`.
 3. A client cannot see another client's data. Only Admin has cross-client
    visibility. Every client-scoped query must filter by the authenticated
    user's own `id`/`companyName` — never trust a client-supplied id param.

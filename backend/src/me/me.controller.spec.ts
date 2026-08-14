@@ -8,6 +8,7 @@ import { MeController } from './me.controller';
 import { Role, type User } from '../generated/prisma';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { S3Service } from '../s3/s3.service';
+import type { MfaService } from '../mfa/mfa.service';
 import { MFA_EXEMPT_KEY } from '../common/decorators/mfa-exempt.decorator';
 
 const JPEG_BYTES = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
@@ -49,16 +50,19 @@ describe('MeController', () => {
       deleteObject: jest.fn().mockResolvedValue(undefined),
       promoteUpload: jest.fn().mockResolvedValue(undefined),
     } as unknown as S3Service;
-    return { controller: new MeController(prisma, s3), prisma, s3 };
+    const mfa = {
+      isSessionVerified: jest.fn().mockResolvedValue(true),
+    } as unknown as MfaService;
+    return { controller: new MeController(prisma, s3, mfa), prisma, s3, mfa };
   }
 
   describe('me / toDto', () => {
-    it('never leaks internal fields like clerkId in the returned DTO', () => {
+    it('never leaks internal fields like clerkId in the returned DTO', async () => {
       const { controller } = makeController();
-      const result = controller.me({
-        ...client,
-        clerkId: 'clerk-secret',
-      });
+      const result = await controller.me(
+        { ...client, clerkId: 'clerk-secret' },
+        'sess_1',
+      );
       expect(result).not.toHaveProperty('clerkId');
       expect(result).toEqual({
         id: 'u1',
@@ -68,7 +72,28 @@ describe('MeController', () => {
         lastName: 'B',
         companyName: null,
         mfaEnrolled: false,
+        mfaSessionVerified: true,
       });
+    });
+
+    // The actual gap this session's login-lockout bug traced back to:
+    // mfaEnrolled alone was being treated as "this admin is fully
+    // verified for the current sign-in", with no re-check on every new
+    // session. mfaSessionVerified is the field the frontend now uses to
+    // tell "enrolled, but hasn't proven the second factor yet this
+    // session" apart from "fully verified, let them through".
+    it('reflects an unverified session distinctly from an unenrolled admin', async () => {
+      const { controller, mfa } = makeController();
+      (mfa.isSessionVerified as jest.Mock).mockResolvedValue(false);
+
+      const result = await controller.me(
+        { ...admin, mfaEnrolled: true },
+        'sess_1',
+      );
+
+      expect(result.mfaEnrolled).toBe(true);
+      expect(result.mfaSessionVerified).toBe(false);
+      expect(mfa.isSessionVerified).toHaveBeenCalledWith('sess_1');
     });
 
     // Without this, an admin who hasn't completed MFA enrollment yet can

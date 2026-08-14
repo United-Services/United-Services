@@ -43,6 +43,9 @@ Fax: (+2) 0227033656
       DB and sends client → `/client-dashboard`, admin → `/admin-dashboard`
       (or `/admin-mfa-setup` first if not yet enrolled)
 - [x] Admin MFA mandatory on first sign-in (WebAuthn or TOTP)
+- [x] Admin MFA re-verification required on every new sign-in, not just
+      once at enrollment — `/admin-mfa-challenge` (see
+      `docs/BUSINESS_RULES.md` rule 2)
 - [x] Admin password reset requires fresh MFA re-verification, not email
       link (`POST /mfa/admin-password-reset`)
 - [x] Admin MFA management screen (re-verify, replace credential) — Admin

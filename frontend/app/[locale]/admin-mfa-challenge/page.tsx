@@ -3,15 +3,15 @@ import { auth } from "@clerk/nextjs/server"
 import { axios, authHeader } from "@/lib/api"
 import type { AppLocale } from "@/i18n/routing"
 import { Role } from "@/enums/status.enums"
-import AdminDashboardClient from "./AdminDashboardClient"
+import AdminMfaChallengeClient from "./AdminMfaChallengeClient"
 
 // Server-side gate, independent of the middleware's coarse Clerk-claim
-// check: re-derives role, mfaEnrolled, AND mfaSessionVerified from our own
-// DB/Redis on every visit, so an admin who hasn't completed MFA
-// enrollment — or who has, but hasn't verified the second factor for
-// *this* sign-in yet — can never reach the dashboard by navigating here
-// directly. See docs/BUSINESS_RULES.md.
-export default async function AdminDashboardPage({
+// check — re-derives role, mfaEnrolled, and mfaSessionVerified from our
+// own DB/Redis so a non-admin account can never reach this, an unenrolled
+// admin is sent to enroll first, and an admin whose session is already
+// verified (e.g. they navigated back here directly) is sent straight to
+// their dashboard instead of being asked to verify twice.
+export default async function AdminMfaChallengePage({
   params,
 }: {
   params: Promise<{ locale: AppLocale }>
@@ -25,12 +25,11 @@ export default async function AdminDashboardPage({
     const { data: me } = await axios.get("/me", { headers: authHeader(token) })
     if (me.role !== Role.Admin) redirect({ href: "/dashboard", locale })
     if (!me.mfaEnrolled) redirect({ href: "/admin-mfa-setup", locale })
-    if (!me.mfaSessionVerified)
-      redirect({ href: "/admin-mfa-challenge", locale })
+    if (me.mfaSessionVerified) redirect({ href: "/admin-dashboard", locale })
   } catch (error) {
     if (error && typeof error === "object" && "digest" in error) throw error
     redirect({ href: "/sign-in", locale })
   }
 
-  return <AdminDashboardClient />
+  return <AdminMfaChallengeClient />
 }

@@ -8,6 +8,7 @@ import {
 import { createClerkClient } from '@clerk/backend';
 import { MfaService } from './mfa.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { CurrentSessionId } from '../common/decorators/current-session-id.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { MfaExempt } from '../common/decorators/mfa-exempt.decorator';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -80,16 +81,43 @@ export class MfaController {
     return this.mfa.webauthnAuthOptions(user);
   }
 
+  // Not used by the admin-password-reset flow — that flow only calls
+  // webauthn/auth-options for the challenge, then bundles the raw
+  // response into POST /mfa/admin-password-reset directly, verifying via
+  // the service method itself rather than this endpoint. This one is the
+  // per-session MFA challenge (see MfaSessionVerifiedGuard): a successful
+  // verification here always marks the *current* Clerk session as having
+  // proven its second factor, since that's true regardless of why the
+  // challenge was requested.
   @Post('webauthn/auth-verify')
   async webauthnAuthVerify(
     @CurrentUser() user: User,
+    @CurrentSessionId() sessionId: string,
     @Body() dto: WebAuthnAuthVerifyDto,
   ) {
     const verified = await this.mfa.webauthnAuthVerify(
       user,
       dto.response as AuthenticationResponseJSON,
     );
+    if (verified) await this.mfa.markSessionVerified(sessionId);
     return { verified };
+  }
+
+  // The TOTP counterpart to webauthn/auth-verify above — proves the
+  // second factor for *this sign-in* (MfaSessionVerifiedGuard), distinct
+  // from totp/confirm (one-time, at enrollment) and from the TOTP branch
+  // of admin-password-reset (which re-verifies specifically to authorize
+  // a password change, not to mark the session itself).
+  @Post('challenge/totp')
+  async challengeTotp(
+    @CurrentUser() user: User,
+    @CurrentSessionId() sessionId: string,
+    @Body() dto: TotpCodeDto,
+  ) {
+    const verified = await this.mfa.verifyTotp(user, dto.code);
+    if (!verified) throw new BadRequestException('Invalid code');
+    await this.mfa.markSessionVerified(sessionId);
+    return { verified: true };
   }
 
   // Admin password reset never uses an email link — a fresh MFA

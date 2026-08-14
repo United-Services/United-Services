@@ -25,11 +25,16 @@ export default async function DashboardRedirectPage({
 
   try {
     const { data: me } = await axios.get("/me", { headers: authHeader(token) })
-    if (me.role === Role.Admin)
-      redirect({
-        href: me.mfaEnrolled ? "/admin-dashboard" : "/admin-mfa-setup",
-        locale,
-      })
+    if (me.role === Role.Admin) {
+      if (!me.mfaEnrolled) redirect({ href: "/admin-mfa-setup", locale })
+      // Enrollment is a one-time fact about the account; this is a
+      // separate, per-sign-in check — an admin who enrolled long ago
+      // still has to prove the second factor again for *this* session
+      // before ever reaching admin data. See docs/BUSINESS_RULES.md.
+      if (!me.mfaSessionVerified)
+        redirect({ href: "/admin-mfa-challenge", locale })
+      redirect({ href: "/admin-dashboard", locale })
+    }
     if (me.role === Role.Client)
       redirect({ href: "/client-dashboard", locale })
     if (me.role === Role.Candidate)
