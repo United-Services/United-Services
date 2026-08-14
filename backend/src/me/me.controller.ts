@@ -10,6 +10,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { MfaExempt } from '../common/decorators/mfa-exempt.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -79,6 +80,15 @@ export class MeController {
     private readonly s3: S3Service,
   ) {}
 
+  // Exempt from MfaEnrolledGuard: the frontend's /dashboard redirect calls
+  // this first to decide where an admin should go, including whether
+  // that's /admin-mfa-setup in the first place (me.mfaEnrolled === false).
+  // Without this exemption an unenrolled admin's very first request 403s
+  // here, before ever learning they need to enroll — a lockout, not a
+  // security boundary. Returns only basic profile/role info (toDto below),
+  // nothing admin-privileged, so this doesn't weaken what the guard
+  // actually protects.
+  @MfaExempt()
   @Get()
   me(@CurrentUser() user: User) {
     return this.toDto(user);

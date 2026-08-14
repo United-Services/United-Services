@@ -8,6 +8,7 @@ import { MeController } from './me.controller';
 import { Role, type User } from '../generated/prisma';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { S3Service } from '../s3/s3.service';
+import { MFA_EXEMPT_KEY } from '../common/decorators/mfa-exempt.decorator';
 
 const JPEG_BYTES = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
 const PDF_BYTES = Buffer.from('%PDF-1.4', 'latin1');
@@ -68,6 +69,19 @@ describe('MeController', () => {
         companyName: null,
         mfaEnrolled: false,
       });
+    });
+
+    // Without this, an admin who hasn't completed MFA enrollment yet can
+    // never learn they need to — their very first request 403s here,
+    // before the frontend's /dashboard redirect can send them to
+    // /admin-mfa-setup, since it relies on this exact call to decide
+    // that. See MfaEnrolledGuard.
+    it('is exempt from MfaEnrolledGuard, so an unenrolled admin can still call it', () => {
+      const isExempt = Reflect.getMetadata(
+        MFA_EXEMPT_KEY,
+        MeController.prototype.me,
+      );
+      expect(isExempt).toBe(true);
     });
   });
 
