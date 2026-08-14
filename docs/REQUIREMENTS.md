@@ -30,6 +30,11 @@ Fax: (+2) 0227033656
 
 ### Auth & accounts
 - [x] Single unified `/sign-in` — no separate admin login route/button
+- [x] Custom-branded sign-in/sign-up pages (photo + gradient overlay split
+      panel matching `ClientSignup`'s existing style, styled Clerk widget)
+      rather than Clerk's bare default `<SignIn/>`/`<SignUp/>`
+- [x] Navbar reflects auth state — "Log In" (→ `/sign-in`) when signed
+      out, "Client Portal" (→ `/dashboard`) when signed in
 - [x] Client signup (first/last name, phone, email, company name, password)
       → auto-redirect to client dashboard (8-step wizard)
 - [x] Candidate signup (ID photo, CV, first/last name, DOB, email, password)
@@ -109,6 +114,10 @@ Fax: (+2) 0227033656
 - [x] Translation parity across en/ar/zh for all pages that are meant to
       be translated (see public-site note above for the pages that
       intentionally stay English)
+- [x] Every request the backend receives resolves to a normal HTTP
+      response (4xx/5xx as appropriate) — never an unhandled crash — and
+      every frontend dashboard call handles its own failure instead of
+      leaving the page stuck (see `docs/BUSINESS_RULES.md` rules 14–15)
 
 ## Style rules carried over from frontend
 - [x] No emojis anywhere in UI or generated content — the last holdouts
