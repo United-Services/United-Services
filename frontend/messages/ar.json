@@ -901,7 +901,10 @@
       "totpStartFailed": "Could not start TOTP enrollment. Please try again.",
       "invalidCode": "Invalid code. Please try again.",
       "webauthnFailed": "Could not register your biometric credential. Please try again, or use an authenticator app instead."
-    }
+    },
+    "copy": "نسخ",
+    "copied": "تم النسخ",
+    "continueSetup": "متابعة"
   },
   "adminSecurity": {
     "loading": "Loading…",

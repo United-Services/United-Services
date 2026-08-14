@@ -132,3 +132,50 @@ export function IconLogout({ size = 16 }: IconProps) {
     </svg>
   )
 }
+
+export function IconShieldCheck({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z" />
+      <path d="M9 12l2 2 4-4" />
+    </svg>
+  )
+}
+
+export function IconKeyRound({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <circle cx="8.5" cy="15.5" r="4.5" />
+      <path d="M11.5 12.5 20 4M17 7l2 2M14 10l2 2" />
+    </svg>
+  )
+}
+
+export function IconFingerprint({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <path d="M12 3a7 7 0 0 0-7 7v2c0 2.5-.5 4.5-1.5 6" />
+      <path d="M19 12v-2a7 7 0 0 0-4-6.32" />
+      <path d="M8 21c1-1.5 1.5-3.5 1.5-6v-1a2.5 2.5 0 0 1 5 0v1c0 1 .06 1.9.18 2.7" />
+      <path d="M5 12v-1a7 7 0 0 1 1.5-4.33" />
+      <path d="M12 8a3 3 0 0 1 3 3v1c0 3.5.7 5.5 2 7" />
+    </svg>
+  )
+}
+
+export function IconCopy({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  )
+}
+
+export function IconCheck({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  )
+}

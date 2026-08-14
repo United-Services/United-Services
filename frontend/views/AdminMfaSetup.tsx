@@ -5,6 +5,13 @@ import { useTranslations } from "next-intl"
 import { startRegistration } from "@simplewebauthn/browser"
 import { palette, inputStyle } from "../theme"
 import Spinner, { InlineSpinner } from "../components/Spinner"
+import {
+  IconShieldCheck,
+  IconKeyRound,
+  IconFingerprint,
+  IconCopy,
+  IconCheck,
+} from "../components/NavIcons"
 import { axios, authHeader } from "../lib/api"
 import PublicNav from "../components/PublicNav"
 
@@ -22,10 +29,12 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const startTotp = async () => {
     setLoading(true)
     setError(null)
+    setMethod("totp")
     try {
       const token = await getToken()
       const { data } = await axios.post("/mfa/totp/enroll", {}, {
@@ -33,7 +42,6 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
       })
       setQrCodeDataUrl(data.qrCodeDataUrl)
       setSecret(data.secret)
-      setMethod("totp")
     } catch {
       setError(t("errors.totpStartFailed"))
     } finally {
@@ -82,6 +90,13 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
     } finally {
       setLoading(false)
     }
+  }
+
+  const copySecret = async () => {
+    if (!secret) return
+    await navigator.clipboard.writeText(secret)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
   }
 
   if (done) {
@@ -192,172 +207,264 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
           border: "1px solid #E2E8F0",
         }}
       >
-        <h1
-          style={{
-            fontSize: 24,
-            fontWeight: 800,
-            color: palette.navy,
-            marginBottom: 8,
-          }}
-        >
-          {t("title")}
-        </h1>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+          <IconShieldCheck size={22} />
+          <h1
+            style={{
+              fontSize: 22,
+              fontWeight: 800,
+              color: palette.navy,
+            }}
+          >
+            {t("title")}
+          </h1>
+        </div>
         <p
           style={{
             fontSize: 14,
             color: palette.muted,
             lineHeight: 1.7,
-            marginBottom: 28,
+            marginBottom: 24,
           }}
         >
           {t("subtitle")}
         </p>
 
+        {}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 4,
+            padding: 4,
+            background: "#F8FAFC",
+            borderRadius: 12,
+            border: "1px solid #E2E8F0",
+            marginBottom: method === "choose" ? 0 : 24,
+          }}
+        >
+          <button
+            type="button"
+            onClick={startTotp}
+            disabled={loading}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              padding: "10px 12px",
+              borderRadius: 9,
+              border: "none",
+              background: method !== "webauthn" ? "#fff" : "transparent",
+              boxShadow: method !== "webauthn" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+              color: method !== "webauthn" ? palette.navy : palette.muted,
+              fontWeight: 600,
+              fontSize: 13,
+              cursor: "pointer",
+              fontFamily: "Poppins, sans-serif",
+            }}
+          >
+            <IconKeyRound size={15} />
+            {t("authenticatorApp")}
+          </button>
+          <button
+            type="button"
+            onClick={startWebAuthn}
+            disabled={loading}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              padding: "10px 12px",
+              borderRadius: 9,
+              border: "none",
+              background: method === "webauthn" ? "#fff" : "transparent",
+              boxShadow: method === "webauthn" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+              color: method === "webauthn" ? palette.navy : palette.muted,
+              fontWeight: 600,
+              fontSize: 13,
+              cursor: "pointer",
+              fontFamily: "Poppins, sans-serif",
+            }}
+          >
+            <IconFingerprint size={15} />
+            {t("biometric")}
+          </button>
+        </div>
+
         {method === "choose" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <button
-              onClick={startTotp}
-              disabled={loading}
-              style={{
-                textAlign: "left",
-                padding: "18px 20px",
-                borderRadius: 14,
-                border: "1.5px solid #E2E8F0",
-                background: "#fff",
-                cursor: "pointer",
-                fontFamily: "Poppins, sans-serif",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: palette.navy,
-                  marginBottom: 4,
-                }}
-              >
-                {t("authenticatorApp")}
-              </div>
-              <div style={{ fontSize: 12.5, color: palette.muted }}>
-                {t("authenticatorAppDesc")}
-              </div>
-            </button>
-            <button
-              onClick={startWebAuthn}
-              disabled={loading}
-              style={{
-                textAlign: "left",
-                padding: "18px 20px",
-                borderRadius: 14,
-                border: "1.5px solid #E2E8F0",
-                background: "#fff",
-                cursor: "pointer",
-                fontFamily: "Poppins, sans-serif",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: palette.navy,
-                  marginBottom: 4,
-                }}
-              >
-                {t("biometric")}
-              </div>
-              <div style={{ fontSize: 12.5, color: palette.muted }}>
-                {t("biometricDesc")}
-              </div>
-            </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 16 }}>
+            <p style={{ fontSize: 12.5, color: palette.muted, lineHeight: 1.6 }}>
+              {t("authenticatorAppDesc")}
+            </p>
+            <p style={{ fontSize: 12.5, color: palette.muted, lineHeight: 1.6 }}>
+              {t("biometricDesc")}
+            </p>
           </div>
         )}
 
-        {method === "totp" && qrCodeDataUrl && (
+        {method === "totp" && (
           <form onSubmit={confirmTotp}>
-            <div style={{ textAlign: "center", marginBottom: 20 }}>
-              <img
-                src={qrCodeDataUrl}
-                alt="TOTP QR code"
-                style={{
-                  width: 180,
-                  height: 180,
-                  margin: "0 auto",
-                  border: "1px solid #E2E8F0",
-                  borderRadius: 12,
-                }}
-              />
-              {secret && (
-                <p
-                  style={{
-                    fontSize: 11,
-                    color: palette.muted,
-                    marginTop: 10,
-                    wordBreak: "break-all",
-                  }}
-                >
-                  {t("cantScan")} <strong>{secret}</strong>
-                </p>
-              )}
-            </div>
-            <label
-              style={{
-                display: "block",
-                fontSize: 13,
-                fontWeight: 600,
-                color: palette.navy,
-                marginBottom: 7,
-              }}
-            >
-              {t("enterCode")}
-            </label>
-            <input
-              autoFocus
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder={t("codePlaceholder")}
-              required
-              autoComplete="one-time-code"
-              style={inputStyle}
-              onFocus={(e) => {
-                e.target.style.borderColor = palette.accent
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = "#E2E8F0"
-              }}
-            />
-            {error && (
-              <p style={{ fontSize: 13, color: "#DC2626", marginTop: 14 }}>
-                {error}
-              </p>
+            {loading && !qrCodeDataUrl ? (
+              <div style={{ textAlign: "center", padding: "20px 0" }}>
+                <Spinner size="sm" message={t("verifying")} />
+              </div>
+            ) : (
+              qrCodeDataUrl && (
+                <>
+                  <div style={{ textAlign: "center", marginBottom: 20 }}>
+                    <img
+                      src={qrCodeDataUrl}
+                      alt="TOTP QR code"
+                      style={{
+                        width: 180,
+                        height: 180,
+                        margin: "0 auto",
+                        border: "1px solid #E2E8F0",
+                        borderRadius: 12,
+                      }}
+                    />
+                  </div>
+                  {secret && (
+                    <>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: palette.muted,
+                          marginBottom: 6,
+                        }}
+                      >
+                        {t("cantScan")}
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 8,
+                          padding: "10px 12px",
+                          borderRadius: 12,
+                          border: "1px solid #E2E8F0",
+                          background: "#F8FAFC",
+                          marginBottom: 20,
+                        }}
+                      >
+                        <code
+                          style={{
+                            fontFamily: "monospace",
+                            fontSize: 13,
+                            color: palette.navy,
+                            wordBreak: "break-all",
+                          }}
+                        >
+                          {secret}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={copySecret}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 5,
+                            flexShrink: 0,
+                            padding: "5px 9px",
+                            borderRadius: 8,
+                            border: "none",
+                            background: "none",
+                            color: palette.muted,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            fontFamily: "Poppins, sans-serif",
+                          }}
+                        >
+                          {copied ? <IconCheck size={13} /> : <IconCopy size={13} />}
+                          {copied ? t("copied") : t("copy")}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: palette.navy,
+                      marginBottom: 7,
+                    }}
+                  >
+                    {t("enterCode")}
+                  </label>
+                  <input
+                    autoFocus
+                    inputMode="numeric"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                    placeholder={t("codePlaceholder")}
+                    required
+                    maxLength={6}
+                    autoComplete="one-time-code"
+                    style={{
+                      ...inputStyle,
+                      textAlign: "center",
+                      fontSize: 20,
+                      letterSpacing: "0.5em",
+                      fontFamily: "monospace",
+                      paddingLeft: 0,
+                      paddingRight: 0,
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = palette.accent
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#E2E8F0"
+                    }}
+                  />
+                  {error && (
+                    <p style={{ fontSize: 13, color: "#DC2626", marginTop: 14 }}>
+                      {error}
+                    </p>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                      width: "100%",
+                      marginTop: 20,
+                      padding: "13px",
+                      borderRadius: 9999,
+                      border: "none",
+                      background: loading ? "#9CA3AF" : palette.accent,
+                      color: "#fff",
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: "pointer",
+                      fontFamily: "Poppins, sans-serif",
+                    }}
+                  >
+                    {loading ? (
+                      <>
+                        <InlineSpinner size={14} /> {t("verifying")}
+                      </>
+                    ) : (
+                      t("verifyAndEnable")
+                    )}
+                  </button>
+                </>
+              )
+            )}
+            {error && !qrCodeDataUrl && (
+              <p style={{ fontSize: 13, color: "#DC2626", marginTop: 14 }}>{error}</p>
             )}
             <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: "100%",
-                marginTop: 20,
-                padding: "13px",
-                borderRadius: 9999,
-                border: "none",
-                background: loading ? "#9CA3AF" : palette.accent,
-                color: "#fff",
-                fontWeight: 700,
-                fontSize: 14,
-                cursor: "pointer",
-                fontFamily: "Poppins, sans-serif",
-              }}
-            >
-              {loading ? (
-                <>
-                  <InlineSpinner size={14} /> {t("verifying")}
-                </>
-              ) : (
-                t("verifyAndEnable")
-              )}
-            </button>
-            <button
               type="button"
-              onClick={() => setMethod("choose")}
+              onClick={() => {
+                setMethod("choose")
+                setQrCodeDataUrl(null)
+                setSecret(null)
+                setError(null)
+              }}
               style={{
                 width: "100%",
                 marginTop: 10,
