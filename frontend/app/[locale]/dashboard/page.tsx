@@ -47,6 +47,13 @@ export default async function DashboardRedirectPage({
       redirect({ href: "/sign-in", locale })
     }
 
+    // This catch previously swallowed the error entirely — no log
+    // anywhere, backend or frontend, made a genuine failure here
+    // undiagnosable from the outside. It runs server-side (this is a
+    // Server Component), so this lands in the Next.js server's own
+    // terminal, not the browser console or the backend's logs.
+    console.error("[/dashboard] failed to resolve role-based redirect:", error)
+
     const t = await getTranslations({ locale, namespace: "common" })
     return (
       <DashboardLoadError
