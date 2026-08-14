@@ -17,6 +17,7 @@ describe("PageViewTracker", () => {
   beforeEach(() => {
     post.mockReset().mockResolvedValue({})
     pathname = "/en/services"
+    sessionStorage.clear()
   })
 
   it("fires a page_view event on mount", () => {
@@ -39,5 +40,31 @@ describe("PageViewTracker", () => {
   it("renders nothing", () => {
     const { container } = render(<PageViewTracker />)
     expect(container).toBeEmptyDOMElement()
+  })
+
+  it("does not re-fire for a duplicate mount on the same pathname within the dedupe window", () => {
+    const { unmount } = render(<PageViewTracker />)
+    expect(post).toHaveBeenCalledTimes(1)
+
+    unmount()
+    render(<PageViewTracker />)
+
+    expect(post).toHaveBeenCalledTimes(1)
+  })
+
+  it("fires again for the same pathname once the dedupe window has passed", () => {
+    vi.useFakeTimers()
+    try {
+      const { unmount } = render(<PageViewTracker />)
+      expect(post).toHaveBeenCalledTimes(1)
+
+      unmount()
+      vi.advanceTimersByTime(3001)
+      render(<PageViewTracker />)
+
+      expect(post).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
