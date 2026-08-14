@@ -195,6 +195,12 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
 
   return (
     <div style={{ fontFamily: "Poppins, sans-serif" }}>
+      {/* Clerk manages this element itself (sizes/renders the CAPTCHA
+          widget into it when a challenge is required) — without it present
+          in the DOM before signUp.password() is called, Clerk silently
+          falls back to a weaker invisible-only check instead of erroring,
+          so it's easy to miss. See Clerk's custom-flow bot-protection docs. */}
+      <div id="clerk-captcha" />
       <PublicNav current="client-signup" onNavigate={onNavigate} />
       <div
         className="signup-split"
