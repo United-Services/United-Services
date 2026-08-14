@@ -33,25 +33,39 @@ const CANDIDATE_UPLOAD_TYPES: Record<
   ],
 };
 
-async function assertOwnedCandidateUpload(
+// Validates a pending upload (ownership + magic-byte content check) and,
+// if it passes, promotes it to its permanent key and returns that key.
+// The presigned PUT URL that wrote `pendingKey` is reusable until it
+// expires (S3 presigned URLs are not single-use) — validating content
+// once and then continuing to trust `pendingKey` forever would let an
+// attacker re-PUT different content to the same key after this check
+// already passed. Promoting to a fresh, non-presign-writable key and
+// deleting the pending object closes that window: nothing ever stores or
+// serves `pendingKey` again after this call returns.
+async function promoteValidatedCandidateUpload(
   s3: S3Service,
   userId: string,
   kind: 'candidate-id-photo' | 'candidate-cv',
-  key: string,
-): Promise<void> {
-  if (!key.startsWith(`candidates/${userId}/${kind}-`)) {
+  pendingKey: string,
+): Promise<string> {
+  const expectedPrefix = `pending/candidates/${userId}/${kind}-`;
+  if (!pendingKey.startsWith(expectedPrefix)) {
     throw new BadRequestException('Uploaded file does not belong to you');
   }
-  const bytes = await s3.readLeadingBytes(key);
+  const bytes = await s3.readLeadingBytes(pendingKey);
   const matches = CANDIDATE_UPLOAD_TYPES[kind].some((type) =>
     matchesContentType(bytes, type),
   );
   if (!matches) {
-    await s3.deleteObject(key).catch(() => undefined);
+    await s3.deleteObject(pendingKey).catch(() => undefined);
     throw new BadRequestException(
       'Uploaded file content does not match an accepted format',
     );
   }
+
+  const permanentKey = pendingKey.slice('pending/'.length);
+  await s3.promoteUpload(pendingKey, permanentKey);
+  return permanentKey;
 }
 
 // The only source of truth the frontend's post-sign-in redirect relies on —
@@ -173,30 +187,30 @@ export class MeController {
       );
     }
 
-    await Promise.all([
+    const [idPhotoS3Key, cvS3Key] = await Promise.all([
       dto.idPhotoS3Key
-        ? assertOwnedCandidateUpload(
+        ? promoteValidatedCandidateUpload(
             this.s3,
             user.id,
             'candidate-id-photo',
             dto.idPhotoS3Key,
           )
-        : Promise.resolve(),
+        : Promise.resolve(undefined),
       dto.cvS3Key
-        ? assertOwnedCandidateUpload(
+        ? promoteValidatedCandidateUpload(
             this.s3,
             user.id,
             'candidate-cv',
             dto.cvS3Key,
           )
-        : Promise.resolve(),
+        : Promise.resolve(undefined),
     ]);
 
     const updated = await this.prisma.candidateApplication.update({
       where: { candidateUserId: user.id },
       data: {
-        ...(dto.idPhotoS3Key ? { idPhotoS3Key: dto.idPhotoS3Key } : {}),
-        ...(dto.cvS3Key ? { cvS3Key: dto.cvS3Key } : {}),
+        ...(idPhotoS3Key ? { idPhotoS3Key } : {}),
+        ...(cvS3Key ? { cvS3Key } : {}),
         documentsRequested: false,
         documentsRequestedNote: null,
       },

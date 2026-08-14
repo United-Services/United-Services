@@ -9,6 +9,7 @@ import { createClerkClient } from '@clerk/backend';
 import { MfaService } from './mfa.service';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
+import { MfaExempt } from '../common/decorators/mfa-exempt.decorator';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { TotpCodeDto } from './dto/totp.dto';
 import {
@@ -24,8 +25,14 @@ import type {
 
 // MFA is mandatory for admins only (docs/BUSINESS_RULES.md rule 2) —
 // every route here is admin-only, enforced by the global RolesGuard.
+// @MfaExempt() at the class level: MfaEnrolledGuard would otherwise lock
+// an unenrolled admin out of the very endpoints they need to enroll
+// through. The post-enrollment routes (webauthn/auth-*,
+// admin-password-reset) are still safe to expose pre-enrollment since
+// they require an already-registered credential to succeed at all.
 @Controller('mfa')
 @Roles(Role.admin)
+@MfaExempt()
 export class MfaController {
   private readonly clerkClient = createClerkClient({
     secretKey: process.env.CLERK_SECRET_KEY,

@@ -13,6 +13,11 @@ export const metadata: Metadata = {
   },
 }
 
+// If this object changes, recompute its CSP hash and update the
+// script-src 'sha256-...' value in nginx/nginx.conf — the inline
+// <script> below is only allowed to run because its exact content
+// (JSON.stringify(structuredData)) matches that hash; an edit here with
+// a stale hash makes the script silently stop rendering.
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "LocalBusiness",

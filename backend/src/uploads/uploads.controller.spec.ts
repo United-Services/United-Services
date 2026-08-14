@@ -47,7 +47,7 @@ describe('UploadsController', () => {
 
     expect(result.url).toBe('https://s3.example/presigned');
     expect(result.key).toMatch(
-      /^candidates\/candidate-1\/candidate-cv-\d+\.pdf$/,
+      /^pending\/candidates\/candidate-1\/candidate-cv-\d+-[0-9a-f-]{36}\.pdf$/,
     );
     expect(s3.createUploadUrl).toHaveBeenCalledWith(
       result.key,
@@ -62,5 +62,18 @@ describe('UploadsController', () => {
       contentType: 'image/png',
     });
     expect(result.key.endsWith('.png')).toBe(true);
+  });
+
+  it('generates an unguessable key — two presigns for the same user/kind never collide', async () => {
+    const { controller } = makeController();
+    const a = await controller.presign(user, {
+      kind: 'candidate-cv',
+      contentType: 'application/pdf',
+    });
+    const b = await controller.presign(user, {
+      kind: 'candidate-cv',
+      contentType: 'application/pdf',
+    });
+    expect(a.key).not.toBe(b.key);
   });
 });

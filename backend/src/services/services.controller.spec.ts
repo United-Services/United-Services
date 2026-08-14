@@ -24,6 +24,7 @@ describe('ServicesController', () => {
         .fn()
         .mockResolvedValue(Buffer.from('%PDF-1.4', 'latin1')),
       deleteObject: jest.fn().mockResolvedValue(undefined),
+      promoteUpload: jest.fn().mockResolvedValue(undefined),
     } as unknown as S3Service;
     const auditLog = {
       record: jest.fn().mockResolvedValue(undefined),
@@ -99,11 +100,12 @@ describe('ServicesController', () => {
       // No raw path separators or unsafe characters survive in the
       // filename portion of the key — a "/" here could otherwise let a
       // crafted filename inject extra key segments.
-      const filenamePortion = result.key.slice('service-specs/svc-1/'.length);
+      const prefix = 'pending/service-specs/svc-1/';
+      const filenamePortion = result.key.slice(prefix.length);
       expect(filenamePortion).not.toContain('/');
       expect(filenamePortion).not.toContain('?');
       expect(filenamePortion).not.toContain(' ');
-      expect(result.key.startsWith('service-specs/svc-1/')).toBe(true);
+      expect(result.key.startsWith(prefix)).toBe(true);
     });
   });
 
@@ -116,11 +118,41 @@ describe('ServicesController', () => {
       );
 
       const result = await controller.confirmFile(admin, 'svc-1', {
-        s3Key: 'service-specs/svc-1/spec.pdf',
+        s3Key: 'pending/service-specs/svc-1/spec.pdf',
         originalFilename: 'spec.pdf',
       });
 
       expect(result.version).toBe(3);
+    });
+
+    it('promotes the pending upload to a permanent key and stores that, not the pending key', async () => {
+      const { controller, prisma, s3 } = makeController();
+      (prisma.serviceFile.count as jest.Mock).mockResolvedValue(0);
+      (prisma.serviceFile.create as jest.Mock).mockImplementation(({ data }) =>
+        Promise.resolve({ id: 'file-1', ...data }),
+      );
+
+      const result = await controller.confirmFile(admin, 'svc-1', {
+        s3Key: 'pending/service-specs/svc-1/spec.pdf',
+        originalFilename: 'spec.pdf',
+      });
+
+      expect(s3.promoteUpload).toHaveBeenCalledWith(
+        'pending/service-specs/svc-1/spec.pdf',
+        'service-specs/svc-1/spec.pdf',
+      );
+      expect(result.s3Key).toBe('service-specs/svc-1/spec.pdf');
+    });
+
+    it('rejects (and never promotes) a non-pending s3Key', async () => {
+      const { controller, s3 } = makeController();
+      await expect(
+        controller.confirmFile(admin, 'svc-1', {
+          s3Key: 'service-specs/svc-1/spec.pdf',
+          originalFilename: 'spec.pdf',
+        }),
+      ).rejects.toThrow();
+      expect(s3.promoteUpload).not.toHaveBeenCalled();
     });
   });
 });

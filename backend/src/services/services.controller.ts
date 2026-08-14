@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -113,7 +114,11 @@ export class ServicesController {
     }
     const safeName = dto.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
     assertNoDisguisedExtension(safeName);
-    const key = `service-specs/${serviceId}/${Date.now()}-${safeName}`;
+    // pending/ prefix: a presigned PUT URL is reusable until it expires,
+    // not single-use, so this key must never be trusted/served once
+    // confirmFile promotes it — see the identical reasoning on the
+    // candidate-upload path in me.controller.ts.
+    const key = `pending/service-specs/${serviceId}/${Date.now()}-${randomUUID()}-${safeName}`;
     const url = await this.s3.createUploadUrl(key, dto.contentType);
     return { url, key };
   }
@@ -126,7 +131,8 @@ export class ServicesController {
     @Body() dto: ConfirmServiceFileDto,
   ) {
     assertSafeFilename(dto.originalFilename);
-    if (!dto.s3Key.startsWith(`service-specs/${serviceId}/`)) {
+    const expectedPrefix = `pending/service-specs/${serviceId}/`;
+    if (!dto.s3Key.startsWith(expectedPrefix)) {
       throw new BadRequestException('s3Key does not belong to this service');
     }
     const bytes = await this.s3.readLeadingBytes(dto.s3Key);
@@ -140,13 +146,19 @@ export class ServicesController {
       );
     }
 
+    // Promote off the presign-writable pending key before ever storing or
+    // serving it — closes the same TOCTOU window described in
+    // uploads.controller.ts.
+    const permanentKey = dto.s3Key.slice('pending/'.length);
+    await this.s3.promoteUpload(dto.s3Key, permanentKey);
+
     const existingCount = await this.prisma.serviceFile.count({
       where: { serviceId },
     });
     const file = await this.prisma.serviceFile.create({
       data: {
         serviceId,
-        s3Key: dto.s3Key,
+        s3Key: permanentKey,
         originalFilename: dto.originalFilename,
         version: existingCount + 1,
         uploadedByAdminId: admin.id,

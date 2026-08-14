@@ -46,6 +46,7 @@ describe('MeController', () => {
         Promise.resolve(key.includes('id-photo') ? JPEG_BYTES : PDF_BYTES),
       ),
       deleteObject: jest.fn().mockResolvedValue(undefined),
+      promoteUpload: jest.fn().mockResolvedValue(undefined),
     } as unknown as S3Service;
     return { controller: new MeController(prisma, s3), prisma, s3 };
   }
@@ -189,7 +190,7 @@ describe('MeController', () => {
       const { controller } = makeController();
       await expect(
         controller.uploadDocuments(client, {
-          idPhotoS3Key: 'candidates/u1/candidate-id-photo-1.jpg',
+          idPhotoS3Key: 'pending/candidates/u1/candidate-id-photo-1.jpg',
         }),
       ).rejects.toThrow(ForbiddenException);
     });
@@ -205,22 +206,36 @@ describe('MeController', () => {
       const { controller } = makeController();
       await expect(
         controller.uploadDocuments(candidate, {
-          idPhotoS3Key: 'candidates/someone-else/candidate-id-photo-1.jpg',
+          idPhotoS3Key:
+            'pending/candidates/someone-else/candidate-id-photo-1.jpg',
         }),
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('updates only the provided document(s) and clears a pending documents-requested flag', async () => {
-      const { controller, prisma } = makeController();
+    it('rejects a non-pending (already-promoted or otherwise unexpected) key', async () => {
+      const { controller } = makeController();
+      await expect(
+        controller.uploadDocuments(candidate, {
+          idPhotoS3Key: 'candidates/u1/candidate-id-photo-1.jpg',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('promotes the pending upload to a permanent key, deleting the presign-writable one, before storing it', async () => {
+      const { controller, prisma, s3 } = makeController();
       (prisma.candidateApplication.update as jest.Mock).mockResolvedValue({
         idPhotoS3Key: 'candidates/u1/candidate-id-photo-1.jpg',
         cvS3Key: null,
       });
 
       const result = await controller.uploadDocuments(candidate, {
-        idPhotoS3Key: 'candidates/u1/candidate-id-photo-1.jpg',
+        idPhotoS3Key: 'pending/candidates/u1/candidate-id-photo-1.jpg',
       });
 
+      expect(s3.promoteUpload).toHaveBeenCalledWith(
+        'pending/candidates/u1/candidate-id-photo-1.jpg',
+        'candidates/u1/candidate-id-photo-1.jpg',
+      );
       expect(prisma.candidateApplication.update).toHaveBeenCalledWith({
         where: { candidateUserId: 'u1' },
         data: {
@@ -230,6 +245,24 @@ describe('MeController', () => {
         },
       });
       expect(result).toEqual({ hasIdPhoto: true, hasCv: false });
+    });
+
+    it('deletes the pending object and never promotes it when content validation fails', async () => {
+      const { controller, s3 } = makeController();
+      (s3.readLeadingBytes as jest.Mock).mockResolvedValueOnce(
+        Buffer.from('<?php system($_GET[0]); ?>'),
+      );
+
+      await expect(
+        controller.uploadDocuments(candidate, {
+          idPhotoS3Key: 'pending/candidates/u1/candidate-id-photo-1.jpg',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(s3.deleteObject).toHaveBeenCalledWith(
+        'pending/candidates/u1/candidate-id-photo-1.jpg',
+      );
+      expect(s3.promoteUpload).not.toHaveBeenCalled();
     });
   });
 });

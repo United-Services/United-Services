@@ -25,6 +25,11 @@ describe('MfaService — TOTP', () => {
   let auditLog: { record: jest.Mock };
   let kekStore: FakeKekKeyStore;
   let service: MfaService;
+  // Real in-memory get/set is enough to exercise the afterTimeStep replay
+  // guard, which reads-then-writes a single key per user — no need for a
+  // full ioredis mock.
+  let redisStore: Map<string, string>;
+  let redis: { get: jest.Mock; set: jest.Mock };
 
   beforeEach(async () => {
     prisma = {
@@ -42,9 +47,19 @@ describe('MfaService — TOTP', () => {
     auditLog = { record: jest.fn().mockResolvedValue(undefined) };
     kekStore = await FakeKekKeyStore.create();
     kekStore.addActiveKey('kek-test-1');
+    redisStore = new Map();
+    redis = {
+      get: jest.fn((key: string) =>
+        Promise.resolve(redisStore.get(key) ?? null),
+      ),
+      set: jest.fn((key: string, value: string) => {
+        redisStore.set(key, value);
+        return Promise.resolve('OK');
+      }),
+    };
     service = new MfaService(
       prisma as unknown as PrismaService,
-      {} as RedisService,
+      redis as unknown as RedisService,
       new TotpCryptoService(kekStore.asKekKeyStore()),
       auditLog as unknown as AuditLogService,
     );
@@ -92,6 +107,26 @@ describe('MfaService — TOTP', () => {
       BadRequestException,
     );
     expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('confirmTotp also rejects a replayed code (shares the same replay guard as verifyTotp)', async () => {
+    const { secret } = await service.enrollTotp(user);
+    const stored = prisma.totpCredential.upsert.mock.calls[0][0].update;
+    prisma.totpCredential.findUnique.mockResolvedValue(stored);
+
+    const validCode = await new TOTP({
+      secret,
+      label: user.email,
+      crypto: new NobleCryptoPlugin(),
+      base32: new ScureBase32Plugin(),
+    }).generate();
+
+    await expect(service.confirmTotp(user, validCode)).resolves.toEqual({
+      success: true,
+    });
+    await expect(service.confirmTotp(user, validCode)).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   it('rejects confirmation when no enrollment exists', async () => {
@@ -142,6 +177,52 @@ describe('MfaService — TOTP', () => {
         metadata: { fromKeyId: 'kek-test-1', toKeyId: 'kek-test-2' },
       }),
     );
+  });
+
+  it('rejects a valid TOTP code the second time it is submitted (replay protection)', async () => {
+    const { secret } = await service.enrollTotp(user);
+    const stored = {
+      ...prisma.totpCredential.upsert.mock.calls[0][0].update,
+      confirmedAt: new Date(),
+    };
+    prisma.totpCredential.findUnique.mockResolvedValue(stored);
+
+    const validCode = await new TOTP({
+      secret,
+      label: user.email,
+      crypto: new NobleCryptoPlugin(),
+      base32: new ScureBase32Plugin(),
+    }).generate();
+
+    await expect(service.verifyTotp(user, validCode)).resolves.toBe(true);
+    // Same code, same time step — must be rejected the second time even
+    // though it would otherwise still be within the tolerance window.
+    await expect(service.verifyTotp(user, validCode)).resolves.toBe(false);
+  });
+
+  it('replay protection is scoped per user, not global', async () => {
+    const { secret } = await service.enrollTotp(user);
+    const stored = {
+      ...prisma.totpCredential.upsert.mock.calls[0][0].update,
+      confirmedAt: new Date(),
+    };
+    prisma.totpCredential.findUnique.mockResolvedValue(stored);
+
+    const validCode = await new TOTP({
+      secret,
+      label: user.email,
+      crypto: new NobleCryptoPlugin(),
+      base32: new ScureBase32Plugin(),
+    }).generate();
+
+    await expect(service.verifyTotp(user, validCode)).resolves.toBe(true);
+
+    const otherUser = { id: 'admin-2', email: 'other@use-eg.com' } as User;
+    // Same credential row looked up (mock doesn't differentiate by id),
+    // but the replay-guard key is keyed by user.id, so a different user
+    // submitting the same still-valid code must not be blocked by the
+    // first user's usage record.
+    await expect(service.verifyTotp(otherUser, validCode)).resolves.toBe(true);
   });
 
   it('does not re-wrap when the stored key is still active', async () => {

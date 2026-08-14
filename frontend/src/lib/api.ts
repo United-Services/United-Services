@@ -8,6 +8,11 @@ import axiosLib from "axios"
 export const axios = axiosLib.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1",
   withCredentials: true,
+  // Required by the backend's CsrfHeaderGuard on every state-changing
+  // request: cookie-based auth alone can't distinguish this app's own
+  // requests from a cross-site form submission, and a plain HTML form
+  // can't set a custom header, so this closes that gap.
+  headers: { "X-Requested-With": "XMLHttpRequest" },
 })
 
 export function authHeader(token: string | null) {

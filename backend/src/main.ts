@@ -5,15 +5,17 @@
 // already in process.env by then.
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import helmet from 'helmet';
-import cookieParser from 'cookie-parser';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { BetterstackLogger } from './logging/betterstack.logger';
+import { configureApp } from './configure-app';
 
 async function bootstrap() {
   const logger = new BetterstackLogger();
-  const app = await NestFactory.create(AppModule, { rawBody: true, logger });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+    logger,
+  });
 
   // Belt-and-braces for anything that escapes both a request's try/catch
   // and the global AllExceptionsFilter (e.g. a rejected promise not tied
@@ -31,50 +33,7 @@ async function bootstrap() {
     logger.error('Uncaught exception', err.stack);
   });
 
-  app.use(cookieParser());
-  app.use(
-    helmet({
-      // This process only ever serves JSON — no HTML, no inline scripts —
-      // so the CSP can be maximally restrictive; there's nothing here that
-      // needs 'unsafe-inline' or a third-party script/style source.
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'none'"],
-          frameAncestors: ["'none'"],
-          baseUri: ["'none'"],
-          formAction: ["'none'"],
-        },
-      },
-      frameguard: { action: 'deny' },
-      // Force HTTPS on every subsequent request for a year, including
-      // subdomains; safe in production (always served over TLS via nginx)
-      // and a no-op in local dev since browsers ignore HSTS over plain
-      // HTTP anyway.
-      hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
-      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-      crossOriginResourcePolicy: { policy: 'same-site' },
-    }),
-  );
-
-  const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
-  app.enableCors({
-    origin: allowedOrigins.length > 0 ? allowedOrigins : false,
-    credentials: true,
-  });
-
-  app.setGlobalPrefix('api/v1');
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
+  configureApp(app);
 
   await app.listen(process.env.PORT ?? 3001);
 }

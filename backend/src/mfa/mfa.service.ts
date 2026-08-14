@@ -56,6 +56,27 @@ export class MfaService {
     return `webauthn:${kind}:${userId}`;
   }
 
+  private totpLastStepKey(userId: string) {
+    return `totp:last-step:${userId}`;
+  }
+
+  // otplib's built-in replay guard: verification rejects any time step at
+  // or before the last one that was successfully used, so a captured code
+  // can't be replayed a second time within its own tolerance window (a
+  // plain .verify() call has no memory of prior successes — the same
+  // valid code would otherwise pass every time it's resubmitted).
+  private async getAfterTimeStep(userId: string): Promise<number | undefined> {
+    const stored = await this.redis.get(this.totpLastStepKey(userId));
+    return stored ? Number(stored) : undefined;
+  }
+
+  private async recordUsedTimeStep(
+    userId: string,
+    timeStep: number,
+  ): Promise<void> {
+    await this.redis.set(this.totpLastStepKey(userId), String(timeStep));
+  }
+
   private makeTotp(label: string, secret?: string) {
     return new TOTP({
       ...(secret ? { secret } : {}),
@@ -104,10 +125,13 @@ export class MfaService {
       throw new BadRequestException('No TOTP enrollment in progress');
 
     const secret = await this.totpCrypto.decryptSecret(credential);
+    const afterTimeStep = await this.getAfterTimeStep(user.id);
     const result = await this.makeTotp(user.email, secret).verify(code, {
       epochTolerance: 30,
+      afterTimeStep,
     });
     if (!result.valid) throw new BadRequestException('Invalid code');
+    await this.recordUsedTimeStep(user.id, result.timeStep);
 
     await this.prisma.$transaction([
       this.prisma.totpCredential.update({
@@ -128,10 +152,13 @@ export class MfaService {
     });
     if (!credential?.confirmedAt) return false;
     const secret = await this.totpCrypto.decryptSecret(credential);
+    const afterTimeStep = await this.getAfterTimeStep(user.id);
     const result = await this.makeTotp(user.email, secret).verify(code, {
       epochTolerance: 30,
+      afterTimeStep,
     });
     if (!result.valid) return false;
+    await this.recordUsedTimeStep(user.id, result.timeStep);
 
     await this.rewrapIfKekRetiring(user, credential.totpKekKeyId, secret);
     return true;

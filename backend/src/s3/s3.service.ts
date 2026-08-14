@@ -4,6 +4,7 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
+  CopyObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -62,5 +63,23 @@ export class S3Service {
     await this.client.send(
       new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
     );
+  }
+
+  // Moves a validated upload from its presigned-writable "pending" key to
+  // its permanent key, then deletes the pending object. Presigned PUT
+  // URLs are reusable until they expire (not single-use), so a content
+  // check performed once at confirm time is meaningless unless the
+  // key it validated can no longer be overwritten afterward — this closes
+  // that window by ensuring nothing ever trusts/references the pending
+  // key again once it's been promoted.
+  async promoteUpload(pendingKey: string, permanentKey: string): Promise<void> {
+    await this.client.send(
+      new CopyObjectCommand({
+        Bucket: this.bucket,
+        CopySource: `${this.bucket}/${encodeURIComponent(pendingKey)}`,
+        Key: permanentKey,
+      }),
+    );
+    await this.deleteObject(pendingKey);
   }
 }

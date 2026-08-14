@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Webhook } from 'svix';
 import { Public } from '../common/decorators/public.decorator';
+import { CsrfExempt } from '../common/decorators/csrf-exempt.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role } from '../generated/prisma';
 
@@ -34,6 +35,7 @@ export class ClerkWebhookController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Public()
+  @CsrfExempt()
   @Post()
   async handle(
     @Req() req: { rawBody?: Buffer },
