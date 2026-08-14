@@ -1,6 +1,7 @@
 "use client" /* Logo */ /* Desktop links — hidden under 860px, see .public-nav-desktop in globals.css */ /* Desktop actions — hidden under 860px */ /* Mobile hamburger — only shown under 860px */ /* Mobile panel */
 import { useState } from "react"
 import { useTranslations } from "next-intl"
+import { useUser } from "@clerk/nextjs"
 import { palette } from "../theme"
 import LanguageSwitcher from "./LanguageSwitcher"
 const navLogo = "/images/logo-nav-future-energy.png"
@@ -22,11 +23,18 @@ const LINK_IDS = [
 export default function PublicNav({ current, onNavigate }: Props) {
   const t = useTranslations("nav")
   const [menuOpen, setMenuOpen] = useState(false)
+  const { isSignedIn } = useUser()
 
   const go = (page: string) => {
     setMenuOpen(false)
     onNavigate(page)
   }
+
+  // /dashboard re-derives the role from our own DB and redirects to the
+  // right portal — signed-out visitors land on the unified sign-in page,
+  // which itself redirects to /dashboard once authenticated.
+  const portalLabel = isSignedIn ? t("clientPortal") : t("logIn")
+  const portalTarget = isSignedIn ? "dashboard" : "client-login"
 
   return (
     <nav
@@ -107,7 +115,7 @@ export default function PublicNav({ current, onNavigate }: Props) {
         >
           <LanguageSwitcher />
           <button
-            onClick={() => go("client-login")}
+            onClick={() => go(portalTarget)}
             style={{
               background: "#F8FAFC",
               color: palette.navy,
@@ -120,7 +128,7 @@ export default function PublicNav({ current, onNavigate }: Props) {
               fontFamily: "Poppins, sans-serif",
             }}
           >
-            {t("clientPortal")}
+            {portalLabel}
           </button>
           <button
             onClick={() => go("contact")}
@@ -218,7 +226,7 @@ export default function PublicNav({ current, onNavigate }: Props) {
             <LanguageSwitcher />
           </div>
           <button
-            onClick={() => go("client-login")}
+            onClick={() => go(portalTarget)}
             style={{
               background: "#F8FAFC",
               color: palette.navy,
@@ -232,7 +240,7 @@ export default function PublicNav({ current, onNavigate }: Props) {
               marginTop: 8,
             }}
           >
-            {t("clientPortal")}
+            {portalLabel}
           </button>
           <button
             onClick={() => go("contact")}
