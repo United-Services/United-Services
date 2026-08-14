@@ -246,6 +246,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
       <div
         style={{
           display: "flex",
+          marginTop: 68,
           height: "calc(100vh - 68px)",
           overflow: "hidden",
           background: "#F8FAFC",

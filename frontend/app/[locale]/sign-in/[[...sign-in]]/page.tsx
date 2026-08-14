@@ -28,6 +28,7 @@ export default function SignInPage() {
       <div
         style={{
           display: "flex",
+          marginTop: 68,
           minHeight: "calc(100vh - 68px)",
         }}
       >

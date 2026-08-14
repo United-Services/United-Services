@@ -115,6 +115,7 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
         <PublicNav current="candidate-dashboard" onNavigate={onNavigate} />
         <div
           style={{
+            marginTop: 68,
             minHeight: "calc(100vh - 68px)",
             display: "flex",
             flexDirection: "column",
@@ -165,6 +166,7 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
       <PublicNav current="candidate-dashboard" onNavigate={onNavigate} />
       <div
         style={{
+          marginTop: 68,
           minHeight: "calc(100vh - 68px)",
           background: "#F8FAFC",
           padding: "40px 24px",

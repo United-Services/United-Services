@@ -101,6 +101,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
         <PublicNav current="candidate-signup" onNavigate={onNavigate} />
         <div
           style={{
+            marginTop: 68,
             minHeight: "calc(100vh - 68px)",
             display: "flex",
             alignItems: "center",
@@ -260,6 +261,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
       <PublicNav current="candidate-signup" onNavigate={onNavigate} />
       <div
         style={{
+          marginTop: 68,
           minHeight: "calc(100vh - 68px)",
           background: "#F8FAFC",
           padding: "40px 24px",

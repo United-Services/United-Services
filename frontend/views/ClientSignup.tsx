@@ -130,17 +130,19 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
 
   if (success) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#F8FAFC",
-          fontFamily: "Poppins, sans-serif",
-          padding: 24,
-        }}
-      >
+      <div style={{ fontFamily: "Poppins, sans-serif" }}>
+        <PublicNav current="client-signup" onNavigate={onNavigate} />
+        <div
+          style={{
+            marginTop: 68,
+            minHeight: "calc(100vh - 68px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#F8FAFC",
+            padding: 24,
+          }}
+        >
         <div
           className="step-slide"
           style={{
@@ -187,6 +189,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
             })}
           </p>
         </div>
+        </div>
       </div>
     )
   }
@@ -205,6 +208,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
       <div
         className="signup-split"
         style={{
+          marginTop: 68,
           minHeight: "calc(100vh - 68px)",
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
