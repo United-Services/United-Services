@@ -271,8 +271,23 @@ export class MfaService {
         transports: asTransports(c.transports),
       })),
       authenticatorSelection: {
-        residentKey: 'preferred',
-        userVerification: 'preferred',
+        // Restricts registration to a device-bound biometric sensor
+        // (Touch ID, Face ID, Windows Hello, Android fingerprint) —
+        // 'cross-platform' would also accept a roaming USB/NFC security
+        // key, which is a different credential class than what "biometric"
+        // is meant to offer here. WebAuthn has no narrower concept than
+        // "platform authenticator" — it can't distinguish fingerprint from
+        // face/PIN at the protocol level, so this is the closest available
+        // restriction, paired with requiring user verification below so
+        // the platform's own biometric/PIN prompt can't be skipped.
+        authenticatorAttachment: 'platform',
+        // 'discouraged' keeps this a traditional, non-discoverable
+        // credential scoped to this one enrollment — 'preferred'/
+        // 'required' is what turns a credential into a synced, username-
+        // less *passkey* (iCloud Keychain/Google Password Manager), which
+        // is explicitly not what was asked for here.
+        residentKey: 'discouraged',
+        userVerification: 'required',
       },
     });
     await this.redis.set(
@@ -348,7 +363,10 @@ export class MfaService {
 
     const options = await generateAuthenticationOptions({
       rpID: this.rpId,
-      userVerification: 'preferred',
+      // Matches the 'required' set at registration (webauthnRegisterOptions)
+      // — 'preferred' would let an authenticator skip the biometric/PIN
+      // prompt it was specifically registered to require.
+      userVerification: 'required',
       allowCredentials: credentials.map((c) => ({
         id: c.credentialId,
         transports: asTransports(c.transports),

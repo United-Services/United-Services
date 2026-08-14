@@ -80,6 +80,30 @@ describe('MfaService — WebAuthn', () => {
         300,
       );
     });
+
+    // "Biometric" here specifically means a device-bound sensor (Touch
+    // ID/Face ID/Windows Hello) — not a roaming USB/NFC security key
+    // ('cross-platform') and not a synced, discoverable passkey
+    // (residentKey preferred/required). Getting either of these wrong
+    // silently offers a different credential class than what was asked
+    // for, so this is asserted directly rather than left implicit.
+    it('restricts registration to a platform (device-bound) authenticator with required user verification and a non-resident key', async () => {
+      generateRegistrationOptionsMock.mockResolvedValue({
+        challenge: 'chal-1',
+      });
+
+      await service.webauthnRegisterOptions(user);
+
+      expect(generateRegistrationOptionsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          authenticatorSelection: {
+            authenticatorAttachment: 'platform',
+            residentKey: 'discouraged',
+            userVerification: 'required',
+          },
+        }),
+      );
+    });
   });
 
   describe('webauthnRegisterVerify', () => {
@@ -155,6 +179,24 @@ describe('MfaService — WebAuthn', () => {
       prisma.webAuthnCredential.findMany.mockResolvedValue([]);
       await expect(service.webauthnAuthOptions(user)).rejects.toThrow(
         BadRequestException,
+      );
+    });
+
+    // Must match the 'required' set at registration — 'preferred' here
+    // would let an authenticator skip the very biometric/PIN prompt it
+    // was registered specifically to require.
+    it('requires user verification on every authentication attempt, not just registration', async () => {
+      prisma.webAuthnCredential.findMany.mockResolvedValue([
+        { credentialId: 'cred-1', transports: [] },
+      ]);
+      generateAuthenticationOptionsMock.mockResolvedValue({
+        challenge: 'chal-1',
+      });
+
+      await service.webauthnAuthOptions(user);
+
+      expect(generateAuthenticationOptionsMock).toHaveBeenCalledWith(
+        expect.objectContaining({ userVerification: 'required' }),
       );
     });
   });

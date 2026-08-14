@@ -20,6 +20,17 @@ changes or a new one is discovered during implementation.
    /mfa/challenge/totp` and `POST /mfa/webauthn/auth-verify` are the two
    endpoints that satisfy it; both mark only the session that called them,
    via `MfaService.markSessionVerified`.
+   The "biometric" enrollment option is deliberately restricted to a
+   device-bound platform authenticator (Touch ID/Face ID/Windows Hello) —
+   `authenticatorSelection: { authenticatorAttachment: 'platform',
+   residentKey: 'discouraged', userVerification: 'required' }` in
+   `MfaService.webauthnRegisterOptions`. `'cross-platform'` would also
+   accept a roaming USB/NFC security key, and a resident/discoverable key
+   is what turns a credential into a synced, usernameless *passkey*
+   (iCloud Keychain/Google Password Manager) — neither is what "biometric"
+   is meant to offer here. WebAuthn has no protocol-level way to require
+   fingerprint specifically over face/PIN; "platform + required user
+   verification" is the closest available restriction.
 3. A client cannot see another client's data. Only Admin has cross-client
    visibility. Every client-scoped query must filter by the authenticated
    user's own `id`/`companyName` — never trust a client-supplied id param.
