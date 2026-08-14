@@ -140,6 +140,62 @@ const fmtDateTime = (d: string) => new Date(d).toLocaleString()
 const fmtTime = (d: string) =>
   new Date(d).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 
+// Hoisted to module scope (was defined inline in AdminDashboard's render
+// body) — a component defined during render gets a new identity every
+// render, which forces React to remount it instead of reconciling, so
+// this input would lose focus on every keystroke-triggered re-render.
+function SearchBox({
+  value,
+  onChange,
+  onSearch,
+  placeholder,
+}: {
+  value: string
+  onChange: (v: string) => void
+  onSearch: () => void
+  placeholder: string
+}) {
+  const t = useTranslations("adminDashboard")
+  return (
+    <div style={{ marginBottom: 16, display: "flex", gap: 8 }}>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") onSearch()
+        }}
+        placeholder={placeholder}
+        style={{
+          flex: 1,
+          maxWidth: 320,
+          padding: "9px 14px",
+          borderRadius: 9999,
+          border: "1.5px solid #E2E8F0",
+          fontSize: 13,
+          fontFamily: "Poppins, sans-serif",
+          outline: "none",
+        }}
+      />
+      <button
+        onClick={onSearch}
+        style={{
+          padding: "9px 18px",
+          borderRadius: 9999,
+          border: "none",
+          background: "#4B5563",
+          color: "#fff",
+          fontWeight: 600,
+          fontSize: 13,
+          cursor: "pointer",
+          fontFamily: "Poppins, sans-serif",
+        }}
+      >
+        {t("search")}
+      </button>
+    </div>
+  )
+}
+
 export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   const { getToken } = useAuth()
   const t = useTranslations("adminDashboard")
@@ -333,6 +389,13 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   }
 
   useEffect(() => {
+    // Standard fetch-on-mount (react.dev/learn/you-might-not-need-an-effect
+    // explicitly endorses this shape): each load* function is async and
+    // only touches state after its own await, so nothing here sets state
+    // synchronously during this effect's own execution — the new
+    // set-state-in-effect rule can't see through the indirection to confirm
+    // that, so it flags the call by name regardless.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadOverview()
     loadGeoOverview()
     loadClients()
@@ -633,55 +696,6 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
         ))}
       </tr>
     </thead>
-  )
-
-  const SearchBox = ({
-    value,
-    onChange,
-    onSearch,
-    placeholder,
-  }: {
-    value: string
-    onChange: (v: string) => void
-    onSearch: () => void
-    placeholder: string
-  }) => (
-    <div style={{ marginBottom: 16, display: "flex", gap: 8 }}>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") onSearch()
-        }}
-        placeholder={placeholder}
-        style={{
-          flex: 1,
-          maxWidth: 320,
-          padding: "9px 14px",
-          borderRadius: 9999,
-          border: "1.5px solid #E2E8F0",
-          fontSize: 13,
-          fontFamily: "Poppins, sans-serif",
-          outline: "none",
-        }}
-      />
-      <button
-        onClick={onSearch}
-        style={{
-          padding: "9px 18px",
-          borderRadius: 9999,
-          border: "none",
-          background: "#4B5563",
-          color: "#fff",
-          fontWeight: 600,
-          fontSize: 13,
-          cursor: "pointer",
-          fontFamily: "Poppins, sans-serif",
-        }}
-      >
-        {t("search")}
-      </button>
-    </div>
   )
 
   return (

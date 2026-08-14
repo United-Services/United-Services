@@ -141,6 +141,11 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
   }
 
   useEffect(() => {
+    // Standard fetch-on-mount (react.dev/learn/you-might-not-need-an-effect
+    // explicitly endorses this shape) — loadAll only touches state after
+    // its own await, so nothing here sets state synchronously during this
+    // effect's own execution.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadAll()
   }, [])
 

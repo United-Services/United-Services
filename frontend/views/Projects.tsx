@@ -179,9 +179,19 @@ export default function Projects({ onNavigate, company }: Props) {
   const t = useTranslations("projects")
   const tSvc = useTranslations("services.names")
   const [filter, setFilter] = useState<string | null>(company ?? null)
+  // `filter` starts from `company` but the user can then override it by
+  // clicking a company card (setFilter below) — so it can't be purely
+  // derived from the prop. Re-syncing it whenever `company` changes via an
+  // effect would cause an extra render after the one that already updated
+  // `company`; adjusting it directly during render (React's documented
+  // pattern for this) applies the reset in the same render instead.
+  const [prevCompany, setPrevCompany] = useState(company)
+  if (company !== prevCompany) {
+    setPrevCompany(company)
+    setFilter(company ?? null)
+  }
 
   useEffect(() => {
-    setFilter(company ?? null)
     window.scrollTo(0, 0)
   }, [company])
 

@@ -1,15 +1,12 @@
-import { FlatCompat } from "@eslint/eslintrc"
-
-const compat = new FlatCompat({
-  baseDirectory: import.meta.dirname,
-})
+import nextConfig from "eslint-config-next"
 
 const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  ...nextConfig,
   {
-    ignores: [".next/**", "node_modules/**", "public/**", "next-env.d.ts"],
+    ignores: ["node_modules/**", "public/**"],
   },
   {
+    files: ["**/*.ts", "**/*.tsx"],
     rules: {
       "@typescript-eslint/no-explicit-any": "warn",
     },
