@@ -43,12 +43,17 @@ export default function CandidateDashboard({ onLogout }: Props) {
   const cvRef = useRef<HTMLInputElement>(null)
 
   const load = async () => {
-    const token = await getToken()
-    const { data } = await axios.get("/me/candidate-application", {
-      headers: authHeader(token),
-    })
-    setApp(data)
-    setLoading(false)
+    try {
+      const token = await getToken()
+      const { data } = await axios.get("/me/candidate-application", {
+        headers: authHeader(token),
+      })
+      setApp(data)
+    } catch {
+      setMessage({ type: "error", text: t("loadError") })
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -95,12 +100,43 @@ export default function CandidateDashboard({ onLogout }: Props) {
         style={{
           minHeight: "100vh",
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
+          gap: 16,
           fontFamily: "Poppins, sans-serif",
         }}
       >
-        <InlineSpinner size={18} /> {t("loading")}
+        {loading ? (
+          <>
+            <InlineSpinner size={18} /> {t("loading")}
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: 13, color: "#DC2626", fontWeight: 600 }}>
+              {message?.text ?? t("loadError")}
+            </div>
+            <button
+              onClick={() => {
+                setLoading(true)
+                load()
+              }}
+              style={{
+                padding: "9px 20px",
+                borderRadius: 9999,
+                border: "none",
+                background: palette.accent,
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+                fontFamily: "Poppins, sans-serif",
+              }}
+            >
+              {t("retry")}
+            </button>
+          </>
+        )}
       </div>
     )
   }

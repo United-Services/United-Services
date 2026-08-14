@@ -15,6 +15,8 @@ import {
 } from "../components/NavIcons"
 import { axios, authHeader } from "../lib/api"
 import { FileAccessStatus } from "../enums/status.enums"
+import ErrorBanner from "../components/ErrorBanner"
+import { getErrorMessage } from "../lib/errors"
 
 const FALLBACK_IMG = "/images/bp-valves.jpg"
 const SVC_IMG_BY_SLUG: Record<string, string> = {
@@ -68,7 +70,9 @@ interface Me {
 export default function ClientDashboard({ onLogout, onNavigate }: Props) {
   const { getToken } = useAuth()
   const t = useTranslations("clientDashboard")
+  const tCommon = useTranslations("common")
   const [section, setSection] = useState("services")
+  const [error, setError] = useState<string | null>(null)
 
   const NAV_ITEMS = [
     { id: "services", label: t("nav.services"), icon: <IconGear /> },
@@ -106,30 +110,34 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
   const authed = async () => authHeader(await getToken())
 
   const loadAll = async () => {
-    const headers = await authed()
-    const [meRes, servicesRes, requestsRes, slotsRes, myApptsRes] =
-      await Promise.all([
-        axios.get("/me", { headers }),
-        axios.get("/services", { headers }),
-        axios.get("/file-access-requests/mine", { headers }),
-        axios.get("/appointments/slots", { headers }),
-        axios.get("/appointments/mine", { headers }),
-      ])
-    setMe(meRes.data)
-    setServices(servicesRes.data)
-    setMyRequests(requestsRes.data)
-    setSlots(slotsRes.data)
-    setMyAppointments(myApptsRes.data)
+    try {
+      const headers = await authed()
+      const [meRes, servicesRes, requestsRes, slotsRes, myApptsRes] =
+        await Promise.all([
+          axios.get("/me", { headers }),
+          axios.get("/services", { headers }),
+          axios.get("/file-access-requests/mine", { headers }),
+          axios.get("/appointments/slots", { headers }),
+          axios.get("/appointments/mine", { headers }),
+        ])
+      setMe(meRes.data)
+      setServices(servicesRes.data)
+      setMyRequests(requestsRes.data)
+      setSlots(slotsRes.data)
+      setMyAppointments(myApptsRes.data)
 
-    const filePairs = await Promise.all(
-      servicesRes.data.map(async (s: Service) => {
-        const { data } = await axios.get(`/services/${s.id}/latest-file`, {
-          headers,
-        })
-        return [s.id, data] as const
-      }),
-    )
-    setLatestFiles(Object.fromEntries(filePairs))
+      const filePairs = await Promise.all(
+        servicesRes.data.map(async (s: Service) => {
+          const { data } = await axios.get(`/services/${s.id}/latest-file`, {
+            headers,
+          })
+          return [s.id, data] as const
+        }),
+      )
+      setLatestFiles(Object.fromEntries(filePairs))
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.loadFailed")))
+    }
   }
 
   useEffect(() => {
@@ -156,6 +164,8 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
       })
       const { data } = await axios.get("/file-access-requests/mine", { headers })
       setMyRequests(data)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
     } finally {
       setRequestingId(null)
     }
@@ -165,11 +175,15 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
     const file = latestFiles[serviceId]
     const req = myRequests.find((r) => r.serviceFile.id === file?.id)
     if (!req) return
-    const headers = await authed()
-    const { data } = await axios.get(`/file-access-requests/${req.id}/download`, {
-      headers,
-    })
-    window.open(data.url, "_blank")
+    try {
+      const headers = await authed()
+      const { data } = await axios.get(`/file-access-requests/${req.id}/download`, {
+        headers,
+      })
+      window.open(data.url, "_blank")
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    }
   }
 
   const submitRfq = async (e: React.FormEvent) => {
@@ -190,6 +204,8 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
         { headers },
       )
       setRfqSent(true)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
     } finally {
       setRfqLoading(false)
     }
@@ -414,6 +430,11 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
         </header>
 
         <main style={{ flex: 1, overflowY: "auto", padding: "32px" }}>
+          <ErrorBanner
+            message={error}
+            onDismiss={() => setError(null)}
+            dismissLabel={tCommon("errors.dismiss")}
+          />
           {}
           {section === "services" && (
             <div>

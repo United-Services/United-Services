@@ -1075,6 +1075,15 @@
     "replace": "Replace",
     "uploading": "Uploading...",
     "uploadSuccess": "Document uploaded successfully.",
-    "uploadError": "Could not upload this file. Please check the format and try again."
+    "uploadError": "Could not upload this file. Please check the format and try again.",
+    "loadError": "Couldn't load your application. Please try again.",
+    "retry": "Retry"
+  },
+  "common": {
+    "errors": {
+      "loadFailed": "Couldn't load this. Please try again.",
+      "actionFailed": "Something went wrong. Please try again.",
+      "dismiss": "Dismiss"
+    }
   }
 }

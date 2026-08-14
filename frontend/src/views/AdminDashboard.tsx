@@ -39,7 +39,9 @@ import {
   IconLogout,
 } from "../components/NavIcons"
 import WorldMap from "../components/WorldMap"
+import ErrorBanner from "../components/ErrorBanner"
 import { axios, authHeader } from "../lib/api"
+import { getErrorMessage } from "../lib/errors"
 import AdminSecuritySection from "./AdminSecuritySection"
 import { FileAccessStatus, ApplicationStatus, Role } from "../enums/status.enums"
 
@@ -141,7 +143,14 @@ const fmtTime = (d: string) =>
 export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   const { getToken } = useAuth()
   const t = useTranslations("adminDashboard")
+  const tCommon = useTranslations("common")
   const [section, setSection] = useState("overview")
+  // Every load/action function below sets this on failure instead of
+  // letting a rejected axios promise propagate unhandled — previously a
+  // 4xx/5xx/network error left whatever section triggered it silently
+  // stuck (loading state never resolved, nothing told the admin anything
+  // failed). One shared banner, cleared at the start of each new attempt.
+  const [error, setError] = useState<string | null>(null)
   const authed = async () => authHeader(await getToken())
 
   const NAV = [
@@ -195,92 +204,132 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   const [auditQuery, setAuditQuery] = useState("")
 
   const loadOverview = async () => {
-    const headers = await authed()
-    const { data } = await axios.get("/analytics/overview", { headers })
-    setOverview(data)
+    try {
+      const headers = await authed()
+      const { data } = await axios.get("/analytics/overview", { headers })
+      setOverview(data)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.loadFailed")))
+    }
   }
   const loadGeoOverview = async () => {
-    const headers = await authed()
-    const { data } = await axios.get("/analytics/geo-overview", { headers })
-    setGeoOverview(data.countries)
+    try {
+      const headers = await authed()
+      const { data } = await axios.get("/analytics/geo-overview", { headers })
+      setGeoOverview(data.countries)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.loadFailed")))
+    }
   }
   const loadClients = async (q = "") => {
-    const headers = await authed()
-    const { data } = await axios.get("/admin/users", {
-      headers,
-      params: {
-        role: Role.Client,
-        q: q || undefined,
-      },
-    })
-    setClients(data)
+    try {
+      const headers = await authed()
+      const { data } = await axios.get("/admin/users", {
+        headers,
+        params: {
+          role: Role.Client,
+          q: q || undefined,
+        },
+      })
+      setClients(data)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.loadFailed")))
+    }
   }
   const loadServices = async () => {
-    const headers = await authed()
-    const { data } = await axios.get("/services", { headers })
-    setServices(data)
-    const pairs = await Promise.all(
-      data.map(async (s: Service) => {
-        const res = await axios.get(`/services/${s.id}/files`, { headers })
-        return [s.id, res.data] as const
-      }),
-    )
-    setServiceFiles(Object.fromEntries(pairs))
+    try {
+      const headers = await authed()
+      const { data } = await axios.get("/services", { headers })
+      setServices(data)
+      const pairs = await Promise.all(
+        data.map(async (s: Service) => {
+          const res = await axios.get(`/services/${s.id}/files`, { headers })
+          return [s.id, res.data] as const
+        }),
+      )
+      setServiceFiles(Object.fromEntries(pairs))
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.loadFailed")))
+    }
   }
   const loadRequests = async (q = "") => {
-    const headers = await authed()
-    const { data } = await axios.get("/file-access-requests", {
-      headers,
-      params: {
-        q: q || undefined,
-      },
-    })
-    setRequests(data)
+    try {
+      const headers = await authed()
+      const { data } = await axios.get("/file-access-requests", {
+        headers,
+        params: {
+          q: q || undefined,
+        },
+      })
+      setRequests(data)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.loadFailed")))
+    }
   }
   const loadPositions = async () => {
-    const headers = await authed()
-    const { data } = await axios.get("/positions/all", { headers })
-    setPositions(data)
+    try {
+      const headers = await authed()
+      const { data } = await axios.get("/positions/all", { headers })
+      setPositions(data)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.loadFailed")))
+    }
   }
   const loadCandidates = async (q = "") => {
-    const headers = await authed()
-    const { data } = await axios.get("/candidate-applications", {
-      headers,
-      params: {
-        q: q || undefined,
-      },
-    })
-    setCandidates(data)
+    try {
+      const headers = await authed()
+      const { data } = await axios.get("/candidate-applications", {
+        headers,
+        params: {
+          q: q || undefined,
+        },
+      })
+      setCandidates(data)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.loadFailed")))
+    }
   }
   const loadRfqs = async (q = "") => {
-    const headers = await authed()
-    const { data } = await axios.get("/rfqs", {
-      headers,
-      params: {
-        q: q || undefined,
-      },
-    })
-    setRfqs(data)
+    try {
+      const headers = await authed()
+      const { data } = await axios.get("/rfqs", {
+        headers,
+        params: {
+          q: q || undefined,
+        },
+      })
+      setRfqs(data)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.loadFailed")))
+    }
   }
   const loadAppointments = async (q = "") => {
-    const headers = await authed()
-    const { data } = await axios.get("/appointments", {
-      headers,
-      params: {
-        q: q || undefined,
-      },
-    })
-    setAppointments(data)
+    try {
+      const headers = await authed()
+      const { data } = await axios.get("/appointments", {
+        headers,
+        params: {
+          q: q || undefined,
+        },
+      })
+      setAppointments(data)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.loadFailed")))
+    }
   }
   const loadAuditLog = async (q = "") => {
-    const headers = await authed()
-    const { data } = await axios.get("/audit-log", {
-      headers,
-      params: {
-        q: q || undefined,
-      },
-    })
-    setAuditLog(data)
+    try {
+      const headers = await authed()
+      const { data } = await axios.get("/audit-log", {
+        headers,
+        params: {
+          q: q || undefined,
+        },
+      })
+      setAuditLog(data)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.loadFailed")))
+    }
   }
 
   useEffect(() => {
@@ -297,13 +346,17 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   }, [])
 
   const toggleClientStatus = async (c: AdminUser) => {
-    const headers = await authed()
-    await axios.patch(
-      `/admin/users/${c.id}/${c.disabledAt ? "enable" : "disable"}`,
-      {},
-      { headers },
-    )
-    loadClients(clientQuery)
+    try {
+      const headers = await authed()
+      await axios.patch(
+        `/admin/users/${c.id}/${c.disabledAt ? "enable" : "disable"}`,
+        {},
+        { headers },
+      )
+      loadClients(clientQuery)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    }
   }
 
   const uploadSpec = (serviceId: string) =>
@@ -335,51 +388,70 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
         headers,
       })
       setServiceFiles((prev) => ({ ...prev, [serviceId]: files }))
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
     } finally {
       setUploadingId(null)
     }
   }
 
   const decideRequest = async (id: string, approve: boolean) => {
-    const headers = await authed()
-    await axios.post(`/file-access-requests/${id}/decide`, { approve }, {
-      headers,
-    })
-    loadRequests(requestQuery)
-    loadOverview()
+    try {
+      const headers = await authed()
+      await axios.post(`/file-access-requests/${id}/decide`, { approve }, {
+        headers,
+      })
+      loadRequests(requestQuery)
+      loadOverview()
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    }
   }
 
   const decideCandidate = async (id: string, approve: boolean) => {
-    const headers = await authed()
-    await axios.patch(`/candidate-applications/${id}/decide`, { approve }, {
-      headers,
-    })
-    loadCandidates(candidateQuery)
+    try {
+      const headers = await authed()
+      await axios.patch(`/candidate-applications/${id}/decide`, { approve }, {
+        headers,
+      })
+      loadCandidates(candidateQuery)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    }
   }
 
   const viewCandidateDocs = async (id: string) => {
-    const headers = await authed()
-    const { data } = await axios.get(`/candidate-applications/${id}/documents`, {
-      headers,
-    })
-    // Either document may not be uploaded yet — the candidate dashboard
-    // lets them upload ID/CV after signup, not during it.
-    if (data.idPhotoUrl) window.open(data.idPhotoUrl, "_blank")
-    if (data.cvUrl) window.open(data.cvUrl, "_blank")
-    if (!data.idPhotoUrl && !data.cvUrl) {
-      window.alert(t("candidates.noDocsYet"))
+    try {
+      const headers = await authed()
+      const { data } = await axios.get(
+        `/candidate-applications/${id}/documents`,
+        { headers },
+      )
+      // Either document may not be uploaded yet — the candidate dashboard
+      // lets them upload ID/CV after signup, not during it.
+      if (data.idPhotoUrl) window.open(data.idPhotoUrl, "_blank")
+      if (data.cvUrl) window.open(data.cvUrl, "_blank")
+      if (!data.idPhotoUrl && !data.cvUrl) {
+        window.alert(t("candidates.noDocsYet"))
+      }
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
     }
   }
 
   const requestCandidateDocuments = async (id: string) => {
     const note = window.prompt(t("candidates.requestDocsPrompt")) ?? undefined
-    const headers = await authed()
-    await axios.patch(
-      `/candidate-applications/${id}/request-documents`,
-      { note },
-      { headers },
-    )
-    loadCandidates(candidateQuery)
+    try {
+      const headers = await authed()
+      await axios.patch(
+        `/candidate-applications/${id}/request-documents`,
+        { note },
+        { headers },
+      )
+      loadCandidates(candidateQuery)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    }
   }
 
   const startEditPosition = (p: PositionRow) => {
@@ -414,33 +486,49 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
       }
       cancelEditPosition()
       loadPositions()
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
     } finally {
       setPositionSaving(false)
     }
   }
   const togglePositionOpen = async (p: PositionRow) => {
-    const headers = await authed()
-    await axios.patch(`/positions/${p.id}`, { isOpen: !p.isOpen }, { headers })
-    loadPositions()
+    try {
+      const headers = await authed()
+      await axios.patch(
+        `/positions/${p.id}`,
+        { isOpen: !p.isOpen },
+        { headers },
+      )
+      loadPositions()
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    }
   }
 
   const createSlot = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newSlot.date || !newSlot.startTime || !newSlot.endTime) return
-    const headers = await authed()
-    await axios.post(
-      "/appointments/slots",
-      {
-        date: new Date(newSlot.date).toISOString(),
-        startTime: new Date(
-          `${newSlot.date}T${newSlot.startTime}`,
-        ).toISOString(),
-        endTime: new Date(`${newSlot.date}T${newSlot.endTime}`).toISOString(),
-      },
-      { headers },
-    )
-    setNewSlot({ date: "", startTime: "", endTime: "" })
-    loadAppointments(bookingQuery)
+    try {
+      const headers = await authed()
+      await axios.post(
+        "/appointments/slots",
+        {
+          date: new Date(newSlot.date).toISOString(),
+          startTime: new Date(
+            `${newSlot.date}T${newSlot.startTime}`,
+          ).toISOString(),
+          endTime: new Date(
+            `${newSlot.date}T${newSlot.endTime}`,
+          ).toISOString(),
+        },
+        { headers },
+      )
+      setNewSlot({ date: "", startTime: "", endTime: "" })
+      loadAppointments(bookingQuery)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    }
   }
 
   const StatusBadge = ({ status }: { status: string }) => {
@@ -741,6 +829,11 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
         </header>
 
         <main style={{ flex: 1, overflowY: "auto", padding: "28px 32px" }}>
+          <ErrorBanner
+            message={error}
+            onDismiss={() => setError(null)}
+            dismissLabel={tCommon("errors.dismiss")}
+          />
           {}
           {section === "overview" && overview && (
             <div>
