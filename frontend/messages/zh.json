@@ -1085,5 +1085,10 @@
       "actionFailed": "Something went wrong. Please try again.",
       "dismiss": "Dismiss"
     }
+  },
+  "auth": {
+    "signInTagline": "登录以管理您的服务、请求和文件。",
+    "signUpTagline": "创建账户以请求服务、跟踪询价单并管理您的文件。",
+    "brand": "United Services Egypt"
   }
 }

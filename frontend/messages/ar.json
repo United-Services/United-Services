@@ -1085,5 +1085,10 @@
       "actionFailed": "Something went wrong. Please try again.",
       "dismiss": "Dismiss"
     }
+  },
+  "auth": {
+    "signInTagline": "سجّل الدخول لإدارة خدماتك وطلباتك ومستنداتك.",
+    "signUpTagline": "أنشئ حسابًا لطلب الخدمات ومتابعة عروض الأسعار وإدارة ملفاتك.",
+    "brand": "يونايتد سيرفيسز مصر"
   }
 }

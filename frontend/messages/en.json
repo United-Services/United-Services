@@ -1085,5 +1085,10 @@
       "actionFailed": "Something went wrong. Please try again.",
       "dismiss": "Dismiss"
     }
+  },
+  "auth": {
+    "signInTagline": "Sign in to manage your services, requests, and documents.",
+    "signUpTagline": "Create an account to request services, track RFQs, and manage your files.",
+    "brand": "United Services Egypt"
   }
 }
