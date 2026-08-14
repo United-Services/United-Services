@@ -25,11 +25,13 @@ describe('MfaService — TOTP', () => {
   let auditLog: { record: jest.Mock };
   let kekStore: FakeKekKeyStore;
   let service: MfaService;
-  // Real in-memory get/set is enough to exercise the afterTimeStep replay
-  // guard, which reads-then-writes a single key per user — no need for a
-  // full ioredis mock.
+  // Real in-memory get/set/eval is enough to exercise the afterTimeStep
+  // replay guard — no need for a full ioredis mock. `eval` replicates the
+  // real atomic compare-and-set Lua script's semantics (synchronously, but
+  // that's fine: these tests aren't exercising the concurrency guarantee
+  // itself, just that the recorded-vs-not-recorded result is honored).
   let redisStore: Map<string, string>;
-  let redis: { get: jest.Mock; set: jest.Mock };
+  let redis: { get: jest.Mock; set: jest.Mock; eval: jest.Mock };
 
   beforeEach(async () => {
     prisma = {
@@ -56,6 +58,16 @@ describe('MfaService — TOTP', () => {
         redisStore.set(key, value);
         return Promise.resolve('OK');
       }),
+      eval: jest.fn(
+        (_script: string, _numKeys: number, key: string, value: string) => {
+          const current = redisStore.get(key);
+          if (!current || Number(value) > Number(current)) {
+            redisStore.set(key, value);
+            return Promise.resolve(1);
+          }
+          return Promise.resolve(0);
+        },
+      ),
     };
     service = new MfaService(
       prisma as unknown as PrismaService,
@@ -198,6 +210,34 @@ describe('MfaService — TOTP', () => {
     // Same code, same time step — must be rejected the second time even
     // though it would otherwise still be within the tolerance window.
     await expect(service.verifyTotp(user, validCode)).resolves.toBe(false);
+  });
+
+  it('rejects a replay even when both requests are genuinely concurrent (not sequential)', async () => {
+    // A plain GET-then-SET (no atomic compare-and-set) would let both of
+    // these resolve true: both calls read the same "nothing recorded yet"
+    // state before either writes back. This is the realistic case a
+    // double-submit/client-retry produces — not a contrived ordering.
+    const { secret } = await service.enrollTotp(user);
+    const stored = {
+      ...prisma.totpCredential.upsert.mock.calls[0][0].update,
+      confirmedAt: new Date(),
+    };
+    prisma.totpCredential.findUnique.mockResolvedValue(stored);
+
+    const validCode = await new TOTP({
+      secret,
+      label: user.email,
+      crypto: new NobleCryptoPlugin(),
+      base32: new ScureBase32Plugin(),
+    }).generate();
+
+    const [first, second] = await Promise.all([
+      service.verifyTotp(user, validCode),
+      service.verifyTotp(user, validCode),
+    ]);
+
+    // Exactly one of the two truly-parallel calls may succeed.
+    expect([first, second].filter(Boolean)).toHaveLength(1);
   });
 
   it('replay protection is scoped per user, not global', async () => {

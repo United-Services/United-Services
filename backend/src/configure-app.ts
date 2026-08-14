@@ -15,14 +15,23 @@ import cookieParser from 'cookie-parser';
 // actually being exercised by a single test in this repo despite looking
 // like it was.
 export function configureApp(app: NestExpressApplication): void {
-  // nginx (nginx.conf) sits in front of this app and is the only hop
-  // between it and the internet, correctly appending $remote_addr to
-  // X-Forwarded-For rather than trusting a client-supplied value outright.
-  // Without `trust proxy`, Express's req.ip (what the global throttler
-  // keys rate limits on) resolves to nginx's own address for every
-  // request regardless of client — collapsing every user into one shared
-  // rate-limit bucket instead of limiting each client independently.
-  // `1` trusts exactly one hop back, matching nginx being the sole proxy.
+  // nginx (nginx.conf) is this app's only direct hop — the ONE thing that
+  // connects straight to it. Without `trust proxy`, Express's req.ip
+  // (what the global throttler keys rate limits on) resolves to nginx's
+  // own address for every request regardless of client, collapsing every
+  // user into one shared rate-limit bucket. `1` trusts exactly that one
+  // hop's X-Forwarded-For entry.
+  //
+  // Production (docs/DEPLOYMENT.md) puts Cloudflare in front of nginx too
+  // — a SECOND hop before the request reaches this app — but that does
+  // NOT mean this needs to become `trust proxy: 2`. nginx.conf's
+  // `set_real_ip_from`/`real_ip_header CF-Connecting-IP` resolves
+  // Cloudflare's hop *at the nginx layer*: for a connection genuinely
+  // from a Cloudflare edge IP, nginx rewrites $remote_addr to the real
+  // visitor IP before building the X-Forwarded-For value it sends
+  // onward — so from this app's perspective there is still exactly one
+  // hop (nginx) asserting the client IP, whether or not Cloudflare is
+  // live in front of it.
   app.set('trust proxy', 1);
 
   app.use(cookieParser());

@@ -70,11 +70,38 @@ export class MfaService {
     return stored ? Number(stored) : undefined;
   }
 
+  // A plain GET-then-SET here would be a real race: two concurrent
+  // requests carrying the identical still-valid code both read the same
+  // stale afterTimeStep, both pass .verify(), and both would then record
+  // "success" — the second call's code was, in effect, replayed. This
+  // Lua script makes the read-compare-write a single atomic Redis
+  // operation, so only the request whose timeStep is genuinely newer than
+  // whatever's currently stored ever wins; the loser gets `recorded:
+  // false` and must be treated as an invalid/replayed attempt even though
+  // its own .verify() call succeeded.
+  private static readonly RECORD_TIME_STEP_SCRIPT = `
+    local current = redis.call('GET', KEYS[1])
+    if (not current) or tonumber(ARGV[1]) > tonumber(current) then
+      redis.call('SET', KEYS[1], ARGV[1])
+      return 1
+    end
+    return 0
+  `;
+
+  // Returns false if this exact time step (or a newer one) was already
+  // recorded by a concurrent request — the caller must treat that as a
+  // failed/replayed verification, not a successful one.
   private async recordUsedTimeStep(
     userId: string,
     timeStep: number,
-  ): Promise<void> {
-    await this.redis.set(this.totpLastStepKey(userId), String(timeStep));
+  ): Promise<boolean> {
+    const result = await this.redis.eval(
+      MfaService.RECORD_TIME_STEP_SCRIPT,
+      1,
+      this.totpLastStepKey(userId),
+      String(timeStep),
+    );
+    return result === 1;
   }
 
   private makeTotp(label: string, secret?: string) {
@@ -131,7 +158,8 @@ export class MfaService {
       afterTimeStep,
     });
     if (!result.valid) throw new BadRequestException('Invalid code');
-    await this.recordUsedTimeStep(user.id, result.timeStep);
+    const recorded = await this.recordUsedTimeStep(user.id, result.timeStep);
+    if (!recorded) throw new BadRequestException('Invalid code');
 
     await this.prisma.$transaction([
       this.prisma.totpCredential.update({
@@ -158,7 +186,8 @@ export class MfaService {
       afterTimeStep,
     });
     if (!result.valid) return false;
-    await this.recordUsedTimeStep(user.id, result.timeStep);
+    const recorded = await this.recordUsedTimeStep(user.id, result.timeStep);
+    if (!recorded) return false;
 
     await this.rewrapIfKekRetiring(user, credential.totpKekKeyId, secret);
     return true;
