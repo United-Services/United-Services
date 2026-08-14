@@ -2,6 +2,7 @@ import { redirect } from "@/i18n/navigation"
 import { auth } from "@clerk/nextjs/server"
 import { axios, authHeader } from "@/lib/api"
 import type { AppLocale } from "@/i18n/routing"
+import { Role } from "@/enums/status.enums"
 import AdminDashboardClient from "./AdminDashboardClient"
 
 // Server-side gate, independent of the middleware's coarse Clerk-claim
@@ -20,7 +21,7 @@ export default async function AdminDashboardPage({
   const token = await getToken()
   try {
     const { data: me } = await axios.get("/me", { headers: authHeader(token) })
-    if (me.role !== "admin") redirect({ href: "/dashboard", locale })
+    if (me.role !== Role.Admin) redirect({ href: "/dashboard", locale })
     if (!me.mfaEnrolled) redirect({ href: "/admin-mfa-setup", locale })
   } catch (error) {
     if (error && typeof error === "object" && "digest" in error) throw error

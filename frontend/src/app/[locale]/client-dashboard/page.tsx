@@ -2,6 +2,7 @@ import { redirect } from "@/i18n/navigation"
 import { auth } from "@clerk/nextjs/server"
 import { axios, authHeader } from "@/lib/api"
 import type { AppLocale } from "@/i18n/routing"
+import { Role } from "@/enums/status.enums"
 import ClientDashboardClient from "./ClientDashboardClient"
 
 // Server-side gate, independent of the middleware's coarse check —
@@ -19,7 +20,7 @@ export default async function ClientDashboardPage({
   const token = await getToken()
   try {
     const { data: me } = await axios.get("/me", { headers: authHeader(token) })
-    if (me.role !== "client") redirect({ href: "/dashboard", locale })
+    if (me.role !== Role.Client) redirect({ href: "/dashboard", locale })
   } catch (error) {
     if (error && typeof error === "object" && "digest" in error) throw error
     redirect({ href: "/sign-in", locale })
