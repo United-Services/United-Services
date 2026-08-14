@@ -8,6 +8,12 @@ import axiosLib from "axios"
 export const axios = axiosLib.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1",
   withCredentials: true,
+  // Without this, a hung backend call (dropped connection, deadlocked
+  // request) never resolves or rejects — the caller's try/catch never
+  // fires, so a page like /dashboard just sits stuck forever instead of
+  // surfacing its error/retry state. 15s is generous for anything this
+  // app calls; nothing here is a long-running job.
+  timeout: 15_000,
   // Required by the backend's CsrfHeaderGuard on every state-changing
   // request: cookie-based auth alone can't distinguish this app's own
   // requests from a cross-site form submission, and a plain HTML form
