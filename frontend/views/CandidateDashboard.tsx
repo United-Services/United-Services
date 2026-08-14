@@ -8,9 +8,11 @@ import { IconLogout } from "../components/NavIcons"
 import { axios, authHeader } from "../lib/api"
 import { ApplicationStatus } from "../enums/status.enums"
 import { useRequestGuard } from "../lib/useRequestGuard"
+import PublicNav from "../components/PublicNav"
 
 interface Props {
   onLogout: () => void
+  onNavigate: (page: string) => void
 }
 
 interface Application {
@@ -29,7 +31,7 @@ const STATUS_COLORS: Record<ApplicationStatus, { bg: string; color: string }> = 
   [ApplicationStatus.Denied]: { bg: "#FEE2E2", color: "#991B1B" },
 }
 
-export default function CandidateDashboard({ onLogout }: Props) {
+export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
   const { getToken } = useAuth()
   const t = useTranslations("candidateDashboard")
   const [app, setApp] = useState<Application | null>(null)
@@ -109,17 +111,18 @@ export default function CandidateDashboard({ onLogout }: Props) {
 
   if (loading || !app) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 16,
-          fontFamily: "Poppins, sans-serif",
-        }}
-      >
+      <div style={{ fontFamily: "Poppins, sans-serif" }}>
+        <PublicNav current="candidate-dashboard" onNavigate={onNavigate} />
+        <div
+          style={{
+            minHeight: "calc(100vh - 68px)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 16,
+          }}
+        >
         {loading ? (
           <>
             <InlineSpinner size={18} /> {t("loading")}
@@ -150,6 +153,7 @@ export default function CandidateDashboard({ onLogout }: Props) {
             </button>
           </>
         )}
+        </div>
       </div>
     )
   }
@@ -157,14 +161,15 @@ export default function CandidateDashboard({ onLogout }: Props) {
   const statusColor = STATUS_COLORS[app.status]
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#F8FAFC",
-        fontFamily: "Poppins, sans-serif",
-        padding: "40px 24px",
-      }}
-    >
+    <div style={{ fontFamily: "Poppins, sans-serif" }}>
+      <PublicNav current="candidate-dashboard" onNavigate={onNavigate} />
+      <div
+        style={{
+          minHeight: "calc(100vh - 68px)",
+          background: "#F8FAFC",
+          padding: "40px 24px",
+        }}
+      >
       <div style={{ maxWidth: 680, margin: "0 auto" }}>
         <div
           style={{
@@ -334,6 +339,7 @@ export default function CandidateDashboard({ onLogout }: Props) {
             />
           </div>
         </div>
+      </div>
       </div>
     </div>
   )

@@ -17,6 +17,7 @@ import { axios, authHeader } from "../lib/api"
 import { FileAccessStatus } from "../enums/status.enums"
 import ErrorBanner from "../components/ErrorBanner"
 import { getErrorMessage } from "../lib/errors"
+import PublicNav from "../components/PublicNav"
 
 const FALLBACK_IMG = "/images/bp-valves.jpg"
 const SVC_IMG_BY_SLUG: Record<string, string> = {
@@ -240,15 +241,16 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        height: "100vh",
-        overflow: "hidden",
-        fontFamily: "Poppins, sans-serif",
-        background: "#F8FAFC",
-      }}
-    >
+    <div style={{ fontFamily: "Poppins, sans-serif" }}>
+      <PublicNav current="client-dashboard" onNavigate={onNavigate} />
+      <div
+        style={{
+          display: "flex",
+          height: "calc(100vh - 68px)",
+          overflow: "hidden",
+          background: "#F8FAFC",
+        }}
+      >
       {}
       <aside
         className="dashboard-sidebar"
@@ -1075,6 +1077,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
             </div>
           )}
         </main>
+      </div>
       </div>
     </div>
   )

@@ -3,6 +3,8 @@
 import { SignIn } from "@clerk/nextjs"
 import { useTranslations } from "next-intl"
 import { palette } from "@/theme"
+import PublicNav from "@/components/PublicNav"
+import { useAppNavigate } from "@/lib/navigate"
 
 // Same photo used for the client-signup split panel (views/ClientSignup.tsx).
 const worldImg =
@@ -17,83 +19,87 @@ const worldImg =
 // session being valid.
 export default function SignInPage() {
   const t = useTranslations("auth")
+  const navigate = useAppNavigate()
 
   return (
-    <div
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-        fontFamily: "Poppins, sans-serif",
-      }}
-    >
-      <div
-        className="auth-photo-panel"
-        style={{
-          flex: 1,
-          position: "relative",
-          overflow: "hidden",
-          background: "#111",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "flex-end",
-          padding: 56,
-        }}
-      >
-        <img
-          src={worldImg}
-          alt="Industrial energy infrastructure"
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            opacity: 0.75,
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: `linear-gradient(135deg, ${palette.accent}bb 0%, rgba(15,23,42,0.85) 100%)`,
-          }}
-        />
-        <p
-          style={{
-            position: "relative",
-            color: "#fff",
-            fontSize: 20,
-            fontWeight: 600,
-            lineHeight: 1.5,
-            maxWidth: 420,
-          }}
-        >
-          {t("signInTagline")}
-        </p>
-      </div>
+    <div style={{ fontFamily: "Poppins, sans-serif" }}>
+      <PublicNav current="sign-in" onNavigate={navigate} />
 
       <div
         style={{
-          flex: 1,
-          minWidth: 380,
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: palette.bgAlt,
-          padding: 24,
+          minHeight: "calc(100vh - 68px)",
         }}
       >
-        <SignIn
-          appearance={{
-            variables: {
-              colorPrimary: palette.accent,
-              fontFamily: "Poppins, sans-serif",
-            },
-            elements: {
-              card: { boxShadow: "0 8px 32px rgba(15,23,42,0.08)" },
-            },
+        <div
+          className="auth-photo-panel"
+          style={{
+            flex: 1,
+            position: "relative",
+            overflow: "hidden",
+            background: "#111",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-end",
+            padding: 56,
           }}
-        />
+        >
+          <img
+            src={worldImg}
+            alt="Industrial energy infrastructure"
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              opacity: 0.75,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: `linear-gradient(135deg, ${palette.accent}bb 0%, rgba(15,23,42,0.85) 100%)`,
+            }}
+          />
+          <p
+            style={{
+              position: "relative",
+              color: "#fff",
+              fontSize: 20,
+              fontWeight: 600,
+              lineHeight: 1.5,
+              maxWidth: 420,
+            }}
+          >
+            {t("signInTagline")}
+          </p>
+        </div>
+
+        <div
+          style={{
+            flex: 1,
+            minWidth: 380,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: palette.bgAlt,
+            padding: 24,
+          }}
+        >
+          <SignIn
+            appearance={{
+              variables: {
+                colorPrimary: palette.accent,
+                fontFamily: "Poppins, sans-serif",
+              },
+              elements: {
+                card: { boxShadow: "0 8px 32px rgba(15,23,42,0.08)" },
+              },
+            }}
+          />
+        </div>
       </div>
 
       <style>{`

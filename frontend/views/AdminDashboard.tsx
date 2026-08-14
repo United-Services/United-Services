@@ -40,6 +40,7 @@ import {
 } from "../components/NavIcons"
 import WorldMap from "../components/WorldMap"
 import ErrorBanner from "../components/ErrorBanner"
+import PublicNav from "../components/PublicNav"
 import { axios, authHeader } from "../lib/api"
 import { getErrorMessage } from "../lib/errors"
 import { useRequestGuard } from "../lib/useRequestGuard"
@@ -737,15 +738,16 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   )
 
   return (
-    <div
-      style={{
-        display: "flex",
-        height: "100vh",
-        overflow: "hidden",
-        fontFamily: "Poppins, sans-serif",
-        background: "#F8FAFC",
-      }}
-    >
+    <div style={{ fontFamily: "Poppins, sans-serif" }}>
+      <PublicNav current="admin-dashboard" onNavigate={onNavigate} />
+      <div
+        style={{
+          display: "flex",
+          height: "calc(100vh - 68px)",
+          overflow: "hidden",
+          background: "#F8FAFC",
+        }}
+      >
       {}
       <aside
         className="dashboard-sidebar"
@@ -2231,6 +2233,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
           {}
           {section === "security" && <AdminSecuritySection />}
         </main>
+      </div>
       </div>
     </div>
   )

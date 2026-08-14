@@ -4,6 +4,7 @@ import { useSignUp } from "@clerk/nextjs"
 import { useTranslations } from "next-intl"
 import { palette, inputStyle } from "../theme"
 import { InlineSpinner } from "../components/Spinner"
+import PublicNav from "../components/PublicNav"
 const worldImg =
   "https://images.unsplash.com/photo-1602860109208-613d39362844?w=1200&q=85"
 
@@ -193,15 +194,16 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
   const stepTitle = t(`stepTitles.${step}` as any)
 
   return (
-    <div
-      className="signup-split"
-      style={{
-        minHeight: "100vh",
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        fontFamily: "Poppins, sans-serif",
-      }}
-    >
+    <div style={{ fontFamily: "Poppins, sans-serif" }}>
+      <PublicNav current="client-signup" onNavigate={onNavigate} />
+      <div
+        className="signup-split"
+        style={{
+          minHeight: "calc(100vh - 68px)",
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+        }}
+      >
       <div
         className="signup-split-panel"
         style={{ position: "relative", overflow: "hidden", background: "#111" }}
@@ -756,6 +758,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
             </button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   )

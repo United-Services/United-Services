@@ -6,6 +6,7 @@ import { startRegistration } from "@simplewebauthn/browser"
 import { palette, inputStyle } from "../theme"
 import Spinner, { InlineSpinner } from "../components/Spinner"
 import { axios, authHeader } from "../lib/api"
+import PublicNav from "../components/PublicNav"
 
 interface Props {
   onNavigate: (page: string) => void
@@ -85,17 +86,18 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
 
   if (done) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#F8FAFC",
-          fontFamily: "Poppins, sans-serif",
-          padding: 24,
-        }}
-      >
+      <div style={{ fontFamily: "Poppins, sans-serif" }}>
+        <PublicNav current="admin-mfa-setup" onNavigate={onNavigate} />
+        <div
+          style={{
+            minHeight: "calc(100vh - 68px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#F8FAFC",
+            padding: 24,
+          }}
+        >
         <div
           style={{
             maxWidth: 480,
@@ -160,22 +162,24 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
             {t("continueToDashboard")}
           </button>
         </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#F8FAFC",
-        fontFamily: "Poppins, sans-serif",
-        padding: 24,
-      }}
-    >
+    <div style={{ fontFamily: "Poppins, sans-serif" }}>
+      <PublicNav current="admin-mfa-setup" onNavigate={onNavigate} />
+      <div
+        style={{
+          minHeight: "calc(100vh - 68px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#F8FAFC",
+          padding: 24,
+        }}
+      >
       <div
         style={{
           maxWidth: 480,
@@ -384,6 +388,7 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
             )}
           </div>
         )}
+      </div>
       </div>
     </div>
   )

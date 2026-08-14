@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { palette, inputStyle } from "../theme"
 import { InlineSpinner } from "../components/Spinner"
 import { axios, authHeader } from "../lib/api"
+import PublicNav from "../components/PublicNav"
 
 interface Props {
   onNavigate: (page: string) => void
@@ -96,17 +97,18 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
 
   if (submitted) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#F8FAFC",
-          fontFamily: "Poppins, sans-serif",
-          padding: 24,
-        }}
-      >
+      <div style={{ fontFamily: "Poppins, sans-serif" }}>
+        <PublicNav current="candidate-signup" onNavigate={onNavigate} />
+        <div
+          style={{
+            minHeight: "calc(100vh - 68px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#F8FAFC",
+            padding: 24,
+          }}
+        >
         <div
           style={{
             maxWidth: 520,
@@ -242,19 +244,21 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
             {t("goToDashboard")}
           </button>
         </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#F8FAFC",
-        fontFamily: "Poppins, sans-serif",
-        padding: "40px 24px",
-      }}
-    >
+    <div style={{ fontFamily: "Poppins, sans-serif" }}>
+      <PublicNav current="candidate-signup" onNavigate={onNavigate} />
+      <div
+        style={{
+          minHeight: "calc(100vh - 68px)",
+          background: "#F8FAFC",
+          padding: "40px 24px",
+        }}
+      >
       <div style={{ maxWidth: 680, margin: "0 auto" }}>
         <button
           onClick={() => onNavigate("home")}
@@ -608,6 +612,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
             {t("backToCareers")}
           </button>
         </div>
+      </div>
       </div>
     </div>
   )
