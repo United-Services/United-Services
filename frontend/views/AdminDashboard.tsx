@@ -42,6 +42,7 @@ import WorldMap from "../components/WorldMap"
 import ErrorBanner from "../components/ErrorBanner"
 import { axios, authHeader } from "../lib/api"
 import { getErrorMessage } from "../lib/errors"
+import { useRequestGuard } from "../lib/useRequestGuard"
 import AdminSecuritySection from "./AdminSecuritySection"
 import { FileAccessStatus, ApplicationStatus, Role } from "../enums/status.enums"
 
@@ -209,6 +210,19 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   const [error, setError] = useState<string | null>(null)
   const authed = async () => authHeader(await getToken())
 
+  // Each of these sections' load function is called both on mount and
+  // again from a search box / post-action refresh — without a per-function
+  // guard, a slow mount-time response can resolve after a faster later
+  // one and overwrite fresher (e.g. searched) results with stale data.
+  const overviewGuard = useRequestGuard()
+  const clientsGuard = useRequestGuard()
+  const requestsGuard = useRequestGuard()
+  const positionsGuard = useRequestGuard()
+  const candidatesGuard = useRequestGuard()
+  const rfqsGuard = useRequestGuard()
+  const appointmentsGuard = useRequestGuard()
+  const auditLogGuard = useRequestGuard()
+
   const NAV = [
     { id: "overview", label: t("nav.overview"), icon: <IconChart /> },
     { id: "clients", label: t("nav.clients"), icon: <IconUsers /> },
@@ -260,11 +274,14 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   const [auditQuery, setAuditQuery] = useState("")
 
   const loadOverview = async () => {
+    const reqId = overviewGuard.start()
     try {
       const headers = await authed()
       const { data } = await axios.get("/analytics/overview", { headers })
+      if (overviewGuard.stale(reqId)) return
       setOverview(data)
     } catch (err) {
+      if (overviewGuard.stale(reqId)) return
       setError(getErrorMessage(err, tCommon("errors.loadFailed")))
     }
   }
@@ -278,6 +295,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
     }
   }
   const loadClients = async (q = "") => {
+    const reqId = clientsGuard.start()
     try {
       const headers = await authed()
       const { data } = await axios.get("/admin/users", {
@@ -287,8 +305,10 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
           q: q || undefined,
         },
       })
+      if (clientsGuard.stale(reqId)) return
       setClients(data)
     } catch (err) {
+      if (clientsGuard.stale(reqId)) return
       setError(getErrorMessage(err, tCommon("errors.loadFailed")))
     }
   }
@@ -309,6 +329,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
     }
   }
   const loadRequests = async (q = "") => {
+    const reqId = requestsGuard.start()
     try {
       const headers = await authed()
       const { data } = await axios.get("/file-access-requests", {
@@ -317,21 +338,27 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
           q: q || undefined,
         },
       })
+      if (requestsGuard.stale(reqId)) return
       setRequests(data)
     } catch (err) {
+      if (requestsGuard.stale(reqId)) return
       setError(getErrorMessage(err, tCommon("errors.loadFailed")))
     }
   }
   const loadPositions = async () => {
+    const reqId = positionsGuard.start()
     try {
       const headers = await authed()
       const { data } = await axios.get("/positions/all", { headers })
+      if (positionsGuard.stale(reqId)) return
       setPositions(data)
     } catch (err) {
+      if (positionsGuard.stale(reqId)) return
       setError(getErrorMessage(err, tCommon("errors.loadFailed")))
     }
   }
   const loadCandidates = async (q = "") => {
+    const reqId = candidatesGuard.start()
     try {
       const headers = await authed()
       const { data } = await axios.get("/candidate-applications", {
@@ -340,12 +367,15 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
           q: q || undefined,
         },
       })
+      if (candidatesGuard.stale(reqId)) return
       setCandidates(data)
     } catch (err) {
+      if (candidatesGuard.stale(reqId)) return
       setError(getErrorMessage(err, tCommon("errors.loadFailed")))
     }
   }
   const loadRfqs = async (q = "") => {
+    const reqId = rfqsGuard.start()
     try {
       const headers = await authed()
       const { data } = await axios.get("/rfqs", {
@@ -354,12 +384,15 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
           q: q || undefined,
         },
       })
+      if (rfqsGuard.stale(reqId)) return
       setRfqs(data)
     } catch (err) {
+      if (rfqsGuard.stale(reqId)) return
       setError(getErrorMessage(err, tCommon("errors.loadFailed")))
     }
   }
   const loadAppointments = async (q = "") => {
+    const reqId = appointmentsGuard.start()
     try {
       const headers = await authed()
       const { data } = await axios.get("/appointments", {
@@ -368,12 +401,15 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
           q: q || undefined,
         },
       })
+      if (appointmentsGuard.stale(reqId)) return
       setAppointments(data)
     } catch (err) {
+      if (appointmentsGuard.stale(reqId)) return
       setError(getErrorMessage(err, tCommon("errors.loadFailed")))
     }
   }
   const loadAuditLog = async (q = "") => {
+    const reqId = auditLogGuard.start()
     try {
       const headers = await authed()
       const { data } = await axios.get("/audit-log", {
@@ -382,8 +418,10 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
           q: q || undefined,
         },
       })
+      if (auditLogGuard.stale(reqId)) return
       setAuditLog(data)
     } catch (err) {
+      if (auditLogGuard.stale(reqId)) return
       setError(getErrorMessage(err, tCommon("errors.loadFailed")))
     }
   }

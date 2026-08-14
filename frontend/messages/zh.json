@@ -935,8 +935,10 @@
       "credentialRegistered": "New credential registered.",
       "credentialFailed": "Could not register the credential.",
       "passwordUpdated": "Password updated. You have been signed out of other sessions.",
-      "passwordResetFailed": "Could not reset password."
-    }
+      "passwordResetFailed": "Could not reset password.",
+      "statusLoadFailed": "无法加载多因素身份验证状态。请重试。"
+    },
+    "retry": "重试"
   },
   "applicationStatus": {
     "eyebrow": "USE · CANDIDATE PORTAL",

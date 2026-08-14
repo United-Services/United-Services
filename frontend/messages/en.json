@@ -935,8 +935,10 @@
       "credentialRegistered": "New credential registered.",
       "credentialFailed": "Could not register the credential.",
       "passwordUpdated": "Password updated. You have been signed out of other sessions.",
-      "passwordResetFailed": "Could not reset password."
-    }
+      "passwordResetFailed": "Could not reset password.",
+      "statusLoadFailed": "Could not load MFA status. Please try again."
+    },
+    "retry": "Retry"
   },
   "applicationStatus": {
     "eyebrow": "USE · CANDIDATE PORTAL",

@@ -7,6 +7,7 @@ import { InlineSpinner } from "../components/Spinner"
 import { IconLogout } from "../components/NavIcons"
 import { axios, authHeader } from "../lib/api"
 import { ApplicationStatus } from "../enums/status.enums"
+import { useRequestGuard } from "../lib/useRequestGuard"
 
 interface Props {
   onLogout: () => void
@@ -42,17 +43,24 @@ export default function CandidateDashboard({ onLogout }: Props) {
   const idRef = useRef<HTMLInputElement>(null)
   const cvRef = useRef<HTMLInputElement>(null)
 
+  const loadGuard = useRequestGuard()
   const load = async () => {
+    // Re-invoked after a successful upload and from the retry button below,
+    // on top of the mount-time call — the guard stops a slow initial fetch
+    // from landing after and overwriting fresher (e.g. post-upload) state.
+    const reqId = loadGuard.start()
     try {
       const token = await getToken()
       const { data } = await axios.get("/me/candidate-application", {
         headers: authHeader(token),
       })
+      if (loadGuard.stale(reqId)) return
       setApp(data)
     } catch {
+      if (loadGuard.stale(reqId)) return
       setMessage({ type: "error", text: t("loadError") })
     } finally {
-      setLoading(false)
+      if (!loadGuard.stale(reqId)) setLoading(false)
     }
   }
 

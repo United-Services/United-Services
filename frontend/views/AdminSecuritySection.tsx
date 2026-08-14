@@ -14,6 +14,8 @@ import { startAuthentication, startRegistration } from "@simplewebauthn/browser"
 import { palette, inputStyle } from "../theme"
 import Spinner from "../components/Spinner"
 import { axios, authHeader } from "../lib/api"
+import { getErrorMessage } from "../lib/errors"
+import { useRequestGuard } from "../lib/useRequestGuard"
 
 interface WebAuthnCredentialSummary {
   id: string
@@ -45,12 +47,27 @@ export default function AdminSecuritySection() {
   const [resetTotpCode, setResetTotpCode] = useState("")
   const [newPassword, setNewPassword] = useState("")
 
+  const statusGuard = useRequestGuard()
   const loadStatus = async () => {
-    const token = await getToken()
-    const { data } = await axios.get("/mfa/status", {
-      headers: authHeader(token),
-    })
-    setStatus(data)
+    // Re-invoked after addTotp/confirmTotp (see below) on top of the
+    // mount-time call below — the guard stops a slow initial fetch from
+    // landing after and overwriting the post-enrollment status with stale
+    // pre-enrollment data.
+    const reqId = statusGuard.start()
+    try {
+      const token = await getToken()
+      const { data } = await axios.get("/mfa/status", {
+        headers: authHeader(token),
+      })
+      if (statusGuard.stale(reqId)) return
+      setStatus(data)
+    } catch (err) {
+      if (statusGuard.stale(reqId)) return
+      setMessage({
+        type: "error",
+        text: getErrorMessage(err, t("messages.statusLoadFailed")),
+      })
+    }
   }
 
   useEffect(() => {
@@ -165,7 +182,44 @@ export default function AdminSecuritySection() {
     }
   }
 
-  if (!status) return <Spinner message={t("loading")} />
+  if (!status) {
+    // Previously: an infinite spinner if loadStatus failed — status never
+    // becomes non-null, so this early return kept firing forever with no
+    // way for the admin to see the error or retry.
+    if (message?.type === "error") {
+      return (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 12,
+          }}
+        >
+          <div style={{ fontSize: 13, color: "#DC2626", fontWeight: 600 }}>
+            {message.text}
+          </div>
+          <button
+            onClick={loadStatus}
+            style={{
+              padding: "9px 20px",
+              borderRadius: 9999,
+              border: "none",
+              background: palette.accent,
+              color: "#fff",
+              fontWeight: 700,
+              fontSize: 13,
+              cursor: "pointer",
+              fontFamily: "Poppins, sans-serif",
+            }}
+          >
+            {t("retry")}
+          </button>
+        </div>
+      )
+    }
+    return <Spinner message={t("loading")} />
+  }
 
   return (
     <div
