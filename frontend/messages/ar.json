@@ -727,7 +727,7 @@
     "headerFallback": "Dashboard",
     "nav": {
       "overview": "Overview",
-      "clients": "Clients",
+      "clients": "Users",
       "specs": "Spec Files",
       "requests": "File Requests",
       "candidates": "Candidates",
@@ -735,7 +735,8 @@
       "bookings": "Bookings",
       "audit": "Audit Log",
       "security": "Security",
-      "positions": "Open Positions"
+      "positions": "Open Positions",
+      "analytics": "Analytics"
     },
     "status": {
       "pending": "Pending",
@@ -744,7 +745,10 @@
       "in_review": "In Review",
       "quoted": "Quoted",
       "closed": "Closed",
-      "open": "Open"
+      "open": "Open",
+      "booked": "Booked",
+      "done": "Done",
+      "cancelled": "Cancelled"
     },
     "approve": "Approve",
     "deny": "Deny",
@@ -775,6 +779,7 @@
         "Name",
         "Company",
         "Email",
+        "Role",
         "Joined",
         "MFA",
         "Status",
@@ -782,7 +787,24 @@
       ],
       "none": "No clients found.",
       "enable": "Enable",
-      "disable": "Disable"
+      "disable": "Disable",
+      "addUser": "Add User",
+      "createAccount": "Create Account",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "email": "Email",
+      "companyName": "Company (optional)",
+      "role": "Role",
+      "allRoles": "All Roles",
+      "roleClient": "Client",
+      "roleCandidate": "Candidate",
+      "roleAdmin": "Admin",
+      "resetPassword": "Reset Password",
+      "pendingPasswordChange": "Must change password",
+      "tempPasswordHeading": "Temporary password for {email}",
+      "tempPasswordSub": "Share this with the user through a secure channel — it will not be shown again. They must set a new password on first sign-in.",
+      "copy": "Copy",
+      "dismiss": "Dismiss"
     },
     "specs": {
       "noFile": "No spec file uploaded yet",
@@ -825,10 +847,13 @@
         "Company",
         "Service",
         "Submitted",
-        "Status"
+        "Status",
+        "Contact"
       ],
       "none": "No RFQs found.",
-      "general": "General"
+      "general": "General",
+      "contacted": "Contacted",
+      "markContacted": "Mark Contacted"
     },
     "bookings": {
       "date": "Date",
@@ -841,9 +866,26 @@
         "Company",
         "Date",
         "Time",
-        "Booked"
+        "Status",
+        "Action"
       ],
-      "none": "No bookings found."
+      "none": "No bookings found.",
+      "slotsHeading": "All Slots",
+      "slotCols": [
+        "Date",
+        "Time",
+        "Client",
+        "Status",
+        "Action"
+      ],
+      "noSlots": "No slots created yet.",
+      "edit": "Edit",
+      "save": "Save",
+      "cancelEdit": "Cancel",
+      "closeSlot": "Close",
+      "reopenSlot": "Reopen",
+      "markDone": "Done",
+      "cancelBooking": "Cancel"
     },
     "audit": {
       "searchPlaceholder": "Search audit log by action or target",
@@ -876,6 +918,16 @@
       "close": "Close",
       "reopen": "Reopen",
       "none": "No positions posted yet."
+    },
+    "analytics": {
+      "candidatesByStatus": "Candidates by Status",
+      "candidatesByStatusSub": "Applications grouped by review status",
+      "ctaClicks": "Call-to-Action Clicks",
+      "ctaClicksSub": "Clicks by CTA, all-time",
+      "serviceViews": "Service Page Views",
+      "serviceViewsSub": "Views per service page, all-time",
+      "noCandidates": "No candidate applications yet.",
+      "noEvents": "No events recorded yet."
     }
   },
   "adminMfaSetup": {
@@ -1114,6 +1166,18 @@
       "invalidCode": "رمز غير صالح. حاول مرة أخرى.",
       "webauthnFailed": "تعذر التحقق من بيانات الاعتماد الخاصة بك. حاول مرة أخرى، أو استخدم تطبيق مصادقة بدلاً من ذلك.",
       "statusLoadFailed": "تعذر تحميل طرق المصادقة الثنائية. يرجى التحديث والمحاولة مرة أخرى."
+    }
+  },
+  "changePassword": {
+    "title": "تعيين كلمة مرور جديدة",
+    "subtitle": "تم إنشاء حسابك بكلمة مرور مؤقتة. اختر كلمة مرور جديدة للمتابعة.",
+    "newPasswordLabel": "كلمة المرور الجديدة",
+    "confirmPasswordLabel": "تأكيد كلمة المرور الجديدة",
+    "submit": "تعيين كلمة المرور والمتابعة",
+    "errors": {
+      "tooShort": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.",
+      "mismatch": "كلمتا المرور غير متطابقتين.",
+      "failed": "تعذر تعيين كلمة المرور الجديدة. يرجى المحاولة مرة أخرى."
     }
   }
 }

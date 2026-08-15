@@ -24,6 +24,7 @@ export const ROUTES: Record<string, string> = {
   "admin-dashboard": "/admin-dashboard",
   "admin-mfa-setup": "/admin-mfa-setup",
   "admin-mfa-challenge": "/admin-mfa-challenge",
+  "change-password": "/change-password",
   privacy: "/privacy",
   terms: "/terms",
 }

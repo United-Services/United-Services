@@ -38,6 +38,15 @@ import {
   IconLock,
   IconLogout,
 } from "../components/NavIcons"
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts"
 import WorldMap from "../components/WorldMap"
 import ErrorBanner from "../components/ErrorBanner"
 import PublicNav from "../components/PublicNav"
@@ -45,7 +54,12 @@ import { axios, authHeader } from "../lib/api"
 import { getErrorMessage } from "../lib/errors"
 import { useRequestGuard } from "../lib/useRequestGuard"
 import AdminSecuritySection from "./AdminSecuritySection"
-import { FileAccessStatus, ApplicationStatus, Role } from "../enums/status.enums"
+import {
+  FileAccessStatus,
+  ApplicationStatus,
+  AppointmentStatus,
+  Role,
+} from "../enums/status.enums"
 
 interface Props {
   onLogout: () => void
@@ -73,6 +87,7 @@ interface AdminUser {
   createdAt: string
   disabledAt: string | null
   mfaEnrolled: boolean
+  mustChangePassword: boolean
 }
 interface FileRequestRow {
   id: string
@@ -109,6 +124,7 @@ interface CandidateRow {
 interface RfqRow {
   id: string
   status: string
+  contactedAt: string | null
   createdAt: string
   projectDetails: string
   client: { firstName: string; lastName: string; companyName: string | null }
@@ -116,9 +132,23 @@ interface RfqRow {
 }
 interface AppointmentRow {
   id: string
+  status: AppointmentStatus
   createdAt: string
   slot: { date: string; startTime: string; endTime: string }
   client: { firstName: string; lastName: string; companyName: string | null }
+}
+interface SlotRow {
+  id: string
+  date: string
+  startTime: string
+  endTime: string
+  isBooked: boolean
+  isClosed: boolean
+  appointment: {
+    id: string
+    status: AppointmentStatus
+    client: { firstName: string; lastName: string; companyName: string | null }
+  } | null
 }
 interface AuditLogRow {
   id: string
@@ -128,6 +158,11 @@ interface AuditLogRow {
   createdAt: string
   actor: { firstName: string; lastName: string; email: string; role: string }
 }
+interface CountRow {
+  eventType?: string
+  status?: string
+  count: number
+}
 interface Overview {
   clientCount: number
   companyCount: number
@@ -135,17 +170,27 @@ interface Overview {
   fileAccessApproved: number
   rfqCount: number
   appointmentCount: number
+  candidatesByStatus: CountRow[]
+  ctaClicks: CountRow[]
+  serviceViews: CountRow[]
 }
 
 const fmtDate = (d: string) => new Date(d).toLocaleDateString()
 const fmtDateTime = (d: string) => new Date(d).toLocaleString()
 const fmtTime = (d: string) =>
-  new Date(d).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  new Date(d).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  })
 
 // Hoisted to module scope (was defined inline in AdminDashboard's render
 // body) — a component defined during render gets a new identity every
 // render, which forces React to remount it instead of reconciling, so
 // this input would lose focus on every keystroke-triggered re-render.
+// Fuzzy-matched live search — see backend/src/common/utils/fuzzy-match.ts.
+// No submit button: typing debounces straight into onSearch, so there's
+// nothing to click and no stale "did I search yet?" state to track.
 function SearchBox({
   value,
   onChange,
@@ -157,18 +202,36 @@ function SearchBox({
   onSearch: () => void
   placeholder: string
 }) {
-  const t = useTranslations("adminDashboard")
+  const isFirstRender = useRef(true)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    const timer = setTimeout(() => onSearch(), 300)
+    return () => clearTimeout(timer)
+    // Deliberately keyed only on `value` — onSearch is a fresh closure
+    // every parent render (it always captures the current query text
+    // itself), so including it here would re-fire the debounce on every
+    // unrelated re-render instead of just when the user actually types.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value])
+
   return (
-    <div style={{ marginBottom: 16, display: "flex", gap: 8 }}>
+    <div
+      style={{
+        marginBottom: 16,
+        display: "flex",
+        justifyContent: "center",
+        width: "100%",
+      }}
+    >
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") onSearch()
-        }}
         placeholder={placeholder}
         style={{
-          flex: 1,
+          width: "100%",
           maxWidth: 320,
           padding: "9px 14px",
           borderRadius: 9999,
@@ -178,22 +241,6 @@ function SearchBox({
           outline: "none",
         }}
       />
-      <button
-        onClick={onSearch}
-        style={{
-          padding: "9px 18px",
-          borderRadius: 9999,
-          border: "none",
-          background: "#4B5563",
-          color: "#fff",
-          fontWeight: 600,
-          fontSize: 13,
-          cursor: "pointer",
-          fontFamily: "Poppins, sans-serif",
-        }}
-      >
-        {t("search")}
-      </button>
     </div>
   )
 }
@@ -222,10 +269,12 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   const candidatesGuard = useRequestGuard()
   const rfqsGuard = useRequestGuard()
   const appointmentsGuard = useRequestGuard()
+  const slotsGuard = useRequestGuard()
   const auditLogGuard = useRequestGuard()
 
   const NAV = [
     { id: "overview", label: t("nav.overview"), icon: <IconChart /> },
+    { id: "analytics", label: t("nav.analytics"), icon: <IconChart /> },
     { id: "clients", label: t("nav.clients"), icon: <IconUsers /> },
     { id: "specs", label: t("nav.specs"), icon: <IconFolder /> },
     { id: "requests", label: t("nav.requests"), icon: <IconClipboard /> },
@@ -243,6 +292,21 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   }[]>([])
   const [clients, setClients] = useState<AdminUser[]>([])
   const [clientQuery, setClientQuery] = useState("")
+  const [clientRoleFilter, setClientRoleFilter] = useState("")
+  const [showCreateUserForm, setShowCreateUserForm] = useState(false)
+  const [newUserForm, setNewUserForm] = useState({
+    email: "",
+    firstName: "",
+    lastName: "",
+    role: Role.Client,
+    companyName: "",
+    phone: "",
+  })
+  const [creatingUser, setCreatingUser] = useState(false)
+  const [tempPasswordResult, setTempPasswordResult] = useState<{
+    email: string
+    tempPassword: string
+  } | null>(null)
   const [services, setServices] = useState<Service[]>([])
   const [serviceFiles, setServiceFiles] =
     useState<Record<string, ServiceFile[]>>({})
@@ -271,6 +335,13 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
     startTime: "",
     endTime: "",
   })
+  const [slots, setSlots] = useState<SlotRow[]>([])
+  const [editingSlotId, setEditingSlotId] = useState<string | null>(null)
+  const [slotEditForm, setSlotEditForm] = useState({
+    date: "",
+    startTime: "",
+    endTime: "",
+  })
   const [auditLog, setAuditLog] = useState<AuditLogRow[]>([])
   const [auditQuery, setAuditQuery] = useState("")
 
@@ -295,14 +366,14 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
       setError(getErrorMessage(err, tCommon("errors.loadFailed")))
     }
   }
-  const loadClients = async (q = "") => {
+  const loadClients = async (q = "", role = clientRoleFilter) => {
     const reqId = clientsGuard.start()
     try {
       const headers = await authed()
       const { data } = await axios.get("/admin/users", {
         headers,
         params: {
-          role: Role.Client,
+          role: role || undefined,
           q: q || undefined,
         },
       })
@@ -409,6 +480,18 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
       setError(getErrorMessage(err, tCommon("errors.loadFailed")))
     }
   }
+  const loadSlots = async () => {
+    const reqId = slotsGuard.start()
+    try {
+      const headers = await authed()
+      const { data } = await axios.get("/appointments/slots/all", { headers })
+      if (slotsGuard.stale(reqId)) return
+      setSlots(data)
+    } catch (err) {
+      if (slotsGuard.stale(reqId)) return
+      setError(getErrorMessage(err, tCommon("errors.loadFailed")))
+    }
+  }
   const loadAuditLog = async (q = "") => {
     const reqId = auditLogGuard.start()
     try {
@@ -444,6 +527,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
     loadCandidates()
     loadRfqs()
     loadAppointments()
+    loadSlots()
     loadAuditLog()
   }, [])
 
@@ -455,6 +539,72 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
         {},
         { headers },
       )
+      loadClients(clientQuery)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    }
+  }
+
+  const createUser = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newUserForm.email || !newUserForm.firstName || !newUserForm.lastName)
+      return
+    setCreatingUser(true)
+    try {
+      const headers = await authed()
+      const { data } = await axios.post(
+        "/admin/users",
+        {
+          email: newUserForm.email,
+          firstName: newUserForm.firstName,
+          lastName: newUserForm.lastName,
+          role: newUserForm.role,
+          companyName: newUserForm.companyName || undefined,
+          phone: newUserForm.phone || undefined,
+        },
+        { headers },
+      )
+      setTempPasswordResult({
+        email: newUserForm.email,
+        tempPassword: data.tempPassword,
+      })
+      setNewUserForm({
+        email: "",
+        firstName: "",
+        lastName: "",
+        role: Role.Client,
+        companyName: "",
+        phone: "",
+      })
+      setShowCreateUserForm(false)
+      loadClients(clientQuery)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    } finally {
+      setCreatingUser(false)
+    }
+  }
+
+  const changeUserRole = async (u: AdminUser, role: string) => {
+    if (role === u.role) return
+    try {
+      const headers = await authed()
+      await axios.patch(`/admin/users/${u.id}/role`, { role }, { headers })
+      loadClients(clientQuery)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    }
+  }
+
+  const resetUserPassword = async (u: AdminUser) => {
+    try {
+      const headers = await authed()
+      const { data } = await axios.post(
+        `/admin/users/${u.id}/reset-password`,
+        {},
+        { headers },
+      )
+      setTempPasswordResult({ email: u.email, tempPassword: data.tempPassword })
       loadClients(clientQuery)
     } catch (err) {
       setError(getErrorMessage(err, tCommon("errors.actionFailed")))
@@ -627,7 +777,87 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
         { headers },
       )
       setNewSlot({ date: "", startTime: "", endTime: "" })
+      loadSlots()
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    }
+  }
+
+  // <input type="time"> requires 24h "HH:MM" — not the localized fmtTime()
+  // used for display elsewhere on this page.
+  const to24hInput = (iso: string) => {
+    const d = new Date(iso)
+    return `${String(d.getHours()).padStart(2, "0")}:${String(
+      d.getMinutes(),
+    ).padStart(2, "0")}`
+  }
+  const startEditSlot = (s: SlotRow) => {
+    setEditingSlotId(s.id)
+    setSlotEditForm({
+      date: s.date.slice(0, 10),
+      startTime: to24hInput(s.startTime),
+      endTime: to24hInput(s.endTime),
+    })
+  }
+  const cancelEditSlot = () => {
+    setEditingSlotId(null)
+    setSlotEditForm({ date: "", startTime: "", endTime: "" })
+  }
+  const saveSlotEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingSlotId) return
+    try {
+      const headers = await authed()
+      await axios.patch(
+        `/appointments/slots/${editingSlotId}`,
+        {
+          date: new Date(slotEditForm.date).toISOString(),
+          startTime: new Date(
+            `${slotEditForm.date}T${slotEditForm.startTime}`,
+          ).toISOString(),
+          endTime: new Date(
+            `${slotEditForm.date}T${slotEditForm.endTime}`,
+          ).toISOString(),
+        },
+        { headers },
+      )
+      cancelEditSlot()
+      loadSlots()
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    }
+  }
+  const toggleSlotClosed = async (s: SlotRow) => {
+    try {
+      const headers = await authed()
+      await axios.patch(
+        `/appointments/slots/${s.id}`,
+        { isClosed: !s.isClosed },
+        { headers },
+      )
+      loadSlots()
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    }
+  }
+  const updateAppointmentStatus = async (
+    id: string,
+    status: "done" | "cancelled",
+  ) => {
+    try {
+      const headers = await authed()
+      await axios.patch(`/appointments/${id}/status`, { status }, { headers })
       loadAppointments(bookingQuery)
+      loadSlots()
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    }
+  }
+  const toggleRfqContacted = async (id: string) => {
+    try {
+      const headers = await authed()
+      await axios.patch(`/rfqs/${id}/contacted`, {}, { headers })
+      loadRfqs(rfqQuery)
     } catch (err) {
       setError(getErrorMessage(err, tCommon("errors.actionFailed")))
     }
@@ -642,6 +872,9 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
       in_review: { bg: "#DBEAFE", color: "#1E40AF" },
       quoted: { bg: "#F3F4F6", color: "#374151" },
       closed: { bg: "#F1F5F9", color: "#475569" },
+      booked: { bg: "#DBEAFE", color: "#1E40AF" },
+      done: { bg: "#DCFCE7", color: "#166534" },
+      cancelled: { bg: "#FEE2E2", color: "#991B1B" },
     }
     const s = map[status] ?? { bg: "#F1F5F9", color: "#475569" }
     const label = t.has(`status.${status}`)
@@ -1103,14 +1336,450 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
           )}
 
           {}
+          {section === "analytics" && overview && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr",
+                gap: 24,
+              }}
+            >
+              {[
+                {
+                  title: t("analytics.candidatesByStatus"),
+                  sub: t("analytics.candidatesByStatusSub"),
+                  data: overview.candidatesByStatus.map((c) => ({
+                    label: c.status ?? "",
+                    count: c.count,
+                  })),
+                  empty: t("analytics.noCandidates"),
+                },
+                {
+                  title: t("analytics.ctaClicks"),
+                  sub: t("analytics.ctaClicksSub"),
+                  data: overview.ctaClicks.map((c) => ({
+                    label: (c.eventType ?? "")
+                      .replace(/^cta_click_?/, "")
+                      .replace(/_/g, " "),
+                    count: c.count,
+                  })),
+                  empty: t("analytics.noEvents"),
+                },
+                {
+                  title: t("analytics.serviceViews"),
+                  sub: t("analytics.serviceViewsSub"),
+                  data: overview.serviceViews.map((c) => ({
+                    label: (c.eventType ?? "")
+                      .replace(/^service_page_view_?/, "")
+                      .replace(/-/g, " "),
+                    count: c.count,
+                  })),
+                  empty: t("analytics.noEvents"),
+                },
+              ].map((chart) => (
+                <div
+                  key={chart.title}
+                  style={{
+                    background: "#fff",
+                    borderRadius: 16,
+                    padding: 24,
+                    border: "1px solid #E2E8F0",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: palette.navy,
+                      marginBottom: 4,
+                    }}
+                  >
+                    {chart.title}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: palette.muted,
+                      marginBottom: 16,
+                    }}
+                  >
+                    {chart.sub}
+                  </div>
+                  {chart.data.length === 0 ? (
+                    <div style={{ fontSize: 13, color: palette.muted }}>
+                      {chart.empty}
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={240}>
+                      <BarChart data={chart.data}>
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="#F1F5F9"
+                        />
+                        <XAxis
+                          dataKey="label"
+                          tick={{ fontSize: 11, fill: palette.muted }}
+                          style={{ fontFamily: "Poppins, sans-serif" }}
+                        />
+                        <YAxis
+                          allowDecimals={false}
+                          tick={{ fontSize: 11, fill: palette.muted }}
+                          style={{ fontFamily: "Poppins, sans-serif" }}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            fontFamily: "Poppins, sans-serif",
+                            fontSize: 12,
+                            borderRadius: 8,
+                          }}
+                        />
+                        <Bar
+                          dataKey="count"
+                          fill={palette.accent}
+                          radius={[6, 6, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {}
           {section === "clients" && (
             <>
-              <SearchBox
-                value={clientQuery}
-                onChange={setClientQuery}
-                onSearch={() => loadClients(clientQuery)}
-                placeholder={t("clients.searchPlaceholder")}
-              />
+              {tempPasswordResult && (
+                <div
+                  style={{
+                    background: "#FFF7ED",
+                    border: `1.5px solid ${palette.accent}`,
+                    borderRadius: 16,
+                    padding: 20,
+                    marginBottom: 20,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: palette.navy,
+                      marginBottom: 6,
+                    }}
+                  >
+                    {t("clients.tempPasswordHeading", {
+                      email: tempPasswordResult.email,
+                    })}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: palette.muted,
+                      marginBottom: 12,
+                    }}
+                  >
+                    {t("clients.tempPasswordSub")}
+                  </div>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <code
+                      style={{
+                        background: "#fff",
+                        border: "1px solid #E2E8F0",
+                        borderRadius: 8,
+                        padding: "8px 14px",
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: palette.navy,
+                        letterSpacing: "0.02em",
+                      }}
+                    >
+                      {tempPasswordResult.tempPassword}
+                    </code>
+                    <button
+                      onClick={() =>
+                        navigator.clipboard.writeText(
+                          tempPasswordResult.tempPassword,
+                        )
+                      }
+                      style={{
+                        background: "#F1F5F9",
+                        color: palette.slate,
+                        border: "none",
+                        borderRadius: 9999,
+                        padding: "8px 16px",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        fontFamily: "Poppins, sans-serif",
+                      }}
+                    >
+                      {t("clients.copy")}
+                    </button>
+                    <button
+                      onClick={() => setTempPasswordResult(null)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: palette.muted,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        fontFamily: "Poppins, sans-serif",
+                        marginLeft: "auto",
+                      }}
+                    >
+                      {t("clients.dismiss")}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 16,
+                  flexWrap: "wrap",
+                  gap: 12,
+                }}
+              >
+                <SearchBox
+                  value={clientQuery}
+                  onChange={setClientQuery}
+                  onSearch={() => loadClients(clientQuery)}
+                  placeholder={t("clients.searchPlaceholder")}
+                />
+                <div style={{ display: "flex", gap: 10 }}>
+                  <select
+                    value={clientRoleFilter}
+                    onChange={(e) => {
+                      setClientRoleFilter(e.target.value)
+                      loadClients(clientQuery, e.target.value)
+                    }}
+                    style={{
+                      padding: "9px 14px",
+                      borderRadius: 9999,
+                      border: "1.5px solid #E2E8F0",
+                      fontSize: 13,
+                      fontFamily: "Poppins, sans-serif",
+                      color: palette.slate,
+                    }}
+                  >
+                    <option value="">{t("clients.allRoles")}</option>
+                    <option value={Role.Client}>{t("clients.roleClient")}</option>
+                    <option value={Role.Candidate}>
+                      {t("clients.roleCandidate")}
+                    </option>
+                    <option value={Role.Admin}>{t("clients.roleAdmin")}</option>
+                  </select>
+                  <button
+                    onClick={() => setShowCreateUserForm((v) => !v)}
+                    style={{
+                      padding: "9px 18px",
+                      borderRadius: 9999,
+                      border: "none",
+                      background: palette.accent,
+                      color: "#fff",
+                      fontWeight: 700,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      fontFamily: "Poppins, sans-serif",
+                    }}
+                  >
+                    {t("clients.addUser")}
+                  </button>
+                </div>
+              </div>
+
+              {showCreateUserForm && (
+                <form
+                  onSubmit={createUser}
+                  style={{
+                    background: "#fff",
+                    borderRadius: 16,
+                    border: "1px solid #E2E8F0",
+                    padding: 20,
+                    marginBottom: 20,
+                    display: "flex",
+                    gap: 12,
+                    alignItems: "flex-end",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: palette.navy,
+                        marginBottom: 6,
+                      }}
+                    >
+                      {t("clients.firstName")}
+                    </label>
+                    <input
+                      value={newUserForm.firstName}
+                      onChange={(e) =>
+                        setNewUserForm((f) => ({
+                          ...f,
+                          firstName: e.target.value,
+                        }))
+                      }
+                      required
+                      style={{
+                        padding: "9px 12px",
+                        borderRadius: 10,
+                        border: "1.5px solid #E2E8F0",
+                        fontSize: 13,
+                        fontFamily: "Poppins, sans-serif",
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: palette.navy,
+                        marginBottom: 6,
+                      }}
+                    >
+                      {t("clients.lastName")}
+                    </label>
+                    <input
+                      value={newUserForm.lastName}
+                      onChange={(e) =>
+                        setNewUserForm((f) => ({
+                          ...f,
+                          lastName: e.target.value,
+                        }))
+                      }
+                      required
+                      style={{
+                        padding: "9px 12px",
+                        borderRadius: 10,
+                        border: "1.5px solid #E2E8F0",
+                        fontSize: 13,
+                        fontFamily: "Poppins, sans-serif",
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: palette.navy,
+                        marginBottom: 6,
+                      }}
+                    >
+                      {t("clients.email")}
+                    </label>
+                    <input
+                      type="email"
+                      value={newUserForm.email}
+                      onChange={(e) =>
+                        setNewUserForm((f) => ({ ...f, email: e.target.value }))
+                      }
+                      required
+                      style={{
+                        padding: "9px 12px",
+                        borderRadius: 10,
+                        border: "1.5px solid #E2E8F0",
+                        fontSize: 13,
+                        fontFamily: "Poppins, sans-serif",
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: palette.navy,
+                        marginBottom: 6,
+                      }}
+                    >
+                      {t("clients.companyName")}
+                    </label>
+                    <input
+                      value={newUserForm.companyName}
+                      onChange={(e) =>
+                        setNewUserForm((f) => ({
+                          ...f,
+                          companyName: e.target.value,
+                        }))
+                      }
+                      style={{
+                        padding: "9px 12px",
+                        borderRadius: 10,
+                        border: "1.5px solid #E2E8F0",
+                        fontSize: 13,
+                        fontFamily: "Poppins, sans-serif",
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: palette.navy,
+                        marginBottom: 6,
+                      }}
+                    >
+                      {t("clients.role")}
+                    </label>
+                    <select
+                      value={newUserForm.role}
+                      onChange={(e) =>
+                        setNewUserForm((f) => ({ ...f, role: e.target.value as Role }))
+                      }
+                      style={{
+                        padding: "9px 12px",
+                        borderRadius: 10,
+                        border: "1.5px solid #E2E8F0",
+                        fontSize: 13,
+                        fontFamily: "Poppins, sans-serif",
+                      }}
+                    >
+                      <option value={Role.Client}>{t("clients.roleClient")}</option>
+                      <option value={Role.Candidate}>
+                        {t("clients.roleCandidate")}
+                      </option>
+                      <option value={Role.Admin}>{t("clients.roleAdmin")}</option>
+                    </select>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={creatingUser}
+                    style={{
+                      padding: "10px 22px",
+                      borderRadius: 9999,
+                      border: "none",
+                      background: palette.accent,
+                      color: "#fff",
+                      fontWeight: 700,
+                      fontSize: 13,
+                      cursor: creatingUser ? "default" : "pointer",
+                      fontFamily: "Poppins, sans-serif",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    {creatingUser && <InlineSpinner size={13} />}
+                    {t("clients.createAccount")}
+                  </button>
+                </form>
+              )}
+
               <div
                 style={{
                   background: "#fff",
@@ -1136,6 +1805,18 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                           }}
                         >
                           {c.firstName} {c.lastName}
+                          {c.mustChangePassword && (
+                            <div
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                color: palette.accent,
+                                marginTop: 2,
+                              }}
+                            >
+                              {t("clients.pendingPasswordChange")}
+                            </div>
+                          )}
                         </td>
                         <td
                           style={{
@@ -1154,6 +1835,30 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                           }}
                         >
                           {c.email}
+                        </td>
+                        <td style={{ padding: "14px 16px" }}>
+                          <select
+                            value={c.role}
+                            onChange={(e) => changeUserRole(c, e.target.value)}
+                            style={{
+                              padding: "6px 10px",
+                              borderRadius: 8,
+                              border: "1.5px solid #E2E8F0",
+                              fontSize: 12,
+                              fontFamily: "Poppins, sans-serif",
+                              color: palette.slate,
+                            }}
+                          >
+                            <option value={Role.Client}>
+                              {t("clients.roleClient")}
+                            </option>
+                            <option value={Role.Candidate}>
+                              {t("clients.roleCandidate")}
+                            </option>
+                            <option value={Role.Admin}>
+                              {t("clients.roleAdmin")}
+                            </option>
+                          </select>
                         </td>
                         <td
                           style={{
@@ -1179,31 +1884,51 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                           />
                         </td>
                         <td style={{ padding: "14px 16px" }}>
-                          <button
-                            onClick={() => toggleClientStatus(c)}
-                            style={{
-                              background: c.disabledAt ? "#166534" : "#991B1B",
-                              color: "#fff",
-                              border: "none",
-                              borderRadius: 9999,
-                              padding: "5px 14px",
-                              fontSize: 12,
-                              fontWeight: 600,
-                              cursor: "pointer",
-                              fontFamily: "Poppins, sans-serif",
-                            }}
-                          >
-                            {c.disabledAt
-                              ? t("clients.enable")
-                              : t("clients.disable")}
-                          </button>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button
+                              onClick={() => resetUserPassword(c)}
+                              style={{
+                                background: "#F1F5F9",
+                                color: palette.slate,
+                                border: "none",
+                                borderRadius: 9999,
+                                padding: "5px 14px",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                fontFamily: "Poppins, sans-serif",
+                              }}
+                            >
+                              {t("clients.resetPassword")}
+                            </button>
+                            <button
+                              onClick={() => toggleClientStatus(c)}
+                              style={{
+                                background: c.disabledAt
+                                  ? "#166534"
+                                  : "#991B1B",
+                                color: "#fff",
+                                border: "none",
+                                borderRadius: 9999,
+                                padding: "5px 14px",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                fontFamily: "Poppins, sans-serif",
+                              }}
+                            >
+                              {c.disabledAt
+                                ? t("clients.enable")
+                                : t("clients.disable")}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
                     {clients.length === 0 && (
                       <tr>
                         <td
-                          colSpan={7}
+                          colSpan={8}
                           style={{
                             padding: 24,
                             textAlign: "center",
@@ -1907,12 +2632,34 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                         <td style={{ padding: "14px 16px" }}>
                           <StatusBadge status={r.status} />
                         </td>
+                        <td style={{ padding: "14px 16px" }}>
+                          <button
+                            onClick={() => toggleRfqContacted(r.id)}
+                            style={{
+                              background: r.contactedAt
+                                ? "#DCFCE7"
+                                : "#F1F5F9",
+                              color: r.contactedAt ? "#166534" : "#475569",
+                              border: "none",
+                              borderRadius: 9999,
+                              padding: "5px 14px",
+                              fontSize: 12,
+                              fontWeight: 600,
+                              cursor: "pointer",
+                              fontFamily: "Poppins, sans-serif",
+                            }}
+                          >
+                            {r.contactedAt
+                              ? t("rfqs.contacted")
+                              : t("rfqs.markContacted")}
+                          </button>
+                        </td>
                       </tr>
                     ))}
                     {rfqs.length === 0 && (
                       <tr>
                         <td
-                          colSpan={5}
+                          colSpan={6}
                           style={{
                             padding: 24,
                             textAlign: "center",
@@ -2049,6 +2796,241 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 </button>
               </form>
 
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: palette.navy,
+                  marginBottom: 12,
+                }}
+              >
+                {t("bookings.slotsHeading")}
+              </div>
+              <div
+                style={{
+                  background: "#fff",
+                  borderRadius: 16,
+                  border: "1px solid #E2E8F0",
+                  overflow: "hidden",
+                  marginBottom: 32,
+                }}
+              >
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  {tableHead(t.raw("bookings.slotCols"))}
+                  <tbody>
+                    {slots.map((s, i) =>
+                      editingSlotId === s.id ? (
+                        <tr key={s.id} style={{ background: "#FFF7ED" }}>
+                          <td colSpan={5} style={{ padding: "14px 16px" }}>
+                            <form
+                              onSubmit={saveSlotEdit}
+                              style={{
+                                display: "flex",
+                                gap: 10,
+                                alignItems: "center",
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              <input
+                                type="date"
+                                value={slotEditForm.date}
+                                onChange={(e) =>
+                                  setSlotEditForm((f) => ({
+                                    ...f,
+                                    date: e.target.value,
+                                  }))
+                                }
+                                required
+                                style={{
+                                  padding: "7px 10px",
+                                  borderRadius: 8,
+                                  border: "1.5px solid #E2E8F0",
+                                  fontSize: 13,
+                                  fontFamily: "Poppins, sans-serif",
+                                }}
+                              />
+                              <input
+                                type="time"
+                                value={slotEditForm.startTime}
+                                onChange={(e) =>
+                                  setSlotEditForm((f) => ({
+                                    ...f,
+                                    startTime: e.target.value,
+                                  }))
+                                }
+                                required
+                                style={{
+                                  padding: "7px 10px",
+                                  borderRadius: 8,
+                                  border: "1.5px solid #E2E8F0",
+                                  fontSize: 13,
+                                  fontFamily: "Poppins, sans-serif",
+                                }}
+                              />
+                              <input
+                                type="time"
+                                value={slotEditForm.endTime}
+                                onChange={(e) =>
+                                  setSlotEditForm((f) => ({
+                                    ...f,
+                                    endTime: e.target.value,
+                                  }))
+                                }
+                                required
+                                style={{
+                                  padding: "7px 10px",
+                                  borderRadius: 8,
+                                  border: "1.5px solid #E2E8F0",
+                                  fontSize: 13,
+                                  fontFamily: "Poppins, sans-serif",
+                                }}
+                              />
+                              <button
+                                type="submit"
+                                style={{
+                                  padding: "7px 16px",
+                                  borderRadius: 9999,
+                                  border: "none",
+                                  background: palette.accent,
+                                  color: "#fff",
+                                  fontWeight: 700,
+                                  fontSize: 12,
+                                  cursor: "pointer",
+                                  fontFamily: "Poppins, sans-serif",
+                                }}
+                              >
+                                {t("bookings.save")}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={cancelEditSlot}
+                                style={{
+                                  padding: "7px 16px",
+                                  borderRadius: 9999,
+                                  border: "1.5px solid #E2E8F0",
+                                  background: "#fff",
+                                  color: palette.slate,
+                                  fontWeight: 600,
+                                  fontSize: 12,
+                                  cursor: "pointer",
+                                  fontFamily: "Poppins, sans-serif",
+                                }}
+                              >
+                                {t("bookings.cancelEdit")}
+                              </button>
+                            </form>
+                          </td>
+                        </tr>
+                      ) : (
+                        <tr
+                          key={s.id}
+                          style={{
+                            background: i % 2 === 0 ? "#fff" : "#FAFAFA",
+                          }}
+                        >
+                          <td
+                            style={{
+                              padding: "14px 16px",
+                              fontSize: 13,
+                              color: palette.navy,
+                              fontWeight: 600,
+                            }}
+                          >
+                            {fmtDate(s.date)}
+                          </td>
+                          <td
+                            style={{
+                              padding: "14px 16px",
+                              fontSize: 13,
+                              color: palette.slate,
+                            }}
+                          >
+                            {fmtTime(s.startTime)}–{fmtTime(s.endTime)}
+                          </td>
+                          <td
+                            style={{
+                              padding: "14px 16px",
+                              fontSize: 13,
+                              color: palette.slate,
+                            }}
+                          >
+                            {s.appointment
+                              ? `${s.appointment.client.firstName} ${s.appointment.client.lastName}`
+                              : "—"}
+                          </td>
+                          <td style={{ padding: "14px 16px" }}>
+                            <StatusBadge
+                              status={
+                                s.isClosed
+                                  ? "closed"
+                                  : s.isBooked
+                                    ? "booked"
+                                    : "open"
+                              }
+                            />
+                          </td>
+                          <td style={{ padding: "14px 16px" }}>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button
+                                onClick={() => startEditSlot(s)}
+                                style={{
+                                  background: "#F1F5F9",
+                                  color: palette.slate,
+                                  border: "none",
+                                  borderRadius: 9999,
+                                  padding: "5px 14px",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  cursor: "pointer",
+                                  fontFamily: "Poppins, sans-serif",
+                                }}
+                              >
+                                {t("bookings.edit")}
+                              </button>
+                              <button
+                                onClick={() => toggleSlotClosed(s)}
+                                style={{
+                                  background: s.isClosed
+                                    ? "#DCFCE7"
+                                    : "#FEE2E2",
+                                  color: s.isClosed ? "#166534" : "#991B1B",
+                                  border: "none",
+                                  borderRadius: 9999,
+                                  padding: "5px 14px",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  cursor: "pointer",
+                                  fontFamily: "Poppins, sans-serif",
+                                }}
+                              >
+                                {s.isClosed
+                                  ? t("bookings.reopenSlot")
+                                  : t("bookings.closeSlot")}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ),
+                    )}
+                    {slots.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          style={{
+                            padding: 24,
+                            textAlign: "center",
+                            fontSize: 13,
+                            color: palette.muted,
+                          }}
+                        >
+                          {t("bookings.noSlots")}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
               <SearchBox
                 value={bookingQuery}
                 onChange={setBookingQuery}
@@ -2108,21 +3090,59 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                         >
                           {fmtTime(b.slot.startTime)}–{fmtTime(b.slot.endTime)}
                         </td>
-                        <td
-                          style={{
-                            padding: "14px 16px",
-                            fontSize: 12,
-                            color: palette.muted,
-                          }}
-                        >
-                          {fmtDate(b.createdAt)}
+                        <td style={{ padding: "14px 16px" }}>
+                          <StatusBadge status={b.status} />
+                        </td>
+                        <td style={{ padding: "14px 16px" }}>
+                          {b.status === AppointmentStatus.Booked ? (
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button
+                                onClick={() =>
+                                  updateAppointmentStatus(b.id, "done")
+                                }
+                                style={{
+                                  background: "#166534",
+                                  color: "#fff",
+                                  border: "none",
+                                  borderRadius: 9999,
+                                  padding: "5px 14px",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  cursor: "pointer",
+                                  fontFamily: "Poppins, sans-serif",
+                                }}
+                              >
+                                {t("bookings.markDone")}
+                              </button>
+                              <button
+                                onClick={() =>
+                                  updateAppointmentStatus(b.id, "cancelled")
+                                }
+                                style={{
+                                  background: "#991B1B",
+                                  color: "#fff",
+                                  border: "none",
+                                  borderRadius: 9999,
+                                  padding: "5px 14px",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  cursor: "pointer",
+                                  fontFamily: "Poppins, sans-serif",
+                                }}
+                              >
+                                {t("bookings.cancelBooking")}
+                              </button>
+                            </div>
+                          ) : (
+                            "—"
+                          )}
                         </td>
                       </tr>
                     ))}
                     {appointments.length === 0 && (
                       <tr>
                         <td
-                          colSpan={5}
+                          colSpan={6}
                           style={{
                             padding: 24,
                             textAlign: "center",

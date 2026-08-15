@@ -18,3 +18,9 @@ export enum ApplicationStatus {
   Approved = "approved",
   Denied = "denied",
 }
+
+export enum AppointmentStatus {
+  Booked = "booked",
+  Done = "done",
+  Cancelled = "cancelled",
+}

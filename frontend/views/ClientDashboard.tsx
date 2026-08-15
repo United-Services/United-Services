@@ -883,11 +883,13 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                           {new Date(a.slot.startTime).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
+                            hour12: true,
                           })}
                           –
                           {new Date(a.slot.endTime).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
+                            hour12: true,
                           })}
                         </div>
                       ))}
@@ -932,11 +934,13 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                             {new Date(s.startTime).toLocaleTimeString([], {
                               hour: "2-digit",
                               minute: "2-digit",
+                              hour12: true,
                             })}
                             –
                             {new Date(s.endTime).toLocaleTimeString([], {
                               hour: "2-digit",
                               minute: "2-digit",
+                              hour12: true,
                             })}
                           </option>
                         ))}

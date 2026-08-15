@@ -25,6 +25,11 @@ export default async function DashboardRedirectPage({
 
   try {
     const { data: me } = await axios.get("/me", { headers: authHeader(token) })
+    // Applies to every role — an admin-created or admin-reset account
+    // must set a real password before reaching anything else, including
+    // (for admins) MFA enrollment/challenge below.
+    if (me.mustChangePassword)
+      redirect({ href: "/change-password", locale })
     if (me.role === Role.Admin) {
       if (!me.mfaEnrolled) redirect({ href: "/admin-mfa-setup", locale })
       // Enrollment is a one-time fact about the account; this is a
