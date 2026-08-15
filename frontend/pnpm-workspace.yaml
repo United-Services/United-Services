@@ -1,4 +1,14 @@
+packages:
+  - '.'
+
 allowBuilds:
   '@parcel/watcher': true
   '@swc/core': true
   unrs-resolver: true
+
+# The d3-color override (react-simple-maps -> d3-zoom -> d3-color@2.0.0,
+# GHSA-36jr-mh4h-2g58) lives in package.json's "pnpm.overrides" instead of
+# here — CI pins pnpm@9 (see .github/workflows/ci.yml), and pnpm 9 does not
+# honor a workspace-level "overrides:" key (that's a newer pnpm
+# convention). package.json's "pnpm.overrides" works on both old and new
+# pnpm, so that's the only place this should be declared.

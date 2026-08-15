@@ -131,10 +131,18 @@ environment (not just local `.env`), since they differ from dev:
 
 ## Release process
 
-1. Merge to `main` — the required CI gate (`.github/workflows/ci.yml`)
-   runs typecheck, build, and both unit-test jobs, plus the
-   `backend-integration` job against real disposable Postgres+Redis
-   containers. This gate must pass before anything ships.
+1. Merge to `main` — the CI gate (`.github/workflows/ci.yml`) runs
+   typecheck, build, `pnpm audit --audit-level=high`, and both unit-test
+   jobs, plus the `backend-integration` job against real disposable
+   Postgres+Redis containers. This is enforced by GitHub branch protection
+   on `main` (all three jobs — `Backend — typecheck & build`,
+   `Backend — integration tests (real Postgres + Redis)`,
+   `Frontend — typecheck & build` — required, admins included, force-push
+   and deletion blocked, PR + 1 approval required), not just a convention:
+   a red pipeline or a direct push cannot land. If a job is renamed or
+   split in `ci.yml`, update the required-checks list in the branch
+   protection rule to match — a required check naming a job that no
+   longer exists silently stops protecting anything.
 2. Deploy — **not currently automated**. Whatever host is chosen from the
    two options above, wire its own deploy trigger (Vercel/Railway/Render
    all auto-deploy on push to `main` once connected to the repo; a

@@ -203,9 +203,21 @@ describe('AdminUsersController.disable', () => {
   describe('updateRole', () => {
     it('refuses to let an admin change their own role', async () => {
       const { controller, prisma } = makeController();
+      // Mock findUniqueOrThrow to resolve (as it would for real against the
+      // admin's own row) so this test fails only if the guard itself is
+      // missing — not incidentally, via an unrelated crash on a later,
+      // unmocked call reading a field off an undefined `target`.
+      (prisma.user.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+        id: admin.id,
+        clerkId: 'clerk-admin-1',
+        role: Role.admin,
+      });
+
       await expect(
         controller.updateRole(admin, admin.id, { role: Role.client }),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(
+        new BadRequestException('You cannot change your own role'),
+      );
       expect(prisma.user.update).not.toHaveBeenCalled();
     });
 

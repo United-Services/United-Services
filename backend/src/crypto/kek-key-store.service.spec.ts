@@ -1,4 +1,8 @@
 import { InternalServerErrorException } from '@nestjs/common';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import sodium from 'libsodium-wrappers';
 import { KekKeyStore } from './kek-key-store.service';
 import type { PrismaService } from '../prisma/prisma.service';
 
@@ -48,5 +52,37 @@ describe('KekKeyStore', () => {
     const { store, prisma } = makeStore();
     (prisma.kekRegistry.findFirst as jest.Mock).mockResolvedValue(null);
     await expect(store.getActivePublicKey()).rejects.toThrow(/kek:generate/);
+  });
+
+  // The four tests above only cover error/edge paths. This exercises the
+  // actual happy path — reading a real key file off disk from KEK_KEYS_DIR
+  // and base64-decoding it via libsodium — which was previously only ever
+  // exercised end-to-end (via `pnpm run kek:generate` in the e2e job), never
+  // in a fast unit test.
+  it('loads a real private key file from KEK_KEYS_DIR on module init and returns it', async () => {
+    await sodium.ready;
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'kek-test-'));
+    const original = process.env.KEK_KEYS_DIR;
+    process.env.KEK_KEYS_DIR = dir;
+    try {
+      const keyPair = sodium.crypto_box_keypair();
+      await fs.writeFile(
+        path.join(dir, 'kek-1.key'),
+        sodium.to_base64(keyPair.privateKey),
+      );
+
+      const { store, prisma } = makeStore();
+      (prisma.kekRegistry.findMany as jest.Mock).mockResolvedValue([
+        { keyId: 'kek-1', status: 'active' },
+      ]);
+
+      await store.onModuleInit();
+
+      expect(store.getPrivateKey('kek-1')).toEqual(keyPair.privateKey);
+    } finally {
+      if (original) process.env.KEK_KEYS_DIR = original;
+      else delete process.env.KEK_KEYS_DIR;
+      await fs.rm(dir, { recursive: true, force: true });
+    }
   });
 });
