@@ -14,7 +14,26 @@ interface Props {
   onSignup: () => void
 }
 
-const TOTAL_STEPS = 8
+const TOTAL_STEPS = 7
+
+// The step form's own bounding box, independent of the outer panel's
+// vertical centering — adjust these two to nudge the box up/down without
+// touching panel/field spacing elsewhere. PADDING_TOP/BOTTOM are *inside*
+// the box (they stretch it — keep these at 0 unless you want the box
+// itself taller). OFFSET_Y is *outside* the box (margin-top — shifts the
+// whole box down without changing its own size). Kept small — 350 pushed
+// the box far enough down that the Next button was cut off on real
+// (non-fullscreen) browser windows.
+const FORM_BOX_PADDING_TOP = 0
+const FORM_BOX_PADDING_BOTTOM = 0
+const FORM_BOX_OFFSET_Y = 0
+
+// A shorter version of theme.tsx's shared inputStyle, local to this file
+// only — every extra pixel of input height multiplies across up to two
+// stacked fields per step, and this form is fighting to fit inside a
+// single (often short) viewport without scrolling. Not touched in
+// theme.tsx since other forms don't have that constraint.
+const compactInputStyle: React.CSSProperties = { ...inputStyle, padding: "9px 14px" }
 
 export default function ClientSignup({ onNavigate, onSignup }: Props) {
   const { signUp } = useSignUp()
@@ -70,11 +89,11 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
   const handleStepSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (step === 6 && !passwordValid) {
+    if (step === 5 && !passwordValid) {
       setError(t("errors.passwordRequirements"))
       return
     }
-    if (step === 7) {
+    if (step === 6) {
       if (form.confirmPassword !== form.password) {
         setError(t("errors.passwordMismatch"))
         return
@@ -104,7 +123,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
       }
       return
     }
-    if (step === 8) {
+    if (step === 7) {
       setLoading(true)
       setError(null)
       try {
@@ -210,6 +229,14 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
         className="signup-split"
         style={{
           marginTop: 68,
+          // Full viewport height, as originally intended — the earlier
+          // "crop by Npx" hacks were band-aids for a real bug (the hero
+          // <img> wasn't absolutely positioned, so its own aspect-ratio
+          // height was stretching this entire row far taller than the
+          // viewport — see the img's own comment below). With that fixed,
+          // this row only ever needs to be as tall as the viewport, and
+          // the now-much-shorter form content centers comfortably inside
+          // it with room to spare.
           minHeight: "calc(100vh - 68px)",
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
@@ -223,6 +250,18 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
           src={worldImg}
           alt="Industrial energy infrastructure"
           style={{
+            // Absolutely positioned like the overlay divs right below it —
+            // without this, height:100% can't resolve against this
+            // column's indefinite height (it's sized by the grid, which
+            // in turn depends on this very column), so the browser falls
+            // back to the image's natural aspect-ratio height. At this
+            // column's width that's over 1000px tall, which then stretches
+            // the *entire* grid row (both columns, via the default
+            // align-items:stretch) to match — this was the real reason
+            // the form kept sitting far lower than any padding/margin
+            // tuning on the form side alone could ever fix.
+            position: "absolute",
+            inset: 0,
             width: "100%",
             height: "100%",
             objectFit: "cover",
@@ -244,6 +283,10 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
             flexDirection: "column",
             justifyContent: "center",
             padding: 52,
+            // Nudged up from dead-center — the cropped, shorter panel
+            // otherwise leaves this looking low, with too much empty
+            // image above it.
+            transform: "translateY(-60px)",
           }}
         >
           <h2
@@ -291,12 +334,32 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
-          padding: "60px 48px",
+          padding: "4px 48px",
           background: "#fff",
           overflowY: "auto",
         }}
       >
-        <div style={{ maxWidth: 420, width: "100%", margin: "0 auto" }}>
+        <div
+          style={{
+            maxWidth: 420,
+            width: "100%",
+            margin: "0 auto",
+            marginTop: FORM_BOX_OFFSET_Y,
+            // A visible light-grey card around the whole form. Base inner
+            // spacing is 12px top / 36px sides / 12px bottom, plus
+            // whatever FORM_BOX_PADDING_TOP/BOTTOM add on top of that —
+            // note these use the shorthand-safe longhand properties
+            // (paddingTop/paddingBottom), not the `padding` shorthand,
+            // so they never get silently clobbered by it.
+            paddingTop: 12 + FORM_BOX_PADDING_TOP,
+            paddingBottom: 12 + FORM_BOX_PADDING_BOTTOM,
+            paddingLeft: 36,
+            paddingRight: 36,
+            border: "1px solid #E2E8F0",
+            borderRadius: 24,
+            background: "#fff",
+          }}
+        >
           <h1
             style={{
               fontSize: 22,
@@ -308,13 +371,13 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
           >
             {t("title")}
           </h1>
-          <p style={{ fontSize: 13, color: palette.muted, marginBottom: 24 }}>
+          <p style={{ fontSize: 13, color: palette.muted, marginBottom: 10 }}>
             {t("stepOf", { step, total: TOTAL_STEPS, label: stepTitle })}
           </p>
 
           {}
           <div
-            style={{ display: "flex", alignItems: "center", marginBottom: 32 }}
+            style={{ display: "flex", alignItems: "center", marginBottom: 10 }}
           >
             {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map(
               (s, i) => {
@@ -332,8 +395,8 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                     <div
                       className={done ? "step-circle-done" : undefined}
                       style={{
-                        width: 26,
-                        height: 26,
+                        width: 20,
+                        height: 20,
                         borderRadius: "50%",
                         flexShrink: 0,
                         display: "flex",
@@ -383,76 +446,75 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
 
           <form key={step} onSubmit={handleStepSubmit} className="step-slide">
             {step === 1 && (
-              <div style={{ marginBottom: 20 }}>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: palette.navy,
-                    marginBottom: 7,
-                  }}
-                >
-                  {t("form.firstName")}
-                </label>
-                <input
-                  autoFocus
-                  name="firstName"
-                  autoComplete="given-name"
-                  value={form.firstName}
-                  onChange={set("firstName")}
-                  placeholder={t("form.firstNamePlaceholder")}
-                  required
-                  style={inputStyle}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = palette.accent
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = "#E2E8F0"
-                  }}
-                />
+              <div style={{ marginBottom: 9 }}>
+                <div style={{ marginBottom: 9 }}>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: palette.navy,
+                      marginBottom: 5,
+                    }}
+                  >
+                    {t("form.firstName")}
+                  </label>
+                  <input
+                    autoFocus
+                    name="firstName"
+                    autoComplete="given-name"
+                    value={form.firstName}
+                    onChange={set("firstName")}
+                    placeholder={t("form.firstNamePlaceholder")}
+                    required
+                    style={compactInputStyle}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = palette.accent
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#E2E8F0"
+                    }}
+                  />
+                </div>
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: palette.navy,
+                      marginBottom: 5,
+                    }}
+                  >
+                    {t("form.lastName")}
+                  </label>
+                  <input
+                    name="lastName"
+                    autoComplete="family-name"
+                    value={form.lastName}
+                    onChange={set("lastName")}
+                    placeholder={t("form.lastNamePlaceholder")}
+                    required
+                    style={compactInputStyle}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = palette.accent
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#E2E8F0"
+                    }}
+                  />
+                </div>
               </div>
             )}
             {step === 2 && (
-              <div style={{ marginBottom: 20 }}>
+              <div style={{ marginBottom: 9 }}>
                 <label
                   style={{
                     display: "block",
                     fontSize: 13,
                     fontWeight: 600,
                     color: palette.navy,
-                    marginBottom: 7,
-                  }}
-                >
-                  {t("form.lastName")}
-                </label>
-                <input
-                  autoFocus
-                  name="lastName"
-                  autoComplete="family-name"
-                  value={form.lastName}
-                  onChange={set("lastName")}
-                  placeholder={t("form.lastNamePlaceholder")}
-                  required
-                  style={inputStyle}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = palette.accent
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = "#E2E8F0"
-                  }}
-                />
-              </div>
-            )}
-            {step === 3 && (
-              <div style={{ marginBottom: 20 }}>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: palette.navy,
-                    marginBottom: 7,
+                    marginBottom: 5,
                   }}
                 >
                   {t("form.phone")}
@@ -466,15 +528,15 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                 />
               </div>
             )}
-            {step === 4 && (
-              <div style={{ marginBottom: 20 }}>
+            {step === 3 && (
+              <div style={{ marginBottom: 9 }}>
                 <label
                   style={{
                     display: "block",
                     fontSize: 13,
                     fontWeight: 600,
                     color: palette.navy,
-                    marginBottom: 7,
+                    marginBottom: 5,
                   }}
                 >
                   {t("form.company")}
@@ -487,7 +549,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                   onChange={set("company")}
                   placeholder={t("form.companyPlaceholder")}
                   required
-                  style={inputStyle}
+                  style={compactInputStyle}
                   onFocus={(e) => {
                     e.target.style.borderColor = palette.accent
                   }}
@@ -497,15 +559,15 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                 />
               </div>
             )}
-            {step === 5 && (
-              <div style={{ marginBottom: 20 }}>
+            {step === 4 && (
+              <div style={{ marginBottom: 9 }}>
                 <label
                   style={{
                     display: "block",
                     fontSize: 13,
                     fontWeight: 600,
                     color: palette.navy,
-                    marginBottom: 7,
+                    marginBottom: 5,
                   }}
                 >
                   {t("form.email")}
@@ -519,7 +581,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                   onChange={set("email")}
                   placeholder={t("form.emailPlaceholder")}
                   required
-                  style={inputStyle}
+                  style={compactInputStyle}
                   onFocus={(e) => {
                     e.target.style.borderColor = palette.accent
                   }}
@@ -529,15 +591,15 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                 />
               </div>
             )}
-            {step === 6 && (
-              <div style={{ marginBottom: 20 }}>
+            {step === 5 && (
+              <div style={{ marginBottom: 9 }}>
                 <label
                   style={{
                     display: "block",
                     fontSize: 13,
                     fontWeight: 600,
                     color: palette.navy,
-                    marginBottom: 7,
+                    marginBottom: 5,
                   }}
                 >
                   {t("form.password")}
@@ -552,7 +614,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                   placeholder={t("form.passwordPlaceholder")}
                   required
                   minLength={8}
-                  style={inputStyle}
+                  style={compactInputStyle}
                   onFocus={(e) => {
                     e.target.style.borderColor = palette.accent
                   }}
@@ -590,15 +652,15 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                 </ul>
               </div>
             )}
-            {step === 7 && (
-              <div style={{ marginBottom: 20 }}>
+            {step === 6 && (
+              <div style={{ marginBottom: 9 }}>
                 <label
                   style={{
                     display: "block",
                     fontSize: 13,
                     fontWeight: 600,
                     color: palette.navy,
-                    marginBottom: 7,
+                    marginBottom: 5,
                   }}
                 >
                   {t("form.confirmPassword")}
@@ -613,7 +675,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                   placeholder={t("form.confirmPasswordPlaceholder")}
                   required
                   minLength={8}
-                  style={inputStyle}
+                  style={compactInputStyle}
                   onFocus={(e) => {
                     e.target.style.borderColor = palette.accent
                   }}
@@ -623,15 +685,15 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                 />
               </div>
             )}
-            {step === 8 && (
-              <div style={{ marginBottom: 20 }}>
+            {step === 7 && (
+              <div style={{ marginBottom: 9 }}>
                 <label
                   style={{
                     display: "block",
                     fontSize: 13,
                     fontWeight: 600,
                     color: palette.navy,
-                    marginBottom: 7,
+                    marginBottom: 5,
                   }}
                 >
                   {t("form.verificationCode")}
@@ -653,7 +715,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                   onChange={(e) => setCode(e.target.value)}
                   placeholder={t("form.codePlaceholder")}
                   required
-                  style={inputStyle}
+                  style={compactInputStyle}
                   onFocus={(e) => {
                     e.target.style.borderColor = palette.accent
                   }}
@@ -678,7 +740,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                   disabled={loading}
                   style={{
                     flex: "0 0 auto",
-                    padding: "13px 22px",
+                    padding: "10px 22px",
                     borderRadius: 9999,
                     border: "1.5px solid #E2E8F0",
                     background: "#fff",
@@ -697,7 +759,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                 disabled={loading}
                 style={{
                   flex: 1,
-                  padding: "13px",
+                  padding: "10px",
                   borderRadius: 9999,
                   border: "none",
                   background: loading ? "#9CA3AF" : palette.accent,
@@ -712,7 +774,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                   <>
                     <InlineSpinner size={14} /> {t("pleaseWait")}
                   </>
-                ) : step === 8 ? (
+                ) : step === 7 ? (
                   t("verifyAndCreate")
                 ) : (
                   t("next")
@@ -721,7 +783,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
             </div>
           </form>
 
-          <div style={{ textAlign: "center", marginTop: 24 }}>
+          <div style={{ textAlign: "center", marginTop: 14 }}>
             <span style={{ fontSize: 13, color: palette.muted }}>
               {t("alreadyHaveAccount")}{" "}
             </span>

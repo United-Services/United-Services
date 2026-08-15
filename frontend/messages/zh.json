@@ -7,7 +7,7 @@
     "careers": "招聘",
     "contact": "联系我们",
     "clientPortal": "客户门户",
-    "requestConsultation": "申请咨询",
+    "requestConsultation": "申请服务",
     "brand": "United Services",
     "brandSub": "埃及 · 成立于 2005 年",
     "menuToggle": "菜单",
@@ -62,7 +62,7 @@
       "bodyLine1": "高温、高压、潮湿、腐蚀。",
       "bodyLine2": "United Services Egypt 为您阻止它们。",
       "ctaServices": "查看服务",
-      "ctaConsultation": "申请咨询",
+      "ctaConsultation": "申请服务",
       "scroll": "向下滚动"
     },
     "certs": {
@@ -345,8 +345,8 @@
   },
   "contact": {
     "eyebrow": "USE · 联系我们",
-    "title": "预约咨询",
-    "subtitle": "与 USE 工程师沟通您的应用需求，我们将在一个工作日内回复。",
+    "title": "联系我们",
+    "subtitle": "请通过以下方式直接联系我们的团队，或登录您的客户账户以申请服务。",
     "info": {
       "headquarters": "总部",
       "headquartersValue": "14S 大楼，El Oroba 街延长段，新马阿迪，开罗",
@@ -357,24 +357,10 @@
     },
     "openInMaps": "在谷歌地图中打开 ↗",
     "mapAlt": "USE 开罗工厂位置",
-    "form": {
-      "fullName": "姓名",
-      "fullNamePlaceholder": "请输入您的姓名",
-      "emailAddress": "电子邮箱",
-      "emailPlaceholder": "请输入您的工作邮箱",
-      "company": "公司 / 运营方",
-      "companyPlaceholder": "您的公司或运营实体名称",
-      "service": "感兴趣的服务",
-      "servicePlaceholder": "选择服务领域",
-      "serviceGeneral": "一般咨询",
-      "description": "项目描述",
-      "descriptionPlaceholder": "请描述您的管道系统、运行条件以及所需服务",
-      "sending": "发送中…",
-      "submit": "发送咨询请求"
-    },
-    "sent": {
-      "title": "消息已发送",
-      "body": "谢谢您，{name}。USE 工程师将在一个工作日内通过 <strong>{email}</strong> 与您联系。"
+    "servicePrompt": {
+      "title": "需要服务吗？",
+      "body": "申请服务需要客户账户，以便我们跟踪您的项目并及时向您通报进展。",
+      "cta": "登录以申请服务"
     }
   },
   "projects": {
@@ -605,14 +591,13 @@
   },
   "clientSignup": {
     "stepTitles": {
-      "1": "名",
-      "2": "姓",
-      "3": "电话号码",
-      "4": "公司 / 运营方",
-      "5": "电子邮箱",
-      "6": "创建密码",
-      "7": "确认密码",
-      "8": "验证您的邮箱"
+      "1": "您的姓名",
+      "2": "电话号码",
+      "3": "公司 / 运营方",
+      "4": "电子邮箱",
+      "5": "创建密码",
+      "6": "确认密码",
+      "7": "验证您的邮箱"
     },
     "panel": {
       "heading": "获取 USE 完整服务组合的访问权限。",
@@ -673,7 +658,7 @@
     "logOut": "退出登录",
     "nav": {
       "services": "服务",
-      "rfq": "询价申请",
+      "rfq": "申请服务",
       "appointments": "预约",
       "profile": "我的资料"
     },
@@ -688,7 +673,7 @@
       "downloadSpecFile": "⬇ 下载规格文件"
     },
     "rfq": {
-      "sentTitle": "询价单已提交",
+      "sentTitle": "申请已提交",
       "sentBody": "USE 工程师将审核您的请求，并在两个工作日内回复。",
       "serviceRequired": "所需服务",
       "selectService": "选择您所需的服务",
@@ -699,7 +684,7 @@
       "additionalNotes": "补充说明",
       "notesPlaceholder": "任何特定标准、认证或访问限制的说明",
       "submitting": "提交中…",
-      "submit": "向 USE 工程部提交询价单"
+      "submit": "向 USE 工程部提交申请"
     },
     "appointments": {
       "sentTitle": "预约已确认",
@@ -1148,7 +1133,10 @@
   "auth": {
     "signInTagline": "登录以管理您的服务、请求和文件。",
     "signUpTagline": "创建账户以请求服务、跟踪询价单并管理您的文件。",
-    "brand": "United Services Egypt"
+    "brand": "United Services Egypt",
+    "ceoQuote": "腐蚀是一个工程问题，而非不可避免的宿命——我们打造的每一套系统都体现了这一信念。",
+    "ceoName": "Khaled Fouda",
+    "ceoTitle": "首席执行官，United Services Egypt"
   },
   "adminMfaChallenge": {
     "title": "验证您的身份",

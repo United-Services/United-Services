@@ -130,31 +130,6 @@ export default function PublicNav({ current, onNavigate }: Props) {
           >
             {portalLabel}
           </button>
-          <button
-            onClick={() => go("contact")}
-            style={{
-              background: palette.accent,
-              color: "#fff",
-              border: "none",
-              borderRadius: 9999,
-              padding: "9px 22px",
-              fontWeight: 700,
-              fontSize: 14,
-              cursor: "pointer",
-              fontFamily: "Poppins, sans-serif",
-              transition: "background 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.background =
-                palette.accentDark
-            }}
-            onMouseLeave={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.background =
-                palette.accent
-            }}
-          >
-            {t("requestConsultation")}
-          </button>
         </div>
 
         {}
@@ -241,23 +216,6 @@ export default function PublicNav({ current, onNavigate }: Props) {
             }}
           >
             {portalLabel}
-          </button>
-          <button
-            onClick={() => go("contact")}
-            style={{
-              background: palette.accent,
-              color: "#fff",
-              border: "none",
-              borderRadius: 9999,
-              padding: "12px 22px",
-              fontWeight: 700,
-              fontSize: 15,
-              cursor: "pointer",
-              fontFamily: "Poppins, sans-serif",
-              marginTop: 8,
-            }}
-          >
-            {t("requestConsultation")}
           </button>
         </div>
       )}

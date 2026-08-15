@@ -7,7 +7,7 @@
     "careers": "Careers",
     "contact": "Contact",
     "clientPortal": "Client Portal",
-    "requestConsultation": "Request Consultation",
+    "requestConsultation": "Request a Service",
     "brand": "United Services",
     "brandSub": "Egypt · Est. 2005",
     "menuToggle": "Menu",
@@ -62,7 +62,7 @@
       "bodyLine1": "Heat. Pressure. Moisture. Corrosion.",
       "bodyLine2": "United Services Egypt arrests it.",
       "ctaServices": "Our Services",
-      "ctaConsultation": "Request Consultation",
+      "ctaConsultation": "Request a Service",
       "scroll": "Scroll"
     },
     "certs": {
@@ -345,8 +345,8 @@
   },
   "contact": {
     "eyebrow": "USE · ENGAGEMENT",
-    "title": "Request a Consultation",
-    "subtitle": "Speak with a USE engineer about your application. We'll respond within one business day.",
+    "title": "Get in Touch",
+    "subtitle": "Reach our team directly using the details below, or sign in to your client account to request a service.",
     "info": {
       "headquarters": "Headquarters",
       "headquartersValue": "14S Building, El Oroba Street Extension, New Maadi, Cairo",
@@ -357,24 +357,10 @@
     },
     "openInMaps": "Open in Google Maps ↗",
     "mapAlt": "USE Cairo facility location",
-    "form": {
-      "fullName": "Full Name",
-      "fullNamePlaceholder": "Your full name",
-      "emailAddress": "Email Address",
-      "emailPlaceholder": "Your work email address",
-      "company": "Company / Operator",
-      "companyPlaceholder": "Name of your company or operating entity",
-      "service": "Service of Interest",
-      "servicePlaceholder": "Select a service area",
-      "serviceGeneral": "General Enquiry",
-      "description": "Project Description",
-      "descriptionPlaceholder": "Describe your pipeline system, operating conditions, and what you need",
-      "sending": "Sending…",
-      "submit": "Send Consultation Request"
-    },
-    "sent": {
-      "title": "Message Sent",
-      "body": "Thank you, {name}. A USE engineer will contact you at <strong>{email}</strong> within one business day."
+    "servicePrompt": {
+      "title": "Looking for a service?",
+      "body": "Requesting a service requires a client account, so we can track your project and keep you updated.",
+      "cta": "Sign In to Request a Service"
     }
   },
   "projects": {
@@ -605,14 +591,13 @@
   },
   "clientSignup": {
     "stepTitles": {
-      "1": "First Name",
-      "2": "Last Name",
-      "3": "Phone Number",
-      "4": "Company / Operator",
-      "5": "Email Address",
-      "6": "Create Password",
-      "7": "Confirm Password",
-      "8": "Verify Your Email"
+      "1": "Your Name",
+      "2": "Phone Number",
+      "3": "Company / Operator",
+      "4": "Email Address",
+      "5": "Create Password",
+      "6": "Confirm Password",
+      "7": "Verify Your Email"
     },
     "panel": {
       "heading": "Access the full USE service portfolio.",
@@ -673,7 +658,7 @@
     "logOut": "Log Out",
     "nav": {
       "services": "Services",
-      "rfq": "Request for Quotation",
+      "rfq": "Request a Service",
       "appointments": "Book Appointment",
       "profile": "My Profile"
     },
@@ -688,7 +673,7 @@
       "downloadSpecFile": "⬇ Download Spec File"
     },
     "rfq": {
-      "sentTitle": "RFQ Submitted",
+      "sentTitle": "Request Submitted",
       "sentBody": "A USE engineer will review your request and respond within two business days.",
       "serviceRequired": "Service Required",
       "selectService": "Select the service you need",
@@ -699,7 +684,7 @@
       "additionalNotes": "Additional Notes",
       "notesPlaceholder": "Any specific standards, certifications, or access constraints to note",
       "submitting": "Submitting…",
-      "submit": "Submit RFQ to USE Engineering"
+      "submit": "Submit Request to USE Engineering"
     },
     "appointments": {
       "sentTitle": "Appointment Booked",
@@ -1148,7 +1133,10 @@
   "auth": {
     "signInTagline": "Sign in to manage your services, requests, and documents.",
     "signUpTagline": "Create an account to request services, track RFQs, and manage your files.",
-    "brand": "United Services Egypt"
+    "brand": "United Services Egypt",
+    "ceoQuote": "Corrosion is an engineering problem, not an inevitability — every system we build reflects that conviction.",
+    "ceoName": "Khaled Fouda",
+    "ceoTitle": "CEO, United Services Egypt"
   },
   "adminMfaChallenge": {
     "title": "Verify Your Identity",

@@ -222,7 +222,7 @@ export default function Home({ onNavigate }: Props) {
                 {t("hero.ctaServices")}
               </button>
               <button
-                onClick={() => onNavigate("contact")}
+                onClick={() => onNavigate("client-login")}
                 style={{
                   background: "rgba(255,255,255,0.1)",
                   color: "#fff",
@@ -947,7 +947,7 @@ export default function Home({ onNavigate }: Props) {
               </div>
               <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
                 <button
-                  onClick={() => onNavigate("contact")}
+                  onClick={() => onNavigate("client-login")}
                   style={{
                     background: "#fff",
                     color: palette.accent,

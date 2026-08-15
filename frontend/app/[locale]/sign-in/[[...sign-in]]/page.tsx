@@ -76,6 +76,46 @@ export default function SignInPage() {
           >
             {t("signInTagline")}
           </p>
+
+          <div
+            style={{
+              position: "relative",
+              marginTop: 32,
+              paddingTop: 24,
+              borderTop: "1px solid rgba(255,255,255,0.25)",
+              maxWidth: 420,
+            }}
+          >
+            <p
+              style={{
+                color: "rgba(255,255,255,0.9)",
+                fontSize: 15,
+                fontStyle: "italic",
+                lineHeight: 1.7,
+                marginBottom: 12,
+              }}
+            >
+              “{t("ceoQuote")}”
+            </p>
+            <p
+              style={{
+                color: "#fff",
+                fontSize: 13,
+                fontWeight: 700,
+              }}
+            >
+              {t("ceoName")}
+              <span
+                style={{
+                  color: "rgba(255,255,255,0.7)",
+                  fontWeight: 500,
+                }}
+              >
+                {" — "}
+                {t("ceoTitle")}
+              </span>
+            </p>
+          </div>
         </div>
 
         <div
