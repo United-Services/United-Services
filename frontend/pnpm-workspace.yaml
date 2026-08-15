@@ -6,11 +6,9 @@ allowBuilds:
   '@swc/core': true
   unrs-resolver: true
 
-# react-simple-maps pins an old d3-zoom -> d3-color@2.0.0, which has a
-# known ReDoS (GHSA-36jr-mh4h-2g58). Not reachable via user input here
-# (WorldMap only ever passes fixed color constants through it), but
-# recharts already pulls the patched d3-color@3.1.0 elsewhere in the
-# tree — forcing the whole tree onto that version is a safe, API-
-# compatible fix rather than leaving two versions installed.
-overrides:
-  d3-color: ^3.1.0
+# The d3-color override (react-simple-maps -> d3-zoom -> d3-color@2.0.0,
+# GHSA-36jr-mh4h-2g58) lives in package.json's "pnpm.overrides" instead of
+# here — CI pins pnpm@9 (see .github/workflows/ci.yml), and pnpm 9 does not
+# honor a workspace-level "overrides:" key (that's a newer pnpm
+# convention). package.json's "pnpm.overrides" works on both old and new
+# pnpm, so that's the only place this should be declared.
