@@ -84,6 +84,24 @@ describe('AppointmentsController.openSlots', () => {
   });
 });
 
+describe('AppointmentsController.allSlots', () => {
+  it('excludes slots whose booking is done, but keeps unbooked and cancelled ones', () => {
+    const findMany = jest.fn();
+    const prisma = {
+      appointmentSlot: { findMany },
+    } as unknown as PrismaService;
+    const controller = new AppointmentsController(prisma, makeAuditLog());
+
+    controller.allSlots();
+
+    const where = findMany.mock.calls[0][0].where;
+    expect(where.OR).toEqual([
+      { appointment: null },
+      { appointment: { status: { not: 'done' } } },
+    ]);
+  });
+});
+
 describe('AppointmentsController.updateSlot', () => {
   const admin = { id: 'admin-1' } as User;
 

@@ -1,0 +1,2082 @@
+{
+  "info": {
+    "_postman_id": "82df5a3a-4f93-43e9-a77c-d5bb726708ab",
+    "name": "United Services Egypt \u2014 API",
+    "description": "Full API coverage for the United Services Egypt backend (NestJS).\n\n## Auth\nThis app authenticates via a Clerk session \u2014 either the `__session` cookie (browser) or an `Authorization: Bearer <token>` header (what this collection uses). Set the collection variable `sessionToken` to a live Clerk session token (e.g. copy it from your browser's dev tools \u2192 Application \u2192 Cookies \u2192 `__session`, or call `await getToken()` in the frontend console while signed in) before running any authenticated request. Tokens are short-lived \u2014 you'll need to refresh it periodically.\n\n## CSRF\nEvery state-changing request (POST/PATCH/PUT/DELETE) requires the header `X-Requested-With: XMLHttpRequest` \u2014 already added to every such request in this collection, except `POST /webhooks/clerk` which is explicitly exempt.\n\n## Roles\nFolders are organized by feature; each request's description states which role (client / candidate / admin / public / any authenticated user) it requires. Sign in as the right role in your browser first, then copy that session's token, to test role-restricted endpoints.\n\n## Path variables\nReplace `:id` (and similar) segments and the `{{...}}` variables in request bodies/paths with real values from your database, or run the corresponding \"list\"/\"create\" requests first.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{sessionToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3002/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "sessionToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "positionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "slotId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "serviceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "serviceFileId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Public DB health check \u2014 SELECT 1.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Geo",
+      "item": [
+        {
+          "name": "Resolve locale from IP",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/geo/locale",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "geo",
+                "locale"
+              ]
+            },
+            "description": "Public \u2014 resolves a suggested locale from the caller's IP.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Positions (Careers)",
+      "item": [
+        {
+          "name": "List open positions (public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/positions?locale=ar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "positions"
+              ],
+              "query": [
+                {
+                  "key": "locale",
+                  "value": "ar",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Public Careers listing \u2014 isOpen only. locale=ar|zh machine-translates; omitted/other = untranslated.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List all positions (admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/positions/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "positions",
+                "all"
+              ]
+            },
+            "description": "Admin: all positions, open and closed."
+          },
+          "response": []
+        },
+        {
+          "name": "Create position",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/positions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "positions"
+              ]
+            },
+            "description": "Admin only. title<=120, description<=4000, department<=80.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Senior Corrosion Engineer\",\n  \"description\": \"Lead corrosion-control engineering for pipeline integrity projects across Egypt and the Gulf.\",\n  \"department\": \"Engineering\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update position",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/positions/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "positions",
+                ":id"
+              ]
+            },
+            "description": "Admin only. All fields optional: title, description, department, isOpen.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Senior Corrosion Engineer II\",\n  \"isOpen\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Invalidate position translation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/positions/:id/translations/:locale/invalidate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "positions",
+                ":id",
+                "translations",
+                ":locale",
+                "invalidate"
+              ]
+            },
+            "description": "Admin only. locale = ar|zh. Forces regeneration of that translation."
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Candidate Applications (Admin)",
+      "item": [
+        {
+          "name": "List candidate applications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/candidate-applications?q=&status=pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "candidate-applications"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Admin only. status = pending|approved|denied."
+          },
+          "response": []
+        },
+        {
+          "name": "Get candidate documents (presigned URLs)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/candidate-applications/:id/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "candidate-applications",
+                ":id",
+                "documents"
+              ]
+            },
+            "description": "Admin only. Returns idPhotoUrl/cvUrl (300s presigned), either may be null."
+          },
+          "response": []
+        },
+        {
+          "name": "Request more documents from candidate",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/candidate-applications/:id/request-documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "candidate-applications",
+                ":id",
+                "request-documents"
+              ]
+            },
+            "description": "Admin only. note optional, <=500 chars.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Please re-upload a clearer photo of your ID.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Decide candidate application",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/candidate-applications/:id/decide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "candidate-applications",
+                ":id",
+                "decide"
+              ]
+            },
+            "description": "Admin only. approve: boolean -> sets status approved/denied.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approve\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Appointments",
+      "item": [
+        {
+          "name": "Create slot",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/slots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "slots"
+              ]
+            },
+            "description": "Admin only. All fields ISO date strings.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-09-01T00:00:00.000Z\",\n  \"startTime\": \"2026-09-01T10:00:00.000Z\",\n  \"endTime\": \"2026-09-01T10:30:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List open slots (client-facing)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/slots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "slots"
+              ]
+            },
+            "description": "Any authenticated user. Only open, non-closed, future slots."
+          },
+          "response": []
+        },
+        {
+          "name": "List all slots (admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/slots/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "slots",
+                "all"
+              ]
+            },
+            "description": "Admin only. Every slot in any state, with booking/client info."
+          },
+          "response": []
+        },
+        {
+          "name": "Update / close slot",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/slots/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "slots",
+                ":id"
+              ]
+            },
+            "description": "Admin only. All fields optional: date, startTime, endTime, isClosed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isClosed\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Book a slot",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/book",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "book"
+              ]
+            },
+            "description": "Client only. 409 if the slot was just booked by someone else.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slotId\": \"{{slotId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List my appointments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "mine"
+              ]
+            },
+            "description": "Client only. Own appointments with slot info."
+          },
+          "response": []
+        },
+        {
+          "name": "List all appointments (admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/appointments?q=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Admin only. Optional fuzzy search on client name/company."
+          },
+          "response": []
+        },
+        {
+          "name": "Update appointment status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/:id/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                ":id",
+                "status"
+              ]
+            },
+            "description": "Admin only. status = 'done' | 'cancelled' (never 'booked' via this route).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"done\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Uploads",
+      "item": [
+        {
+          "name": "Presign candidate document upload",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/uploads/presign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "uploads",
+                "presign"
+              ]
+            },
+            "description": "Any authenticated user. kind = 'candidate-id-photo' | 'candidate-cv'.\nAllowed contentType per kind:\n- candidate-id-photo: image/jpeg, image/png\n- candidate-cv: application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document\nReturns { url, key } \u2014 PUT your file to `url` directly (outside Postman auth), then use `key` in POST /me/candidate-documents.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kind\": \"candidate-cv\",\n  \"contentType\": \"application/pdf\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Admin \u2014 Users",
+      "item": [
+        {
+          "name": "Create user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ]
+            },
+            "description": "Admin only. role = client|candidate|admin. companyName/phone optional.\nCreates the account in Clerk + local DB with a generated temp password; response includes tempPassword (shown once).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"new.client@example.com\",\n  \"firstName\": \"New\",\n  \"lastName\": \"Client\",\n  \"role\": \"client\",\n  \"companyName\": \"Acme Operating Co.\",\n  \"phone\": \"+201234567890\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users?q=&role=client",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "role",
+                  "value": "client",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Admin only. role = client|candidate|admin."
+          },
+          "response": []
+        },
+        {
+          "name": "Disable user",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:id/disable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":id",
+                "disable"
+              ]
+            },
+            "description": "Admin only. 400 if targeting your own account."
+          },
+          "response": []
+        },
+        {
+          "name": "Enable user",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:id/enable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":id",
+                "enable"
+              ]
+            },
+            "description": "Admin only."
+          },
+          "response": []
+        },
+        {
+          "name": "Change user role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:id/role",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":id",
+                "role"
+              ]
+            },
+            "description": "Admin only. role = client|candidate|admin. 400 if targeting your own account.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reset user password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/users/:id/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "users",
+                ":id",
+                "reset-password"
+              ]
+            },
+            "description": "Admin only. Generates a new temp password, forces mustChangePassword, signs out other sessions."
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Service Requests (RFQs)",
+      "item": [
+        {
+          "name": "Create service request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/rfqs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rfqs"
+              ]
+            },
+            "description": "Client only. serviceId optional, projectDetails required (<=4000 chars).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"projectDetails\": \"Onshore gathering line, DN150, produced water service, need GRE lining quote.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List my service requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rfqs/mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rfqs",
+                "mine"
+              ]
+            },
+            "description": "Client only."
+          },
+          "response": []
+        },
+        {
+          "name": "List all service requests (admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/rfqs?q=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rfqs"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Admin only. Optional fuzzy search on client/company/project details."
+          },
+          "response": []
+        },
+        {
+          "name": "Update service request status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/rfqs/:id/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rfqs",
+                ":id",
+                "status"
+              ]
+            },
+            "description": "Admin only. status = pending|in_review|quoted|closed. 400 if this request is already marked contacted (final, immutable).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_review\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mark service request contacted",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/rfqs/:id/contacted",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "rfqs",
+                ":id",
+                "contacted"
+              ]
+            },
+            "description": "Admin only. One-way \u2014 400 if already marked contacted."
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "File Access Requests",
+      "item": [
+        {
+          "name": "Request file access",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/file-access-requests",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "file-access-requests"
+              ]
+            },
+            "description": "Client only. 409 if a pending/approved request already exists for this file.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceFileId\": \"{{serviceFileId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List my file access requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/file-access-requests/mine",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "file-access-requests",
+                "mine"
+              ]
+            },
+            "description": "Client only."
+          },
+          "response": []
+        },
+        {
+          "name": "List all file access requests (admin)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/file-access-requests?q=&status=pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "file-access-requests"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Admin only. status = pending|approved|denied."
+          },
+          "response": []
+        },
+        {
+          "name": "Decide file access request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/file-access-requests/:id/decide",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "file-access-requests",
+                ":id",
+                "decide"
+              ]
+            },
+            "description": "Admin only. approve: boolean.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approve\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get presigned download URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/file-access-requests/:id/download",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "file-access-requests",
+                ":id",
+                "download"
+              ]
+            },
+            "description": "Admin or the owning client. 403 if not approved yet / not owner. 300s presigned URL."
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Services",
+      "item": [
+        {
+          "name": "List services (public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/services",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "services"
+              ]
+            },
+            "description": "Public. Redis-cached 300s.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get service by slug (public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/services/:slug",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "services",
+                ":slug"
+              ]
+            },
+            "description": "Public. 404 if slug not found.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update service",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/services/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "services",
+                ":id"
+              ]
+            },
+            "description": "Admin only. All fields optional. Invalidates services-list cache.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"GRE Tubular Lining\",\n  \"shortDescription\": \"Internal corrosion barrier for steel pipelines.\",\n  \"longDescription\": \"Glass Reinforced Epoxy (GRE) tubular lining...\",\n  \"order\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Presign spec file upload",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/services/:id/files/presign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "services",
+                ":id",
+                "files",
+                "presign"
+              ]
+            },
+            "description": "Admin only. contentType must be one of: application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document.\nReturns { url, key } \u2014 PUT your file to `url` directly, then confirm via POST /services/:id/files.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filename\": \"gre-lining-spec-v3.pdf\",\n  \"contentType\": \"application/pdf\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm spec file upload",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/services/:id/files",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "services",
+                ":id",
+                "files"
+              ]
+            },
+            "description": "Admin only. Validates magic bytes match an allowed doc type; creates a new ServiceFile version.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"s3Key\": \"pending/service-specs/{{serviceId}}/REPLACE_WITH_KEY_FROM_PRESIGN\",\n  \"originalFilename\": \"gre-lining-spec-v3.pdf\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List spec files for a service",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/services/:id/files",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "services",
+                ":id",
+                "files"
+              ]
+            },
+            "description": "Admin only. Newest first."
+          },
+          "response": []
+        },
+        {
+          "name": "Get latest spec file metadata",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/services/:id/latest-file",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "services",
+                ":id",
+                "latest-file"
+              ]
+            },
+            "description": "Any authenticated user. Never returns s3Key \u2014 just enough to decide whether to request access."
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Track event (public)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/track",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "analytics",
+                "track"
+              ]
+            },
+            "description": "Public, rate-limited to 30/min. Server derives country from IP \u2014 never trust client-supplied.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventType\": \"cta_click_hero\",\n  \"metadata\": {\n    \"page\": \"/\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Overview stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "analytics",
+                "overview"
+              ]
+            },
+            "description": "Admin only. clientCount, companyCount, fileAccess*, rfqCount, appointmentCount, candidatesByStatus, ctaClicks, serviceViews."
+          },
+          "response": []
+        },
+        {
+          "name": "Geo overview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/geo-overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "analytics",
+                "geo-overview"
+              ]
+            },
+            "description": "Admin only. page_view counts grouped by country, last 90 days."
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Audit Log",
+      "item": [
+        {
+          "name": "Search audit log",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit-log?q=&actorUserId=&action=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit-log"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "actorUserId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "action",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Admin only."
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Me",
+      "item": [
+        {
+          "name": "Get my profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me"
+              ]
+            },
+            "description": "Any authenticated user. MFA-exempt. Canonical source for post-sign-in redirect logic."
+          },
+          "response": []
+        },
+        {
+          "name": "Change my password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "change-password"
+              ]
+            },
+            "description": "Any authenticated user. MFA-exempt. Clears mustChangePassword, signs out other sessions.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newPassword\": \"NewStrongerPassw0rd!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update my profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me"
+              ]
+            },
+            "description": "Any authenticated user. companyName/phone optional. No role field by design.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyName\": \"Acme Operating Co.\",\n  \"phone\": \"+201234567890\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Become a candidate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/become-candidate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "become-candidate"
+              ]
+            },
+            "description": "Client only, one-time. 409 if an application already exists.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dateOfBirth\": \"1995-04-12\",\n  \"positionId\": \"{{positionId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get my candidate application",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me/candidate-application",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "candidate-application"
+              ]
+            },
+            "description": "Candidate only. 404 if none found."
+          },
+          "response": []
+        },
+        {
+          "name": "Upload candidate documents",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/me/candidate-documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me",
+                "candidate-documents"
+              ]
+            },
+            "description": "Candidate only. At least one of idPhotoS3Key/cvS3Key required. Keys come from POST /uploads/presign.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idPhotoS3Key\": \"pending/candidates/{{userId}}/candidate-id-photo-REPLACE.jpg\",\n  \"cvS3Key\": \"pending/candidates/{{userId}}/candidate-cv-REPLACE.pdf\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "MFA (Admin)",
+      "item": [
+        {
+          "name": "Get MFA status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/mfa/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mfa",
+                "status"
+              ]
+            },
+            "description": "Admin only."
+          },
+          "response": []
+        },
+        {
+          "name": "Enroll TOTP (start)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mfa/totp/enroll",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mfa",
+                "totp",
+                "enroll"
+              ]
+            },
+            "description": "Admin only. Returns secret/QR data."
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm TOTP enrollment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mfa/totp/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mfa",
+                "totp",
+                "confirm"
+              ]
+            },
+            "description": "Admin only. 6-digit code.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "WebAuthn registration options",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mfa/webauthn/register-options",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mfa",
+                "webauthn",
+                "register-options"
+              ]
+            },
+            "description": "Admin only."
+          },
+          "response": []
+        },
+        {
+          "name": "WebAuthn registration verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mfa/webauthn/register-verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mfa",
+                "webauthn",
+                "register-verify"
+              ]
+            },
+            "description": "Admin only. `response` must be a real RegistrationResponseJSON from @simplewebauthn/browser \u2014 cannot be hand-crafted in Postman.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"response\": \"REPLACE_WITH_REGISTRATION_RESPONSE_JSON_FROM_BROWSER\",\n  \"label\": \"MacBook Touch ID\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "WebAuthn auth (challenge) options",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mfa/webauthn/auth-options",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mfa",
+                "webauthn",
+                "auth-options"
+              ]
+            },
+            "description": "Admin only."
+          },
+          "response": []
+        },
+        {
+          "name": "WebAuthn auth (challenge) verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mfa/webauthn/auth-verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mfa",
+                "webauthn",
+                "auth-verify"
+              ]
+            },
+            "description": "Admin only. Marks the current session MFA-verified on success. `response` cannot be hand-crafted in Postman.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"response\": \"REPLACE_WITH_AUTHENTICATION_RESPONSE_JSON_FROM_BROWSER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "TOTP session challenge",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mfa/challenge/totp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mfa",
+                "challenge",
+                "totp"
+              ]
+            },
+            "description": "Admin only. Marks the current session MFA-verified on success.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin password reset (self, MFA-gated)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Requested-With",
+                "value": "XMLHttpRequest",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/mfa/admin-password-reset",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mfa",
+                "admin-password-reset"
+              ]
+            },
+            "description": "Admin only, resets YOUR OWN password. method = 'totp' | 'webauthn'.\nIf method='totp': totpCode required.\nIf method='webauthn': webauthnResponse required instead (real WebAuthn assertion, not hand-craftable here).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newPassword\": \"NewStrongerPassw0rd!\",\n  \"method\": \"totp\",\n  \"totpCode\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "Clerk user.created / user.updated (not testable in Postman)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/webhooks/clerk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "webhooks",
+                "clerk"
+              ]
+            },
+            "description": "Public + CSRF-exempt, but requires valid Svix signature headers (svix-id, svix-timestamp, svix-signature) verified against CLERK_WEBHOOK_SECRET. Cannot be meaningfully tested from Postman directly \u2014 use Clerk's own webhook test tool, or the `svix` CLI, to generate a correctly signed request against this endpoint.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"user.created\",\n  \"data\": {\n    \"id\": \"user_xxx\",\n    \"email_addresses\": [\n      {\n        \"id\": \"idn_xxx\",\n        \"email_address\": \"someone@example.com\"\n      }\n    ],\n    \"primary_email_address_id\": \"idn_xxx\",\n    \"first_name\": \"Jane\",\n    \"last_name\": \"Doe\",\n    \"phone_numbers\": [],\n    \"public_metadata\": {\n      \"role\": \"client\"\n    },\n    \"unsafe_metadata\": {\n      \"companyName\": \"Acme\",\n      \"phone\": \"+201234567890\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": ""
+    }
+  ]
+}

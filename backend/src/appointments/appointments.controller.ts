@@ -54,10 +54,21 @@ export class AppointmentsController {
     });
   }
 
+  // Once a booking is marked done, the slot has served its purpose and
+  // drops off this list — it's still visible in the bookings list itself
+  // (with its "done" status), just no longer clutters slot management. A
+  // cancelled booking's slot stays here, since an admin cancelling it is
+  // often exactly the reason they'd want to edit/reopen that timing.
   @Roles(Role.admin)
   @Get('slots/all')
   allSlots() {
     return this.prisma.appointmentSlot.findMany({
+      where: {
+        OR: [
+          { appointment: null },
+          { appointment: { status: { not: 'done' } } },
+        ],
+      },
       orderBy: [{ date: 'desc' }, { startTime: 'asc' }],
       include: {
         appointment: {
