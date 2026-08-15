@@ -209,6 +209,12 @@ describe('MfaService — TOTP', () => {
     await expect(service.verifyTotp(user, validCode)).resolves.toBe(true);
     // Same code, same time step — must be rejected the second time even
     // though it would otherwise still be within the tolerance window.
+    // Mutation-tested: this alone does NOT prove recordUsedTimeStep's Redis
+    // atomicity — otplib's own afterTimeStep memory independently blocks a
+    // sequential resubmission. Only the concurrent test below (Promise.all)
+    // exercises the Lua script's compare-and-set; removing either check
+    // thinking it's redundant with the other reopens half the original
+    // replay vulnerability (sequential vs. genuinely concurrent replay).
     await expect(service.verifyTotp(user, validCode)).resolves.toBe(false);
   });
 

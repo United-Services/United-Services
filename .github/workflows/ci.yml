@@ -37,7 +37,7 @@ jobs:
       - name: Unit tests
         run: pnpm test -- --ci
       - run: pnpm run build
-      - run: pnpm audit --audit-level=high || true
+      - run: pnpm audit --audit-level=high
 
   backend-integration:
     name: Backend — integration tests (real Postgres + Redis)
@@ -135,4 +135,4 @@ jobs:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2ktcGxhY2Vob2xkZXIta2V5LmNsZXJrLmFjY291bnRzLmRldiQ
           CLERK_SECRET_KEY: sk_test_ci-placeholder-key
           NEXT_PUBLIC_API_URL: http://localhost:3002/api/v1
-      - run: pnpm audit --audit-level=high || true
+      - run: pnpm audit --audit-level=high

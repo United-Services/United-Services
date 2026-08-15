@@ -15,6 +15,18 @@ function makeAuditLog() {
 // a single conditional updateMany(isBooked=false -> true) inside a
 // transaction (see docs/BUSINESS_RULES.md rule 4) — these tests exercise
 // both branches of that guard without needing a real database.
+//
+// Mutation-tested: neither test here actually triggers the real race (Node's
+// single-threaded execution can't hit that window against a mocked client).
+// The "already taken" test alone would pass unchanged even if the atomic
+// where-clause guard were silently dropped — it only checks the controller's
+// reaction to count:0, not that the guard produces it. The only thing that
+// catches a dropped `isBooked: false` condition is the exact-args assertion
+// in "books the slot when it is still open" below (asserting the where
+// clause shape passed to updateMany). Any future concurrency test in this
+// codebase needs the same pattern: assert the exact conditional query shape
+// sent to the DB and trust Postgres's atomicity, since a mocked client can't
+// reproduce the real race to catch a regression behaviorally.
 describe('AppointmentsController.book', () => {
   const client = { id: 'client-1' } as User;
 
