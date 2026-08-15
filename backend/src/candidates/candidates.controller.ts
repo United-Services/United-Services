@@ -14,6 +14,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { DecideApplicationDto } from './dto/decide-application.dto';
 import { RequestDocumentsDto } from './dto/request-documents.dto';
+import { fuzzyMatch, searchableText } from '../common/utils/fuzzy-match';
 import { ApplicationStatus, Role, type User } from '../generated/prisma';
 
 const DOCUMENT_URL_TTL_SECONDS = 300;
@@ -29,23 +30,15 @@ export class CandidatesController {
     private readonly auditLog: AuditLogService,
   ) {}
 
+  // Fuzzy-matched in-app — see fuzzy-match.ts and the equivalent note on
+  // AdminUsersController.list.
   @Get()
-  list(@Query('q') q?: string, @Query('status') status?: ApplicationStatus) {
-    return this.prisma.candidateApplication.findMany({
-      where: {
-        ...(status ? { status } : {}),
-        ...(q
-          ? {
-              candidateUser: {
-                OR: [
-                  { firstName: { contains: q, mode: 'insensitive' } },
-                  { lastName: { contains: q, mode: 'insensitive' } },
-                  { email: { contains: q, mode: 'insensitive' } },
-                ],
-              },
-            }
-          : {}),
-      },
+  async list(
+    @Query('q') q?: string,
+    @Query('status') status?: ApplicationStatus,
+  ) {
+    const applications = await this.prisma.candidateApplication.findMany({
+      where: status ? { status } : {},
       orderBy: { id: 'desc' },
       include: {
         candidateUser: {
@@ -54,6 +47,17 @@ export class CandidatesController {
         position: { select: { title: true, department: true } },
       },
     });
+    if (!q) return applications;
+    return applications.filter((a) =>
+      fuzzyMatch(
+        searchableText(
+          a.candidateUser.firstName,
+          a.candidateUser.lastName,
+          a.candidateUser.email,
+        ),
+        q,
+      ),
+    );
   }
 
   @Get(':id/documents')

@@ -14,6 +14,13 @@ import { MFA_EXEMPT_KEY } from '../common/decorators/mfa-exempt.decorator';
 const JPEG_BYTES = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
 const PDF_BYTES = Buffer.from('%PDF-1.4', 'latin1');
 
+const updateUserMock = jest.fn();
+jest.mock('@clerk/backend', () => ({
+  createClerkClient: () => ({
+    users: { updateUser: (...args: unknown[]) => updateUserMock(...args) },
+  }),
+}));
+
 // /me/become-candidate is the only self-service role transition in the
 // app (client -> candidate) — it must be unreachable for any other role,
 // closing off a privilege-escalation route, and it must never expose raw
@@ -29,11 +36,14 @@ describe('MeController', () => {
     lastName: 'B',
     companyName: null,
     mfaEnrolled: false,
+    mustChangePassword: false,
+    clerkId: 'clerk-u1',
   } as User;
   const admin = { ...client, role: Role.admin } as User;
   const candidate = { ...client, role: Role.candidate } as User;
 
   function makeController() {
+    updateUserMock.mockReset().mockResolvedValue({});
     const prisma = {
       user: { update: jest.fn() },
       candidateApplication: {
@@ -72,6 +82,7 @@ describe('MeController', () => {
         lastName: 'B',
         companyName: null,
         mfaEnrolled: false,
+        mustChangePassword: false,
         mfaSessionVerified: true,
       });
     });
@@ -302,6 +313,38 @@ describe('MeController', () => {
         'pending/candidates/u1/candidate-id-photo-1.jpg',
       );
       expect(s3.promoteUpload).not.toHaveBeenCalled();
+    });
+  });
+
+  // The one path out of mustChangePassword=true (temp-password accounts
+  // created by an admin, or reset by one) — must be reachable by any role
+  // and by an admin who hasn't enrolled MFA yet, since that's exactly the
+  // state a brand-new admin-created account is in.
+  describe('changePassword', () => {
+    it('sets the new password in Clerk, signs out other sessions, and clears mustChangePassword', async () => {
+      const { controller, prisma } = makeController();
+
+      const result = await controller.changePassword(client, {
+        newPassword: 'brand-new-pw-1',
+      });
+
+      expect(updateUserMock).toHaveBeenCalledWith('clerk-u1', {
+        password: 'brand-new-pw-1',
+        signOutOfOtherSessions: true,
+      });
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'u1' },
+        data: { mustChangePassword: false },
+      });
+      expect(result).toEqual({ success: true });
+    });
+
+    it('is exempt from MfaEnrolledGuard, so a not-yet-enrolled admin can still call it', () => {
+      const isExempt = Reflect.getMetadata(
+        MFA_EXEMPT_KEY,
+        MeController.prototype.changePassword,
+      );
+      expect(isExempt).toBe(true);
     });
   });
 });

@@ -13,6 +13,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreateRfqDto } from './dto/create-rfq.dto';
 import { UpdateRfqStatusDto } from './dto/update-rfq-status.dto';
+import { fuzzyMatch, searchableText } from '../common/utils/fuzzy-match';
 import { Role, type User } from '../generated/prisma';
 
 @Controller('rfqs')
@@ -44,20 +45,12 @@ export class RfqController {
     });
   }
 
+  // Fuzzy-matched in-app — see fuzzy-match.ts and the equivalent note on
+  // AdminUsersController.list.
   @Roles(Role.admin)
   @Get()
-  list(@Query('q') q?: string) {
-    return this.prisma.serviceRequest.findMany({
-      where: q
-        ? {
-            OR: [
-              { client: { firstName: { contains: q, mode: 'insensitive' } } },
-              { client: { lastName: { contains: q, mode: 'insensitive' } } },
-              { client: { companyName: { contains: q, mode: 'insensitive' } } },
-              { projectDetails: { contains: q, mode: 'insensitive' } },
-            ],
-          }
-        : {},
+  async list(@Query('q') q?: string) {
+    const rfqs = await this.prisma.serviceRequest.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
         client: {
@@ -71,6 +64,18 @@ export class RfqController {
         service: { select: { name: true, slug: true } },
       },
     });
+    if (!q) return rfqs;
+    return rfqs.filter((r) =>
+      fuzzyMatch(
+        searchableText(
+          r.client.firstName,
+          r.client.lastName,
+          r.client.companyName,
+          r.projectDetails,
+        ),
+        q,
+      ),
+    );
   }
 
   @Roles(Role.admin)
@@ -90,6 +95,30 @@ export class RfqController {
       targetType: 'ServiceRequest',
       targetId: id,
       metadata: { status: dto.status },
+    });
+    return updated;
+  }
+
+  // Toggle, not a one-way transition — an admin can un-mark a request they
+  // flagged as contacted by mistake. Independent of `status` (see
+  // schema.prisma's comment on ServiceRequest.contactedAt).
+  @Roles(Role.admin)
+  @Patch(':id/contacted')
+  async toggleContacted(@CurrentUser() admin: User, @Param('id') id: string) {
+    const existing = await this.prisma.serviceRequest.findUniqueOrThrow({
+      where: { id },
+      select: { contactedAt: true },
+    });
+    const updated = await this.prisma.serviceRequest.update({
+      where: { id },
+      data: { contactedAt: existing.contactedAt ? null : new Date() },
+    });
+    await this.auditLog.record({
+      actorUserId: admin.id,
+      action: 'rfq.contacted_toggled',
+      targetType: 'ServiceRequest',
+      targetId: id,
+      metadata: { contactedAt: updated.contactedAt },
     });
     return updated;
   }

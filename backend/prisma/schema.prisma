@@ -72,6 +72,11 @@ model User {
   mfaEnrolled Boolean   @default(false) // admins only
   createdAt   DateTime  @default(now())
   disabledAt  DateTime?
+  // Set whenever an admin creates an account or resets someone's password
+  // with a server-generated temp password — forces a mandatory change on
+  // next sign-in (see /me/change-password) before anything else in the
+  // app is reachable, regardless of role.
+  mustChangePassword Boolean @default(false)
 
   updatedServices      Service[]              @relation("ServiceUpdatedBy")
   uploadedServiceFiles ServiceFile[]          @relation("ServiceFileUploadedBy")
@@ -223,6 +228,11 @@ model ServiceRequest {
   service        Service?             @relation(fields: [serviceId], references: [id])
   projectDetails String
   status         ServiceRequestStatus @default(pending)
+  // Separate axis from `status` — whether an admin has reached out to the
+  // client about this RFQ yet. Independent of the pending/in_review/
+  // quoted/closed pipeline: a request can be contacted while still
+  // pending, or closed without ever having been contacted.
+  contactedAt    DateTime?
   createdAt      DateTime             @default(now())
 
   @@index([clientId])
@@ -239,6 +249,13 @@ model AppointmentSlot {
   startTime        DateTime
   endTime          DateTime
   isBooked         Boolean  @default(false)
+  // Admin-only visibility toggle, independent of isBooked — a closed slot
+  // (booked or not) is never returned to clients (GET /appointments/slots)
+  // but stays visible to admins (GET /appointments/slots/all) for record-
+  // keeping/re-opening. Distinct from cancelling a booking: closing a slot
+  // hides the *timing*, cancelling a booking just changes that booking's
+  // status (see Appointment.status below).
+  isClosed         Boolean  @default(false)
   createdByAdminId String
   createdByAdmin   User     @relation("AppointmentSlotCreatedBy", fields: [createdByAdminId], references: [id])
 
@@ -249,14 +266,22 @@ model AppointmentSlot {
 }
 
 model Appointment {
-  id        String          @id @default(cuid())
-  slotId    String          @unique
-  slot      AppointmentSlot @relation(fields: [slotId], references: [id])
+  id        String            @id @default(cuid())
+  slotId    String            @unique
+  slot      AppointmentSlot   @relation(fields: [slotId], references: [id])
   clientId  String
-  client    User            @relation("AppointmentClient", fields: [clientId], references: [id])
-  createdAt DateTime        @default(now())
+  client    User              @relation("AppointmentClient", fields: [clientId], references: [id])
+  status    AppointmentStatus @default(booked)
+  createdAt DateTime          @default(now())
 
   @@index([clientId])
+  @@index([status])
+}
+
+enum AppointmentStatus {
+  booked
+  done
+  cancelled
 }
 
 // ─────────────────────────────────────────────────────────────────────────

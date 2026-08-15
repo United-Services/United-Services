@@ -9,6 +9,7 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
+import { createClerkClient } from '@clerk/backend';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CurrentSessionId } from '../common/decorators/current-session-id.decorator';
 import { MfaExempt } from '../common/decorators/mfa-exempt.decorator';
@@ -18,6 +19,7 @@ import { MfaService } from '../mfa/mfa.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { BecomeCandidateDto } from './dto/become-candidate.dto';
 import { UploadCandidateDocumentsDto } from './dto/upload-candidate-documents.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { Role, type User } from '../generated/prisma';
 import { matchesContentType } from '../common/utils/file-security';
 
@@ -77,6 +79,10 @@ async function promoteValidatedCandidateUpload(
 // docs/BUSINESS_RULES.md.
 @Controller('me')
 export class MeController {
+  private readonly clerkClient = createClerkClient({
+    secretKey: process.env.CLERK_SECRET_KEY,
+  });
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly s3: S3Service,
@@ -97,6 +103,32 @@ export class MeController {
   @Get()
   async me(@CurrentUser() user: User, @CurrentSessionId() sessionId: string) {
     return this.toDto(user, sessionId);
+  }
+
+  // Same exemption reasoning as me() above: an admin with
+  // mustChangePassword=true hasn't necessarily enrolled MFA yet (a brand
+  // new admin-created account hasn't), so MfaEnrolledGuard would otherwise
+  // block them from ever reaching the one endpoint that lets them past
+  // the temp password in the first place — a lockout, not a real
+  // boundary, since this only ever changes the caller's own password.
+  // signOutOfOtherSessions clears every other session on the temp
+  // password, same as the admin-password-reset and admin-reset-someone-
+  // else's-password flows.
+  @MfaExempt()
+  @Post('change-password')
+  async changePassword(
+    @CurrentUser() user: User,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    await this.clerkClient.users.updateUser(user.clerkId, {
+      password: dto.newPassword,
+      signOutOfOtherSessions: true,
+    });
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { mustChangePassword: false },
+    });
+    return { success: true };
   }
 
   // Client-only self-service profile completion, called right after
@@ -252,6 +284,7 @@ export class MeController {
       lastName: user.lastName,
       companyName: user.companyName,
       mfaEnrolled: user.mfaEnrolled,
+      mustChangePassword: user.mustChangePassword,
       mfaSessionVerified: sessionId
         ? await this.mfa.isSessionVerified(sessionId)
         : false,

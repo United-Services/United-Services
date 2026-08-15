@@ -16,6 +16,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreateFileAccessRequestDto } from './dto/create-file-access-request.dto';
 import { DecideFileAccessRequestDto } from './dto/decide-file-access-request.dto';
+import { fuzzyMatch, searchableText } from '../common/utils/fuzzy-match';
 import { FileAccessStatus, Role, type User } from '../generated/prisma';
 
 const DOWNLOAD_URL_TTL_SECONDS = 300;
@@ -69,30 +70,16 @@ export class FileAccessController {
     });
   }
 
+  // Fuzzy-matched in-app — see fuzzy-match.ts and the equivalent note on
+  // AdminUsersController.list.
   @Roles(Role.admin)
   @Get()
-  list(@Query('q') q?: string, @Query('status') status?: FileAccessStatus) {
-    return this.prisma.fileAccessRequest.findMany({
-      where: {
-        ...(status ? { status } : {}),
-        ...(q
-          ? {
-              OR: [
-                { client: { firstName: { contains: q, mode: 'insensitive' } } },
-                { client: { lastName: { contains: q, mode: 'insensitive' } } },
-                { client: { email: { contains: q, mode: 'insensitive' } } },
-                {
-                  client: { companyName: { contains: q, mode: 'insensitive' } },
-                },
-                {
-                  serviceFile: {
-                    originalFilename: { contains: q, mode: 'insensitive' },
-                  },
-                },
-              ],
-            }
-          : {}),
-      },
+  async list(
+    @Query('q') q?: string,
+    @Query('status') status?: FileAccessStatus,
+  ) {
+    const requests = await this.prisma.fileAccessRequest.findMany({
+      where: status ? { status } : {},
       orderBy: { requestedAt: 'desc' },
       include: {
         client: {
@@ -108,6 +95,19 @@ export class FileAccessController {
         },
       },
     });
+    if (!q) return requests;
+    return requests.filter((r) =>
+      fuzzyMatch(
+        searchableText(
+          r.client.firstName,
+          r.client.lastName,
+          r.client.email,
+          r.client.companyName,
+          r.serviceFile.originalFilename,
+        ),
+        q,
+      ),
+    );
   }
 
   @Roles(Role.admin)

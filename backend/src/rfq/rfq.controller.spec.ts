@@ -13,6 +13,7 @@ describe('RfqController', () => {
         create: jest.fn(),
         findMany: jest.fn(),
         update: jest.fn(),
+        findUniqueOrThrow: jest.fn(),
       },
     } as unknown as PrismaService;
     const auditLog = {
@@ -71,20 +72,77 @@ describe('RfqController', () => {
     );
   });
 
-  it('list applies a search filter across client and project fields when q is given', async () => {
+  it('list fuzzy-matches q across client and project fields, filtering out non-matches', async () => {
     const { controller, prisma } = makeController();
-    await controller.list('acme');
-    const where = (prisma.serviceRequest.findMany as jest.Mock).mock.calls[0][0]
-      .where;
-    expect(where.OR).toBeDefined();
-    expect(where.OR.length).toBeGreaterThan(0);
+    (prisma.serviceRequest.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'rfq-1',
+        client: { firstName: 'Ana', lastName: 'Cruz', companyName: 'Acme' },
+        projectDetails: 'Pipeline coating',
+      },
+      {
+        id: 'rfq-2',
+        client: { firstName: 'Bo', lastName: 'Lee', companyName: 'Globex' },
+        projectDetails: 'Cathodic protection',
+      },
+    ]);
+
+    const result = await controller.list('acme');
+
+    expect(result).toEqual([expect.objectContaining({ id: 'rfq-1' })]);
   });
 
   it('list returns everything (no filter) when q is omitted', async () => {
     const { controller, prisma } = makeController();
-    await controller.list();
+    (prisma.serviceRequest.findMany as jest.Mock).mockResolvedValue([
+      { id: 'rfq-1', client: {}, projectDetails: '' },
+    ]);
+    const result = await controller.list();
+    expect(result).toHaveLength(1);
     const where = (prisma.serviceRequest.findMany as jest.Mock).mock.calls[0][0]
       .where;
-    expect(where).toEqual({});
+    expect(where).toBeUndefined();
+  });
+
+  it('marks a not-yet-contacted request as contacted', async () => {
+    const { controller, prisma, auditLog } = makeController();
+    (prisma.serviceRequest.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+      contactedAt: null,
+    });
+    (prisma.serviceRequest.update as jest.Mock).mockImplementation(
+      ({ data }) => ({ id: 'rfq-1', ...data }),
+    );
+
+    const result = await controller.toggleContacted(admin, 'rfq-1');
+
+    expect(prisma.serviceRequest.update).toHaveBeenCalledWith({
+      where: { id: 'rfq-1' },
+      data: { contactedAt: expect.any(Date) },
+    });
+    expect(result.contactedAt).toBeInstanceOf(Date);
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'rfq.contacted_toggled',
+        targetId: 'rfq-1',
+      }),
+    );
+  });
+
+  it('un-marks an already-contacted request (toggle back)', async () => {
+    const { controller, prisma } = makeController();
+    (prisma.serviceRequest.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+      contactedAt: new Date('2026-01-01'),
+    });
+    (prisma.serviceRequest.update as jest.Mock).mockImplementation(
+      ({ data }) => ({ id: 'rfq-1', ...data }),
+    );
+
+    const result = await controller.toggleContacted(admin, 'rfq-1');
+
+    expect(prisma.serviceRequest.update).toHaveBeenCalledWith({
+      where: { id: 'rfq-1' },
+      data: { contactedAt: null },
+    });
+    expect(result.contactedAt).toBeNull();
   });
 });

@@ -51,17 +51,21 @@ services:
   # key, unlike Google Cloud Translation. Not published to the host by
   # default (only `backend`, over the internal Docker network, needs it —
   # matches how `postgres`/`redis` above have no ports: mapping either).
-  # `127.0.0.1:5000:5000` below is the one deliberate exception: this
+  # `127.0.0.1:5001:5000` below is the one deliberate exception: this
   # project's own local dev runs `backend` directly on the host rather
   # than inside this compose stack, so that loopback-only mapping is what
   # lets host-run local dev reach it at all — still never reachable from
-  # outside the machine either way.
+  # outside the machine either way. Host side is 5001, not the container's
+  # native 5000: macOS's built-in AirPlay Receiver (Control Center) also
+  # listens on 5000 and answers any request there with a bare 403 before
+  # it ever reaches this container — LIBRETRANSLATE_URL in backend/.env
+  # must point at 5001 to actually reach LibreTranslate.
   libretranslate:
     image: libretranslate/libretranslate:latest
     command: ["--load-only", "en,ar,zh"]
     restart: unless-stopped
     ports:
-      - "127.0.0.1:5000:5000"
+      - "127.0.0.1:5001:5000"
     volumes:
       # Persists downloaded Argos Translate language models across
       # restarts — first startup is slower than subsequent ones while

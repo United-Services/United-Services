@@ -4,7 +4,10 @@ import type { PrismaService } from '../prisma/prisma.service';
 describe('AuditLogService', () => {
   function makeService() {
     const prisma = {
-      auditLog: { create: jest.fn(), findMany: jest.fn() },
+      auditLog: {
+        create: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
     } as unknown as PrismaService;
     return { service: new AuditLogService(prisma), prisma };
   }
@@ -34,31 +37,45 @@ describe('AuditLogService', () => {
       expect.objectContaining({
         where: {},
         orderBy: { createdAt: 'desc' },
-        skip: 0,
-        take: 25,
       }),
     );
   });
 
-  it('search combines actorUserId, action, and free-text q filters', async () => {
+  it('search combines actorUserId/action filtered at the DB level with a fuzzy-matched q filtered in-app', async () => {
     const { service, prisma } = makeService();
-    await service.search({
+    (prisma.auditLog.findMany as jest.Mock).mockResolvedValue([
+      { action: 'user.disabled', targetType: 'User', targetId: 'acme-1' },
+      {
+        action: 'rfq.status_updated',
+        targetType: 'ServiceRequest',
+        targetId: 'x',
+      },
+    ]);
+
+    const result = await service.search({
       actorUserId: 'u1',
       action: 'user.disabled',
       q: 'acme',
     });
+
     const where = (prisma.auditLog.findMany as jest.Mock).mock.calls[0][0]
       .where;
     expect(where.actorUserId).toBe('u1');
     expect(where.action).toBe('user.disabled');
-    expect(where.OR).toBeDefined();
+    expect(result).toEqual([expect.objectContaining({ targetId: 'acme-1' })]);
   });
 
-  it('search respects a custom skip/take for pagination', async () => {
+  it('search respects a custom skip/take for pagination, applied in-app over the filtered results', async () => {
     const { service, prisma } = makeService();
-    await service.search({ skip: 50, take: 10 });
-    expect(prisma.auditLog.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ skip: 50, take: 10 }),
+    (prisma.auditLog.findMany as jest.Mock).mockResolvedValue(
+      Array.from({ length: 5 }, (_, i) => ({ targetId: `row-${i}` })),
     );
+
+    const result = await service.search({ skip: 2, take: 2 });
+
+    expect(result).toEqual([
+      expect.objectContaining({ targetId: 'row-2' }),
+      expect.objectContaining({ targetId: 'row-3' }),
+    ]);
   });
 });
