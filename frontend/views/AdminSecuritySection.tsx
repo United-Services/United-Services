@@ -194,6 +194,8 @@ export default function AdminSecuritySection() {
             flexDirection: "column",
             alignItems: "flex-start",
             gap: 12,
+            maxWidth: 640,
+            margin: "0 auto",
           }}
         >
           <div style={{ fontSize: 13, color: "#DC2626", fontWeight: 600 }}>
@@ -228,6 +230,7 @@ export default function AdminSecuritySection() {
         flexDirection: "column",
         gap: 24,
         maxWidth: 640,
+        margin: "0 auto",
       }}
     >
       {message && (
