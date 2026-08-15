@@ -46,13 +46,37 @@ services:
       retries: 10
     networks: [internal]
 
+  # Self-hosted machine translation for OpenPosition content (Careers page)
+  # — see TranslationsModule. Genuinely free: no billing account, no API
+  # key, unlike Google Cloud Translation. Not published to the host by
+  # default (only `backend`, over the internal Docker network, needs it —
+  # matches how `postgres`/`redis` above have no ports: mapping either).
+  # `127.0.0.1:5000:5000` below is the one deliberate exception: this
+  # project's own local dev runs `backend` directly on the host rather
+  # than inside this compose stack, so that loopback-only mapping is what
+  # lets host-run local dev reach it at all — still never reachable from
+  # outside the machine either way.
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    command: ["--load-only", "en,ar,zh"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      # Persists downloaded Argos Translate language models across
+      # restarts — first startup is slower than subsequent ones while
+      # these download.
+      - libretranslate-models:/home/libretranslate/.local
+    networks: [internal]
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     restart: unless-stopped
+    depends_on: [libretranslate]
     environment:
-      PORT: 3001
+      PORT: 3002
       DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-united_services}}
       DIRECT_URL: ${DIRECT_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-united_services}}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
@@ -69,6 +93,13 @@ services:
       WEBAUTHN_RP_ORIGIN: ${WEBAUTHN_RP_ORIGIN:-http://localhost}
       TOTP_KEK_PROVIDER: local
       KEK_KEYS_DIR: /app/secrets/kek
+      # Internal Docker service name — resolves for `backend` (a
+      # container on the same network) even though the host-mapped
+      # 127.0.0.1:5000 above is what backend/.env uses for host-run dev.
+      LIBRETRANSLATE_URL: ${LIBRETRANSLATE_URL:-http://libretranslate:5000}
+      TRANSLATION_MONTHLY_CHAR_BUDGET: ${TRANSLATION_MONTHLY_CHAR_BUDGET:-2000000}
+      TRANSLATION_LOCK_TTL_MS: ${TRANSLATION_LOCK_TTL_MS:-30000}
+      TRANSLATION_SYNC_WAIT_MS: ${TRANSLATION_SYNC_WAIT_MS:-2500}
     volumes:
       # TOTP KEK private keys must survive container restarts/redeploys —
       # never let this be an ephemeral container filesystem path.
@@ -108,3 +139,4 @@ volumes:
   postgres-data:
   redis-data:
   kek-keys:
+  libretranslate-models:

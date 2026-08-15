@@ -39,6 +39,20 @@ enum ApplicationStatus {
   denied
 }
 
+enum TranslatableContentType {
+  open_position
+  // Add `service` here (and nowhere else in this system) if Service
+  // translation is ever brought into scope — see docs/REQUIREMENTS.md's
+  // "Services... intentionally stay English" note for why it isn't now.
+}
+
+enum TranslationStatus {
+  missing
+  translating
+  translated
+  failed
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Users & auth
 // ─────────────────────────────────────────────────────────────────────────
@@ -325,4 +339,28 @@ model AnalyticsEvent {
   @@index([eventType])
   @@index([occurredAt])
   @@index([country])
+}
+
+// Cached machine translation of a source row's translatable fields into
+// one non-English locale. No hash column lives on the source row itself
+// (e.g. OpenPosition) — sourceHash is computed on demand from the live
+// row's current fields and compared against what's stored here, which
+// means adding translation support never touches the source model's own
+// write paths and can't go stale the way a stored-and-forgotten column
+// on the source row could. See TranslationService.computeSourceHash.
+model ContentTranslation {
+  id           String                   @id @default(cuid())
+  contentType  TranslatableContentType
+  contentId    String
+  locale       String // "ar" | "zh" only — validated in app code against routing locales minus "en"
+  status       TranslationStatus        @default(missing)
+  fields       Json // translated field map, e.g. { title, description, department }
+  sourceHash   String // sha256 of the source fields at the moment translation succeeded
+  errorMessage String?
+  translatedAt DateTime?
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+
+  @@unique([contentType, contentId, locale])
+  @@index([status])
 }

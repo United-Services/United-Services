@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { palette } from "../theme"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
@@ -16,6 +16,12 @@ interface OpenPosition {
   title: string
   description: string
   department: string
+  // Only present when a locale param was sent — the backend machine-
+  // translates ar/zh on demand (TranslationService) and reports whether
+  // this particular position's translation is ready yet or still
+  // in-flight; "en" never carries this field, since there's nothing to
+  // translate.
+  status?: "missing" | "translating" | "translated" | "failed"
 }
 
 const ALL = "All"
@@ -23,16 +29,23 @@ const ALL = "All"
 export default function Careers({ onNavigate }: Props) {
   useReveal()
   const t = useTranslations("careers")
+  const locale = useLocale()
   const [positions, setPositions] = useState<OpenPosition[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>(ALL)
 
   useEffect(() => {
+    // Intentional: re-fetching on locale change should show the loading
+    // state immediately, not just on first mount — this isn't the
+    // derived-state anti-pattern the rule is meant to catch, it's
+    // resetting the UI for a genuinely new request.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true)
     axios
-      .get("/positions")
+      .get("/positions", { params: locale !== "en" ? { locale } : undefined })
       .then(({ data }) => setPositions(data))
       .finally(() => setLoading(false))
-  }, [])
+  }, [locale])
 
   const departments = [
     ALL,

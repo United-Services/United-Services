@@ -103,3 +103,22 @@ changes or a new one is discovered during implementation.
     responses with `lib/useRequestGuard.ts` — otherwise a slow earlier
     request can resolve after a faster later one and silently overwrite
     fresher state with stale data.
+16. `Service` content stays English-only everywhere — it only ever renders
+    inside the authenticated client/admin dashboards, never on the public
+    (fully static, already next-intl-translated) marketing Services page.
+    `OpenPosition` (Careers page) content is the one thing that's
+    machine-translated, via `TranslationService` + self-hosted
+    LibreTranslate (see `docker-compose.yml`'s `libretranslate` service —
+    no billing account required, unlike Google Cloud Translation). Cached
+    per `(contentType, contentId, locale)` in `ContentTranslation`,
+    invalidated by comparing a hash of the live source fields against the
+    hash stored at translation time — not a hash column on `OpenPosition`
+    itself, so adding translation support never touched that model's own
+    write paths. Concurrent requests for the same untranslated position
+    must never produce more than one LibreTranslate call — enforced with
+    a Redis lock (`lock:translation:open_position:{id}:{locale}`); a
+    request that loses the lock race polls briefly, then falls back to
+    English rather than blocking indefinitely. `TranslatableContentType`
+    is deliberately an enum with one member today so `service` can be
+    added later without a schema redesign — see the note on that enum in
+    `schema.prisma` for why it isn't now.

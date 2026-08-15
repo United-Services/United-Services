@@ -20,6 +20,11 @@ Fax: (+2) 0227033656
 - [x] Services content sourced from DB (`Service` table), not hardcoded
 - [x] Careers page lists only `OpenPosition` rows where `isOpen = true`
       (`GET /positions`)
+- [x] `OpenPosition` content (title/description/department) is machine-
+      translated into ar/zh on demand, cached, and re-triggered on
+      publish/edit — self-hosted LibreTranslate, no billing account
+      needed. `Service` content deliberately stays English-only (see
+      `docs/BUSINESS_RULES.md` rule 16 for why).
 - [x] Site available in English (default), Arabic, Chinese; navbar dropdown
       switcher + a dismissible geo-detected-language prompt (asks, never
       auto-switches). Services, admin surfaces, and the candidate
