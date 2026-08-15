@@ -1,4 +1,5 @@
 import axiosLib from "axios"
+import { increment, decrement } from "./loadingBar"
 
 // Every backend call goes through this instance — no raw fetch. In the
 // browser, withCredentials carries the Clerk session cookie once the
@@ -24,3 +25,22 @@ export const axios = axiosLib.create({
 export function authHeader(token: string | null) {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
+
+// Drives GlobalLoadingBar — every request through this instance increments
+// the counter, every settle (success or failure) decrements it, so no
+// caller has to opt in individually and a slow/hung page never *looks*
+// stuck even before its own error/loading state kicks in.
+axios.interceptors.request.use((config) => {
+  increment()
+  return config
+})
+axios.interceptors.response.use(
+  (response) => {
+    decrement()
+    return response
+  },
+  (error) => {
+    decrement()
+    return Promise.reject(error)
+  },
+)

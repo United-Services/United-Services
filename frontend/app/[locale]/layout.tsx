@@ -5,6 +5,7 @@ import { ClerkProvider } from "@clerk/nextjs"
 import { routing } from "@/i18n/routing"
 import LanguagePrompt from "@/components/LanguagePrompt"
 import PageViewTracker from "@/components/PageViewTracker"
+import GlobalLoadingBar from "@/components/GlobalLoadingBar"
 import "../globals.css"
 
 export const metadata: Metadata = {
@@ -36,6 +37,7 @@ export default async function LocaleLayout({
       <body>
         <ClerkProvider>
           <NextIntlClientProvider>
+            <GlobalLoadingBar />
             <PageViewTracker />
             {children}
             {locale === routing.defaultLocale && <LanguagePrompt />}
