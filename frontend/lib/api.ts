@@ -6,7 +6,7 @@ import axiosLib from "axios"
 // for Server Components, which have no browser cookie jar to rely on),
 // callers attach a bearer token explicitly via authHeader() below.
 export const axios = axiosLib.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api/v1",
+  baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3002/api/v1",
   withCredentials: true,
   // Without this, a hung backend call (dropped connection, deadlocked
   // request) never resolves or rejects — the caller's try/catch never

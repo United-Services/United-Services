@@ -59,11 +59,11 @@ RUN chmod +x docker-entrypoint.sh
 RUN mkdir -p /app/secrets/kek && chown -R nestjs:nodejs /app
 
 USER nestjs
-EXPOSE 3001
+EXPOSE 3002
 
 # The app's own /api/v1/health does a real DB round-trip — good enough as
 # a container healthcheck without adding a separate dependency.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "fetch('http://localhost:'+(process.env.PORT||3001)+'/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://localhost:'+(process.env.PORT||3002)+'/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 ENTRYPOINT ["./docker-entrypoint.sh"]

@@ -119,7 +119,7 @@ Deployment-specific ones to double check are set in the **production**
 environment (not just local `.env`), since they differ from dev:
 
 - `CORS_ORIGINS` — the real frontend origin(s), not `localhost:3000`
-- `NEXT_PUBLIC_API_URL` — the real backend origin, not `localhost:3001`
+- `NEXT_PUBLIC_API_URL` — the real backend origin, not `localhost:3002`
 - `WEBAUTHN_RP_ID` / `WEBAUTHN_RP_ORIGIN` — must match the real domain or
   admin biometric MFA silently fails (WebAuthn ties credentials to origin)
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` — Clerk's

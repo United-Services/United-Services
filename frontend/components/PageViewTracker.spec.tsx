@@ -59,7 +59,7 @@ describe("PageViewTracker", () => {
       expect(post).toHaveBeenCalledTimes(1)
 
       unmount()
-      vi.advanceTimersByTime(3001)
+      vi.advanceTimersByTime(3002)
       render(<PageViewTracker />)
 
       expect(post).toHaveBeenCalledTimes(2)

@@ -43,14 +43,14 @@ cp .env.example .env        # fill in DATABASE_URL, Clerk keys, AWS S3, etc.
 pnpm install
 pnpm prisma:migrate
 pnpm seed                   # optional: seed fixture data
-pnpm start:dev               # http://localhost:3001/api/v1
+pnpm start:dev               # http://localhost:3002/api/v1
 
 # Frontend (separate terminal)
 cd frontend
 # Create .env.local with at least:
 #   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 #   CLERK_SECRET_KEY=
-#   NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
+#   NEXT_PUBLIC_API_URL=http://localhost:3002/api/v1
 pnpm install
 pnpm dev                     # http://localhost:3000
 ```

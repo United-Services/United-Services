@@ -10,7 +10,7 @@ import { check, sleep } from 'k6';
 //   k6 run loadtest/rate-limit-enforcement.js
 //   k6 run -e BASE_URL=https://api.use-eg.com/api/v1 loadtest/rate-limit-enforcement.js
 
-const BASE_URL = __ENV.BASE_URL ?? 'http://localhost:3001/api/v1';
+const BASE_URL = __ENV.BASE_URL ?? 'http://localhost:3002/api/v1';
 
 export const options = {
   scenarios: {

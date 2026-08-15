@@ -29,7 +29,7 @@ import { Rate, Trend } from 'k6/metrics';
 // Or point BASE_URL at any other running instance:
 //   k6 run -e BASE_URL=https://api.use-eg.com/api/v1 loadtest/public-endpoints.js
 
-const BASE_URL = __ENV.BASE_URL ?? 'http://localhost:3001/api/v1';
+const BASE_URL = __ENV.BASE_URL ?? 'http://localhost:3002/api/v1';
 
 const errorRate = new Rate('errors');
 const healthDuration = new Trend('health_duration', true);
