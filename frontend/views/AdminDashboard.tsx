@@ -127,7 +127,12 @@ interface RfqRow {
   contactedAt: string | null
   createdAt: string
   projectDetails: string
-  client: { firstName: string; lastName: string; companyName: string | null }
+  client: {
+    firstName: string
+    lastName: string
+    email: string
+    companyName: string | null
+  }
   service: { name: string } | null
 }
 interface AppointmentRow {
@@ -183,6 +188,46 @@ const fmtTime = (d: string) =>
     minute: "2-digit",
     hour12: true,
   })
+
+// Hoisted to module scope (was defined inline in AdminDashboard's render
+// body) — a component defined during render gets a new identity every
+// render, which forces React to remount it instead of reconciling. Calls
+// its own useTranslations() rather than taking `t` as a prop — a hook
+// works the same from any component, not just the one that originally
+// called it.
+function StatusBadge({ status }: { status: string }) {
+  const t = useTranslations("adminDashboard")
+  const map: Record<string, { bg: string; color: string }> = {
+    pending: { bg: "#FEF3C7", color: "#92400E" },
+    approved: { bg: "#DCFCE7", color: "#166534" },
+    open: { bg: "#DCFCE7", color: "#166534" },
+    denied: { bg: "#FEE2E2", color: "#991B1B" },
+    in_review: { bg: "#DBEAFE", color: "#1E40AF" },
+    quoted: { bg: "#F3F4F6", color: "#374151" },
+    closed: { bg: "#F1F5F9", color: "#475569" },
+    booked: { bg: "#DBEAFE", color: "#1E40AF" },
+    done: { bg: "#DCFCE7", color: "#166534" },
+    cancelled: { bg: "#FEE2E2", color: "#991B1B" },
+    contacted: { bg: "#DCFCE7", color: "#166534" },
+  }
+  const s = map[status] ?? { bg: "#F1F5F9", color: "#475569" }
+  const label = t.has(`status.${status}`) ? t(`status.${status}` as any) : status
+  return (
+    <span
+      style={{
+        fontSize: 11,
+        fontWeight: 700,
+        padding: "3px 10px",
+        borderRadius: 9999,
+        background: s.bg,
+        color: s.color,
+        textTransform: "capitalize",
+      }}
+    >
+      {label}
+    </span>
+  )
+}
 
 // Hoisted to module scope (was defined inline in AdminDashboard's render
 // body) — a component defined during render gets a new identity every
@@ -327,6 +372,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   const [candidates, setCandidates] = useState<CandidateRow[]>([])
   const [candidateQuery, setCandidateQuery] = useState("")
   const [rfqs, setRfqs] = useState<RfqRow[]>([])
+  const [viewingRfq, setViewingRfq] = useState<RfqRow | null>(null)
   const [rfqQuery, setRfqQuery] = useState("")
   const [appointments, setAppointments] = useState<AppointmentRow[]>([])
   const [bookingQuery, setBookingQuery] = useState("")
@@ -853,7 +899,11 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
       setError(getErrorMessage(err, tCommon("errors.actionFailed")))
     }
   }
-  const toggleRfqContacted = async (id: string) => {
+  // One-way — the backend rejects a second call once contactedAt is
+  // already set, so this is the point of no return for a request. The
+  // confirm() is the only chance to back out.
+  const markRfqContacted = async (id: string) => {
+    if (!window.confirm(t("rfqs.confirmContacted"))) return
     try {
       const headers = await authed()
       await axios.patch(`/rfqs/${id}/contacted`, {}, { headers })
@@ -862,39 +912,14 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
       setError(getErrorMessage(err, tCommon("errors.actionFailed")))
     }
   }
-
-  const StatusBadge = ({ status }: { status: string }) => {
-    const map: Record<string, { bg: string; color: string }> = {
-      pending: { bg: "#FEF3C7", color: "#92400E" },
-      approved: { bg: "#DCFCE7", color: "#166534" },
-      open: { bg: "#DCFCE7", color: "#166534" },
-      denied: { bg: "#FEE2E2", color: "#991B1B" },
-      in_review: { bg: "#DBEAFE", color: "#1E40AF" },
-      quoted: { bg: "#F3F4F6", color: "#374151" },
-      closed: { bg: "#F1F5F9", color: "#475569" },
-      booked: { bg: "#DBEAFE", color: "#1E40AF" },
-      done: { bg: "#DCFCE7", color: "#166534" },
-      cancelled: { bg: "#FEE2E2", color: "#991B1B" },
+  const setRfqStatus = async (id: string, status: "pending" | "in_review") => {
+    try {
+      const headers = await authed()
+      await axios.patch(`/rfqs/${id}/status`, { status }, { headers })
+      loadRfqs(rfqQuery)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
     }
-    const s = map[status] ?? { bg: "#F1F5F9", color: "#475569" }
-    const label = t.has(`status.${status}`)
-      ? t(`status.${status}` as any)
-      : status
-    return (
-      <span
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          padding: "3px 10px",
-          borderRadius: 9999,
-          background: s.bg,
-          color: s.color,
-          textTransform: "capitalize",
-        }}
-      >
-        {label}
-      </span>
-    )
   }
 
   const ActionPair = ({
@@ -2589,7 +2614,11 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                     {rfqs.map((r, i) => (
                       <tr
                         key={r.id}
-                        style={{ background: i % 2 === 0 ? "#fff" : "#FAFAFA" }}
+                        onClick={() => setViewingRfq(r)}
+                        style={{
+                          background: i % 2 === 0 ? "#fff" : "#FAFAFA",
+                          cursor: "pointer",
+                        }}
                       >
                         <td
                           style={{
@@ -2630,29 +2659,79 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                           {fmtDate(r.createdAt)}
                         </td>
                         <td style={{ padding: "14px 16px" }}>
-                          <StatusBadge status={r.status} />
+                          <StatusBadge
+                            status={r.contactedAt ? "contacted" : r.status}
+                          />
                         </td>
                         <td style={{ padding: "14px 16px" }}>
-                          <button
-                            onClick={() => toggleRfqContacted(r.id)}
-                            style={{
-                              background: r.contactedAt
-                                ? "#DCFCE7"
-                                : "#F1F5F9",
-                              color: r.contactedAt ? "#166534" : "#475569",
-                              border: "none",
-                              borderRadius: 9999,
-                              padding: "5px 14px",
-                              fontSize: 12,
-                              fontWeight: 600,
-                              cursor: "pointer",
-                              fontFamily: "Poppins, sans-serif",
-                            }}
-                          >
-                            {r.contactedAt
-                              ? t("rfqs.contacted")
-                              : t("rfqs.markContacted")}
-                          </button>
+                          {r.contactedAt ? (
+                            <span style={{ fontSize: 12, color: palette.muted }}>
+                              —
+                            </span>
+                          ) : (
+                            <div style={{ display: "flex", gap: 6 }}>
+                              {r.status === "pending" ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setRfqStatus(r.id, "in_review")
+                                  }}
+                                  style={{
+                                    background: "#DBEAFE",
+                                    color: "#1E40AF",
+                                    border: "none",
+                                    borderRadius: 9999,
+                                    padding: "5px 14px",
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor: "pointer",
+                                    fontFamily: "Poppins, sans-serif",
+                                  }}
+                                >
+                                  {t("rfqs.markInReview")}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setRfqStatus(r.id, "pending")
+                                  }}
+                                  style={{
+                                    background: "#F1F5F9",
+                                    color: "#475569",
+                                    border: "none",
+                                    borderRadius: 9999,
+                                    padding: "5px 14px",
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor: "pointer",
+                                    fontFamily: "Poppins, sans-serif",
+                                  }}
+                                >
+                                  {t("rfqs.markUncontacted")}
+                                </button>
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  markRfqContacted(r.id)
+                                }}
+                                style={{
+                                  background: "#DCFCE7",
+                                  color: "#166534",
+                                  border: "none",
+                                  borderRadius: 9999,
+                                  padding: "5px 14px",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  cursor: "pointer",
+                                  fontFamily: "Poppins, sans-serif",
+                                }}
+                              >
+                                {t("rfqs.markContacted")}
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -2674,6 +2753,186 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                   </tbody>
                 </table>
               </div>
+
+              {viewingRfq && (
+                <div
+                  onClick={() => setViewingRfq(null)}
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    background: "rgba(15,23,42,0.5)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: 24,
+                    zIndex: 1000,
+                  }}
+                >
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      background: "#fff",
+                      borderRadius: 20,
+                      padding: 32,
+                      maxWidth: 560,
+                      width: "100%",
+                      maxHeight: "85vh",
+                      overflowY: "auto",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        marginBottom: 20,
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 17,
+                            fontWeight: 700,
+                            color: palette.navy,
+                          }}
+                        >
+                          {viewingRfq.client.firstName}{" "}
+                          {viewingRfq.client.lastName}
+                        </div>
+                        <div style={{ fontSize: 13, color: palette.muted }}>
+                          {viewingRfq.client.companyName ?? "—"}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setViewingRfq(null)}
+                        aria-label={t("rfqs.close")}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          fontSize: 20,
+                          color: palette.muted,
+                          cursor: "pointer",
+                          lineHeight: 1,
+                          padding: 4,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 16,
+                        marginBottom: 20,
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: palette.muted,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.06em",
+                            marginBottom: 4,
+                          }}
+                        >
+                          {t("rfqs.detail.email")}
+                        </div>
+                        <div style={{ fontSize: 13, color: palette.navy }}>
+                          {viewingRfq.client.email}
+                        </div>
+                      </div>
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: palette.muted,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.06em",
+                            marginBottom: 4,
+                          }}
+                        >
+                          {t("rfqs.detail.service")}
+                        </div>
+                        <div style={{ fontSize: 13, color: palette.navy }}>
+                          {viewingRfq.service?.name ?? t("rfqs.general")}
+                        </div>
+                      </div>
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: palette.muted,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.06em",
+                            marginBottom: 4,
+                          }}
+                        >
+                          {t("rfqs.detail.submitted")}
+                        </div>
+                        <div style={{ fontSize: 13, color: palette.navy }}>
+                          {fmtDateTime(viewingRfq.createdAt)}
+                        </div>
+                      </div>
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: palette.muted,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.06em",
+                            marginBottom: 4,
+                          }}
+                        >
+                          {t("rfqs.detail.status")}
+                        </div>
+                        <StatusBadge
+                          status={
+                            viewingRfq.contactedAt
+                              ? "contacted"
+                              : viewingRfq.status
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: palette.muted,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                          marginBottom: 6,
+                        }}
+                      >
+                        {t("rfqs.detail.projectDetails")}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          color: palette.slate,
+                          lineHeight: 1.7,
+                          whiteSpace: "pre-wrap",
+                          background: "#F8FAFC",
+                          border: "1px solid #E2E8F0",
+                          borderRadius: 12,
+                          padding: 16,
+                        }}
+                      >
+                        {viewingRfq.projectDetails}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
 

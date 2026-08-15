@@ -3,12 +3,12 @@ import { useState } from "react"
 import { useAuth } from "@clerk/nextjs"
 import { useTranslations } from "next-intl"
 import { startRegistration } from "@simplewebauthn/browser"
+import { Fingerprint } from "lucide-react"
 import { palette, inputStyle } from "../theme"
 import Spinner, { InlineSpinner } from "../components/Spinner"
 import {
   IconShieldCheck,
   IconKeyRound,
-  IconFingerprint,
   IconCopy,
   IconCheck,
 } from "../components/NavIcons"
@@ -252,19 +252,28 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
               alignItems: "center",
               justifyContent: "center",
               gap: 8,
-              padding: "10px 12px",
-              borderRadius: 9,
+              padding: "8px 12px",
+              borderRadius: 8,
               border: "none",
               background: method !== "webauthn" ? "#fff" : "transparent",
               boxShadow: method !== "webauthn" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
               color: method !== "webauthn" ? palette.navy : palette.muted,
-              fontWeight: 600,
-              fontSize: 13,
+              fontWeight: 500,
+              fontSize: 14,
               cursor: "pointer",
               fontFamily: "Poppins, sans-serif",
+              transition: "color 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              if (method === "webauthn")
+                (e.currentTarget as HTMLButtonElement).style.color = palette.navy
+            }}
+            onMouseLeave={(e) => {
+              if (method === "webauthn")
+                (e.currentTarget as HTMLButtonElement).style.color = palette.muted
             }}
           >
-            <IconKeyRound size={15} />
+            <IconKeyRound size={16} />
             {t("authenticatorApp")}
           </button>
           <button
@@ -276,19 +285,28 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
               alignItems: "center",
               justifyContent: "center",
               gap: 8,
-              padding: "10px 12px",
-              borderRadius: 9,
+              padding: "8px 12px",
+              borderRadius: 8,
               border: "none",
               background: method === "webauthn" ? "#fff" : "transparent",
               boxShadow: method === "webauthn" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
               color: method === "webauthn" ? palette.navy : palette.muted,
-              fontWeight: 600,
-              fontSize: 13,
+              fontWeight: 500,
+              fontSize: 14,
               cursor: "pointer",
               fontFamily: "Poppins, sans-serif",
+              transition: "color 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              if (method !== "webauthn")
+                (e.currentTarget as HTMLButtonElement).style.color = palette.navy
+            }}
+            onMouseLeave={(e) => {
+              if (method !== "webauthn")
+                (e.currentTarget as HTMLButtonElement).style.color = palette.muted
             }}
           >
-            <IconFingerprint size={15} />
+            <Fingerprint className="size-4" />
             {t("biometric")}
           </button>
         </div>

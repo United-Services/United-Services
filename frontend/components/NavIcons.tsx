@@ -151,14 +151,37 @@ export function IconKeyRound({ size = 16 }: IconProps) {
   )
 }
 
+// Concentric broken rings — the same visual language as Apple's own Touch
+// ID glyph — rather than a single hand-traced fingerprint silhouette,
+// which read as sketchy/uneven at small icon sizes.
 export function IconFingerprint({ size = 16 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
-      <path d="M12 3a7 7 0 0 0-7 7v2c0 2.5-.5 4.5-1.5 6" />
-      <path d="M19 12v-2a7 7 0 0 0-4-6.32" />
-      <path d="M8 21c1-1.5 1.5-3.5 1.5-6v-1a2.5 2.5 0 0 1 5 0v1c0 1 .06 1.9.18 2.7" />
-      <path d="M5 12v-1a7 7 0 0 1 1.5-4.33" />
-      <path d="M12 8a3 3 0 0 1 3 3v1c0 3.5.7 5.5 2 7" />
+      <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <circle
+        cx="12"
+        cy="12"
+        r="4.2"
+        pathLength={100}
+        strokeDasharray="72 28"
+        strokeDashoffset="-8"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r="6.8"
+        pathLength={100}
+        strokeDasharray="78 22"
+        strokeDashoffset="14"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r="9.4"
+        pathLength={100}
+        strokeDasharray="82 18"
+        strokeDashoffset="-24"
+      />
     </svg>
   )
 }

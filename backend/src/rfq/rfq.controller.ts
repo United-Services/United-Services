@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -78,6 +79,12 @@ export class RfqController {
     );
   }
 
+  // Free to move between pending <-> in_review in either direction, but
+  // once contactedAt is set the request is done — no further status
+  // changes, matching the same finality contactedAt itself enforces
+  // below. Without this guard an admin could still flip status after
+  // marking contacted, which would contradict "contacted is final" from
+  // the other side of the same row.
   @Roles(Role.admin)
   @Patch(':id/status')
   async updateStatus(
@@ -85,6 +92,16 @@ export class RfqController {
     @Param('id') id: string,
     @Body() dto: UpdateRfqStatusDto,
   ) {
+    const existing = await this.prisma.serviceRequest.findUniqueOrThrow({
+      where: { id },
+      select: { contactedAt: true },
+    });
+    if (existing.contactedAt) {
+      throw new BadRequestException(
+        'This request has already been marked contacted and can no longer be changed.',
+      );
+    }
+
     const updated = await this.prisma.serviceRequest.update({
       where: { id },
       data: { status: dto.status },
@@ -99,26 +116,32 @@ export class RfqController {
     return updated;
   }
 
-  // Toggle, not a one-way transition — an admin can un-mark a request they
-  // flagged as contacted by mistake. Independent of `status` (see
-  // schema.prisma's comment on ServiceRequest.contactedAt).
+  // One-way, not a toggle — once a request is marked contacted, that's
+  // final: no more status changes (see updateStatus's guard above) and no
+  // un-marking. The frontend confirms with the admin before calling this,
+  // since it can't be undone afterward.
   @Roles(Role.admin)
   @Patch(':id/contacted')
-  async toggleContacted(@CurrentUser() admin: User, @Param('id') id: string) {
+  async markContacted(@CurrentUser() admin: User, @Param('id') id: string) {
     const existing = await this.prisma.serviceRequest.findUniqueOrThrow({
       where: { id },
       select: { contactedAt: true },
     });
+    if (existing.contactedAt) {
+      throw new BadRequestException(
+        'This request has already been marked contacted.',
+      );
+    }
+
     const updated = await this.prisma.serviceRequest.update({
       where: { id },
-      data: { contactedAt: existing.contactedAt ? null : new Date() },
+      data: { contactedAt: new Date() },
     });
     await this.auditLog.record({
       actorUserId: admin.id,
-      action: 'rfq.contacted_toggled',
+      action: 'rfq.contacted',
       targetType: 'ServiceRequest',
       targetId: id,
-      metadata: { contactedAt: updated.contactedAt },
     });
     return updated;
   }

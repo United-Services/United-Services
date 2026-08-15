@@ -716,7 +716,7 @@
       "specs": "Spec Files",
       "requests": "File Requests",
       "candidates": "Candidates",
-      "rfqs": "RFQs",
+      "rfqs": "Service Requests",
       "bookings": "Bookings",
       "audit": "Audit Log",
       "security": "Security",
@@ -733,7 +733,8 @@
       "open": "Open",
       "booked": "Booked",
       "done": "Done",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "contacted": "Contacted"
     },
     "approve": "Approve",
     "deny": "Deny",
@@ -745,7 +746,7 @@
       "companiesSub": "{count} companies",
       "fileRequests": "File Requests",
       "approvedSub": "{count} approved",
-      "rfqs": "RFQs",
+      "rfqs": "Service Requests",
       "totalSubmitted": "Total submitted",
       "appointments": "Appointments",
       "totalBooked": "Total booked",
@@ -826,7 +827,7 @@
       "docsRequested": "Documents requested"
     },
     "rfqs": {
-      "searchPlaceholder": "Search RFQs by client, company, or details",
+      "searchPlaceholder": "Search service requests by client, company, or details",
       "cols": [
         "Client",
         "Company",
@@ -835,10 +836,20 @@
         "Status",
         "Contact"
       ],
-      "none": "No RFQs found.",
+      "none": "No service requests found.",
       "general": "General",
-      "contacted": "Contacted",
-      "markContacted": "Mark Contacted"
+      "markContacted": "Mark Contacted",
+      "markInReview": "Mark In Review",
+      "markUncontacted": "Mark Uncontacted",
+      "confirmContacted": "Marking this request as contacted is final and can't be undone. Are you sure you want to continue?",
+      "close": "Close",
+      "detail": {
+        "email": "Email",
+        "service": "Service",
+        "submitted": "Submitted",
+        "status": "Status",
+        "projectDetails": "Project Details"
+      }
     },
     "bookings": {
       "date": "Date",
@@ -921,7 +932,7 @@
     "subtitle": "Admin accounts require MFA. Choose an authenticator app or a biometric credential to continue.",
     "authenticatorApp": "Authenticator App",
     "authenticatorAppDesc": "Scan a QR code with Google Authenticator, 1Password, or similar.",
-    "biometric": "Biometric",
+    "biometric": "Touch ID",
     "biometricDesc": "Use Touch ID, Face ID, or Windows Hello on this device.",
     "cantScan": "Can't scan? Enter manually:",
     "enterCode": "Enter the 6-digit code from your app",
@@ -1142,7 +1153,7 @@
     "title": "Verify Your Identity",
     "subtitle": "This device or session hasn't been verified yet. Confirm it's you before continuing to the admin dashboard.",
     "authenticatorApp": "Authenticator App",
-    "biometric": "Biometric",
+    "biometric": "Touch ID",
     "enterCode": "Enter the 6-digit code from your app",
     "codePlaceholder": "123456",
     "verifying": "Verifying…",
