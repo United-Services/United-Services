@@ -119,10 +119,10 @@ Full details in [`docs/BUSINESS_RULES.md`](docs/BUSINESS_RULES.md).
 
 ## Legal
 
-- [`LICENSE`](LICENSE) — proprietary, all rights reserved.
-- [`frontend/public/images/LICENSE.md`](frontend/public/images/LICENSE.md) —
-  images are under stricter terms: no use of any kind without prior written
-  permission, including all project photography added in the future.
+- [`LICENSE`](LICENSE) — proprietary, all rights reserved; includes the
+  terms for images under `frontend/public/images/` (no use of any kind
+  without prior written permission, including all project photography
+  added in the future).
 - Privacy Policy and Terms of Use are published on the site itself at
   `/privacy` and `/terms`.
 
