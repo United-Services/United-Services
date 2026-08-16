@@ -7,8 +7,13 @@ allowBuilds:
   unrs-resolver: true
 
 # The d3-color override (react-simple-maps -> d3-zoom -> d3-color@2.0.0,
-# GHSA-36jr-mh4h-2g58) lives in package.json's "pnpm.overrides" instead of
-# here — CI pins pnpm@9 (see .github/workflows/ci.yml), and pnpm 9 does not
-# honor a workspace-level "overrides:" key (that's a newer pnpm
-# convention). package.json's "pnpm.overrides" works on both old and new
-# pnpm, so that's the only place this should be declared.
+# GHSA-36jr-mh4h-2g58) is declared HERE and ALSO in package.json's
+# "pnpm.overrides" — neither location alone works across every pnpm
+# version in use: CI pins pnpm@9 (see .github/workflows/ci.yml), which
+# only reads package.json's "pnpm" key and ignores this file's
+# "overrides:"; pnpm 10+ (the local default) is the reverse — it ignores
+# package.json's "pnpm" key entirely and only reads this file. Keep both
+# declarations in sync; a pnpm major-version bump either direction is what
+# would make one of them start being silently ignored again.
+overrides:
+  d3-color: ^3.1.0

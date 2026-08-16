@@ -8,6 +8,11 @@ const nextConfig = {
   // subset + server.js) so the Docker image doesn't need the full
   // node_modules tree copied in at runtime. See Dockerfile.
   output: "standalone",
+  // Next sets "X-Powered-By: Next.js" on every response by default — pure
+  // information disclosure (confirms the stack to a scanner/attacker for
+  // no benefit), and nginx doesn't strip it either. Off entirely rather
+  // than stripped downstream.
+  poweredByHeader: false,
   // Defense in depth: nginx/nginx.conf sets the same headers at the edge in
   // production, but this app can also be hit directly (local dev, health
   // checks, or if it's ever run without the nginx layer in front of it), so
@@ -41,6 +46,51 @@ const nextConfig = {
           {
             key: "Strict-Transport-Security",
             value: "max-age=31536000; includeSubDomains; preload",
+          },
+          // Mirrors nginx/nginx.conf's Content-Security-Policy — keep both
+          // in sync. NOTE: nginx.conf's script-src also carried a sha256
+          // hash alongside 'unsafe-inline' (meant to cover the JSON-LD
+          // block in src/app/[locale]/page.tsx's structuredData); that
+          // combination doesn't work the way it looks — per the CSP spec,
+          // 'unsafe-inline' is ignored entirely once ANY hash/nonce source
+          // is present in the same directive (it's not an OR/fallback).
+          // Confirmed live in a browser: with the hash present, Next's own
+          // required inline hydration scripts got silently blocked on
+          // every page. Dropped the hash here (and should be dropped from
+          // nginx.conf too) — script-src falls back to plain
+          // 'unsafe-inline', which is weaker (no longer restricts inline
+          // scripts to known-good content) but is what was actually in
+          // effect anyway once Clerk's own inline script/style tags are
+          // accounted for. A real fix would be nonce-based CSP (a fresh
+          // nonce per request, threaded through middleware to every inline
+          // script) — bigger effort, not done here.
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'none'",
+              "object-src 'none'",
+              "script-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev https://*.clerk.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "img-src 'self' data: https: blob:",
+              "font-src 'self' data: https://fonts.gstatic.com",
+              // In production this app only ever runs behind nginx, which
+              // proxies /api/* same-origin — no cross-origin API call ever
+              // happens there. Local `pnpm dev` has no nginx in front, so
+              // the frontend calls the backend directly at
+              // NEXT_PUBLIC_API_URL (http://localhost:3002) — allow that
+              // origin in connect-src only outside production so this CSP
+              // doesn't silently block every API call in local dev.
+              [
+                "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com",
+                process.env.NODE_ENV !== "production" ? "http://localhost:3002" : "",
+              ]
+                .filter(Boolean)
+                .join(" "),
+              "frame-src https://*.clerk.accounts.dev https://*.clerk.com",
+            ].join("; "),
           },
         ],
       },
