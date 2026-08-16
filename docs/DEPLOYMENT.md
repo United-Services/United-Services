@@ -129,6 +129,99 @@ environment (not just local `.env`), since they differ from dev:
   strings respectively (see `backend/prisma.config.ts` comment — migrations
   need `DIRECT_URL`, the running app needs the pooled `DATABASE_URL`)
 
+## Secrets management (AWS SSM Parameter Store)
+
+Real secrets (Clerk, Supabase/Postgres, Upstash, S3, Betterstack, webhook
+signing, GeoIP/MaxMind license) live in AWS SSM Parameter Store, not in a
+server-side `.env` maintained by hand. Non-secret config (`CORS_ORIGINS`,
+`WEBAUTHN_RP_ID`/`ORIGIN`, tuning constants) is **not** pushed through SSM
+at all — encrypting values that are either already public or not sensitive
+to someone with server access would be theater, not security. For a Docker
+deploy this is a non-issue: `docker-compose.yml`'s `environment:` block
+already has working defaults for all of these
+(`${CORS_ORIGINS:-http://localhost}` etc.) via the root `.env`/shell
+environment. Running the backend directly (not via docker-compose) needs
+these set in `backend/.env` same as any other local override — outside the
+scope of this SSM pipeline.
+
+**Naming**: `/united-services/<environment>/<KEY>`, e.g.
+`/united-services/staging/CLERK_SECRET_KEY` and
+`/united-services/prod/CLERK_SECRET_KEY` — kept as fully separate SSM paths
+(not just a suffix) so a `staging` push/fetch can never collide with or
+overwrite `prod`.
+
+**One-time (or per-rotation) push**, run locally with your own AWS
+credentials (needs `ssm:PutParameter` on `/united-services/*`):
+
+```bash
+scripts/push-secrets.sh staging   # or: scripts/push-secrets.sh prod
+```
+
+**On the server, every deploy** (materializes `backend/.env` from SSM's
+real secrets, then starts the stack):
+
+```bash
+ENVIRONMENT=staging scripts/deploy.sh   # or ENVIRONMENT=prod
+```
+
+**IAM policy** for whatever runs `fetch-secrets.sh`/`deploy.sh` on the
+server — least privilege, scoped to exactly this app's path and nothing
+broader:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["ssm:GetParameter", "ssm:GetParametersByPath"],
+      "Resource": "arn:aws:ssm:*:*:parameter/united-services/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "kms:Decrypt",
+      "Resource": "arn:aws:kms:*:*:key/alias/aws/ssm"
+    }
+  ]
+}
+```
+
+(If a custom KMS key is used instead of the AWS-managed `aws/ssm` key,
+adjust the second `Resource` ARN — check `aws kms list-aliases` if unsure
+which key SSM is actually using.)
+
+**How the server authenticates to AWS at all** — depends on the hosting
+decision in "Hosting options" above, not yet made as of this writing:
+
+- **EC2** (if Option A's physical/VPS path ends up being an EC2 instance):
+  attach an IAM instance profile with the policy above. No AWS access
+  key/secret needs to exist anywhere on the server — the AWS CLI/SDK picks
+  up credentials automatically from the instance metadata service. This
+  also means `S3Service`'s static `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`
+  could eventually be dropped entirely in favor of the same instance role,
+  closing off one more long-lived secret — not done as part of this change,
+  since it touches the S3 client construction itself.
+- **Non-AWS VPS** (DigitalOcean, Hetzner, or any physical/dedicated box —
+  what Option A actually describes today): there's no instance-role
+  equivalent, so a dedicated IAM user scoped to exactly the policy above is
+  needed, with its access key/secret provisioned onto the server once via
+  `aws configure` over SSH — never through git, never through a committed
+  `.env`. This is the one secret that can't bootstrap itself through this
+  pipeline (chicken-and-egg): getting *this* credential onto the server is
+  necessarily a manual, careful, one-time step.
+
+**Rotating a secret**: generate the new value, `scripts/push-secrets.sh
+<environment>` again (uses `--overwrite`), then on the server
+`ENVIRONMENT=<environment> scripts/fetch-secrets.sh` followed by
+`docker compose restart backend` — no full redeploy needed unless the
+frontend also needs the new value (rare, since `NEXT_PUBLIC_*` vars are
+never secrets and never go through SSM in the first place).
+
+**Verifying without ever printing a secret value**:
+```bash
+aws ssm get-parameters-by-path --path "/united-services/staging/" --query "Parameters[*].Name"
+```
+
 ## Release process
 
 1. Merge to `main` — the CI gate (`.github/workflows/ci.yml`) runs
