@@ -16,6 +16,9 @@ describe('RfqController', () => {
         update: jest.fn(),
         findUnique: jest.fn(),
       },
+      service: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'svc-1' }),
+      },
     } as unknown as PrismaService;
     const auditLog = {
       record: jest.fn().mockResolvedValue(undefined),
@@ -43,6 +46,37 @@ describe('RfqController', () => {
         clientId: client.id,
         serviceId: 'svc-1',
         projectDetails: 'A pipeline project',
+      },
+    });
+  });
+
+  it('rejects a nonexistent serviceId with a 400 instead of a raw FK-constraint 500', async () => {
+    const { controller, prisma } = makeController();
+    (prisma.service.findUnique as jest.Mock).mockResolvedValue(null);
+
+    await expect(
+      controller.create(client, {
+        serviceId: 'does-not-exist',
+        projectDetails: 'A pipeline project',
+      }),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.serviceRequest.create).not.toHaveBeenCalled();
+  });
+
+  it('allows creating an RFQ with no serviceId at all (general inquiry)', async () => {
+    const { controller, prisma } = makeController();
+    (prisma.serviceRequest.create as jest.Mock).mockResolvedValue({
+      id: 'rfq-1',
+    });
+
+    await controller.create(client, { projectDetails: 'General inquiry' });
+
+    expect(prisma.service.findUnique).not.toHaveBeenCalled();
+    expect(prisma.serviceRequest.create).toHaveBeenCalledWith({
+      data: {
+        clientId: client.id,
+        serviceId: undefined,
+        projectDetails: 'General inquiry',
       },
     });
   });

@@ -27,7 +27,18 @@ export class RfqController {
 
   @Roles(Role.client)
   @Post()
-  create(@CurrentUser() client: User, @Body() dto: CreateRfqDto) {
+  async create(@CurrentUser() client: User, @Body() dto: CreateRfqDto) {
+    if (dto.serviceId) {
+      // Without this check, a stale/tampered/typo'd serviceId hits the
+      // DB's foreign-key constraint directly — an unhandled
+      // PrismaClientKnownRequestError isn't an HttpException, so the
+      // global exception filter's catch-all turns it into a generic 500
+      // instead of a clean 400. Confirmed live during a penetration test.
+      const service = await this.prisma.service.findUnique({
+        where: { id: dto.serviceId },
+      });
+      if (!service) throw new BadRequestException('Unknown serviceId');
+    }
     return this.prisma.serviceRequest.create({
       data: {
         clientId: client.id,
