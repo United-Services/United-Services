@@ -328,8 +328,24 @@ model CandidateApplication {
   reviewedByAdmin        User?     @relation("CandidateApplicationReviewedBy", fields: [reviewedByAdminId], references: [id])
   reviewedAt             DateTime?
 
+  // Free-form additional documents (e.g. transcript, certificate,
+  // portfolio) — distinct from idPhotoS3Key/cvS3Key because a candidate can
+  // attach any number of these, unlike the single-slot ID/CV uploads.
+  otherDocuments CandidateDocument[]
+
   @@index([positionId])
   @@index([status])
+}
+
+model CandidateDocument {
+  id                String               @id @default(cuid())
+  applicationId     String
+  application       CandidateApplication @relation(fields: [applicationId], references: [id])
+  s3Key             String
+  originalFilename  String
+  uploadedAt        DateTime             @default(now())
+
+  @@index([applicationId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────
