@@ -726,10 +726,15 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
         { headers },
       )
       // Either document may not be uploaded yet — the candidate dashboard
-      // lets them upload ID/CV after signup, not during it.
+      // lets them upload ID/CV after signup, not during it. otherDocuments
+      // is any number of additional files the candidate attached beyond
+      // the fixed ID/CV slots.
       if (data.idPhotoUrl) window.open(data.idPhotoUrl, "_blank")
       if (data.cvUrl) window.open(data.cvUrl, "_blank")
-      if (!data.idPhotoUrl && !data.cvUrl) {
+      for (const doc of data.otherDocuments ?? []) {
+        window.open(doc.url, "_blank")
+      }
+      if (!data.idPhotoUrl && !data.cvUrl && !data.otherDocuments?.length) {
         window.alert(t("candidates.noDocsYet"))
       }
     } catch (err) {

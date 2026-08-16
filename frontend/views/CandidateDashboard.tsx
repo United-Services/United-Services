@@ -15,11 +15,18 @@ interface Props {
   onNavigate: (page: string) => void
 }
 
+interface OtherDocument {
+  id: string
+  originalFilename: string
+  uploadedAt: string
+}
+
 interface Application {
   id: string
   status: ApplicationStatus
   hasIdPhoto: boolean
   hasCv: boolean
+  otherDocuments: OtherDocument[]
   documentsRequested: boolean
   documentsRequestedNote: string | null
   position: { title: string; department: string } | null
@@ -37,13 +44,14 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
   const [app, setApp] = useState<Application | null>(null)
   const [loading, setLoading] = useState(true)
   const [uploadingKind, setUploadingKind] = useState<
-    "candidate-id-photo" | "candidate-cv" | null
+    "candidate-id-photo" | "candidate-cv" | "candidate-other-document" | null
   >(null)
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(
     null,
   )
   const idRef = useRef<HTMLInputElement>(null)
   const cvRef = useRef<HTMLInputElement>(null)
+  const otherRef = useRef<HTMLInputElement>(null)
 
   const loadGuard = useRequestGuard()
   const load = async () => {
@@ -98,6 +106,36 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
       await axios.post(
         "/me/candidate-documents",
         { [field]: presign.key },
+        { headers },
+      )
+      setMessage({ type: "ok", text: t("uploadSuccess") })
+      await load()
+    } catch {
+      setMessage({ type: "error", text: t("uploadError") })
+    } finally {
+      setUploadingKind(null)
+    }
+  }
+
+  const uploadOtherDocument = async (file: File) => {
+    setUploadingKind("candidate-other-document")
+    setMessage(null)
+    try {
+      const token = await getToken()
+      const headers = authHeader(token)
+      const { data: presign } = await axios.post(
+        "/uploads/presign",
+        { kind: "candidate-other-document", contentType: file.type },
+        { headers },
+      )
+      await fetch(presign.url, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      })
+      await axios.post(
+        "/me/candidate-documents/other",
+        { s3Key: presign.key, originalFilename: file.name },
         { headers },
       )
       setMessage({ type: "ok", text: t("uploadSuccess") })
@@ -339,6 +377,88 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
               inputRef={cvRef}
               onFile={(f) => uploadDocument(f, "candidate-cv")}
             />
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: "#fff",
+            border: "1px solid #E2E8F0",
+            borderRadius: 16,
+            padding: 24,
+            marginTop: 20,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: palette.muted,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              marginBottom: 16,
+            }}
+          >
+            {t("otherDocumentsHeading")}
+          </div>
+
+          {app.otherDocuments.length > 0 && (
+            <ul style={{ listStyle: "none", padding: 0, margin: "0 0 16px" }}>
+              {app.otherDocuments.map((doc) => (
+                <li
+                  key={doc.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: 13,
+                    color: palette.slate,
+                    padding: "8px 0",
+                    borderBottom: "1px solid #F1F5F9",
+                  }}
+                >
+                  <span>📄</span>
+                  <span style={{ fontWeight: 600 }}>{doc.originalFilename}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {app.otherDocuments.length === 0 && (
+            <p style={{ fontSize: 13, color: palette.muted, marginBottom: 16 }}>
+              {t("noOtherDocuments")}
+            </p>
+          )}
+
+          <div
+            onClick={() =>
+              uploadingKind !== "candidate-other-document" &&
+              otherRef.current?.click()
+            }
+            style={{
+              border: "2px dashed #E2E8F0",
+              borderRadius: 14,
+              padding: "16px",
+              cursor: uploadingKind === "candidate-other-document" ? "wait" : "pointer",
+              textAlign: "center",
+              background: "#F8FAFC",
+            }}
+          >
+            <input
+              ref={otherRef}
+              type="file"
+              accept=".pdf,.doc,.docx,image/jpeg,image/png"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                if (e.target.files?.[0]) uploadOtherDocument(e.target.files[0])
+                e.target.value = ""
+              }}
+            />
+            <div style={{ fontSize: 12, fontWeight: 700, color: palette.accent }}>
+              {uploadingKind === "candidate-other-document"
+                ? t("uploading")
+                : t("addOtherDocument")}
+            </div>
           </div>
         </div>
       </div>

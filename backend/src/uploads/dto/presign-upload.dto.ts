@@ -1,8 +1,8 @@
 import { IsIn, IsString, Matches } from 'class-validator';
 
 export class PresignUploadDto {
-  @IsIn(['candidate-id-photo', 'candidate-cv'])
-  kind!: 'candidate-id-photo' | 'candidate-cv';
+  @IsIn(['candidate-id-photo', 'candidate-cv', 'candidate-other-document'])
+  kind!: 'candidate-id-photo' | 'candidate-cv' | 'candidate-other-document';
 
   @IsString()
   @Matches(/^[a-zA-Z0-9.+-]+\/[a-zA-Z0-9.+-]+$/, {
