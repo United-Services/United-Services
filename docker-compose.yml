@@ -93,6 +93,13 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       S3_BUCKET_NAME: ${S3_BUCKET_NAME}
       BETTERSTACK_SOURCE_TOKEN: ${BETTERSTACK_SOURCE_TOKEN}
+      # Phone-paging on-call alerting for 5xx errors — see
+      # backend/src/alerting/ and docs/DEPLOYMENT.md's "On-call alerting"
+      # section. Defaults to disabled: ALERTING_ENABLED must be explicitly
+      # set to "true" in .env (the real production one, never local dev)
+      # for this to do anything at all.
+      ALERTING_ENABLED: ${ALERTING_ENABLED:-false}
+      NTFY_TOPIC_URL: ${NTFY_TOPIC_URL}
       WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-localhost}
       WEBAUTHN_RP_ORIGIN: ${WEBAUTHN_RP_ORIGIN:-http://localhost}
       TOTP_KEK_PROVIDER: local

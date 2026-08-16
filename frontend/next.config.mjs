@@ -109,7 +109,7 @@ const nextConfig = {
               ]
                 .filter(Boolean)
                 .join(" "),
-              "frame-src https://*.clerk.accounts.dev https://*.clerk.com",
+              "frame-src https://*.clerk.accounts.dev https://*.clerk.com https://www.google.com https://maps.google.com",
             ].join("; "),
           },
         ],
