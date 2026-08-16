@@ -223,6 +223,60 @@ never secrets and never go through SSM in the first place).
 aws ssm get-parameters-by-path --path "/united-services/staging/" --query "Parameters[*].Name"
 ```
 
+## On-call alerting
+
+`backend/src/alerting/` pages a real phone via Betterstack's Uptime/On-Call
+Incident API the moment `AllExceptionsFilter` catches a genuine 5xx — not a
+log-based alert rule (fragile, easy to silently break), a direct API call
+the instant it happens. Only fires for `statusCode >= 500`; a 400/403/404 is
+an expected, handled outcome and never pages anyone. A 15-minute per-route
+Redis cooldown means a burst of identical failures (a real outage, a bug in
+a hot path) pages once, not once per request.
+
+**Off everywhere except a real server that explicitly opts in** —
+`ALERTING_ENABLED` defaults to unset/`false`, and without it being
+explicitly `true`, `IncidentAlertService.trigger()` returns immediately
+without ever calling `fetch`. Never set this to `true` in local dev or a
+staging box that isn't meant to page you — every exception while actively
+coding would otherwise ring your phone.
+
+**Setup** (dashboard steps, not scriptable):
+1. Betterstack Dashboard → **Uptime → On-Call** → create/confirm an
+   escalation policy with a real on-call user and notification method —
+   confirm what your plan actually supports (push via the mobile app is on
+   most tiers; SMS/phone calls may need a paid plan).
+2. Install the Better Stack mobile app and confirm push notifications are
+   allowed for it at the OS level — a configured alert can still get
+   silently suppressed by the phone's own notification settings even if
+   Betterstack's side is correct.
+3. **Uptime → Settings → API tokens** → generate a token scoped for
+   incident creation — a **different token type** from the log-shipping
+   source token already in use. This is `BETTERSTACK_INCIDENT_API_TOKEN`,
+   pushed through the SSM pipeline above like any other real secret.
+4. Send one manual test incident before wiring anything into the app, to
+   confirm the escalation policy actually reaches a phone end to end (a
+   misconfigured policy still returns 200 from the API without paging
+   anyone):
+   ```bash
+   curl https://uptime.betterstack.com/api/v2/incidents \
+     -H "Authorization: Bearer $BETTERSTACK_INCIDENT_API_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"requester_email":"you@example.com","name":"Test alert — ignore","summary":"Verifying the pipeline works end to end"}'
+   ```
+   Resolve/acknowledge it in the app afterward so it doesn't sit open.
+
+**Before trusting this in production**, verify with real credentials
+(never in a committed `.env`):
+- Force a real 500 (e.g. temporarily throw in a route) with
+  `ALERTING_ENABLED=true` and confirm an actual page arrives — not just
+  that the API call returns 200.
+- Trigger the same failure 5 times in a row within 15 minutes and confirm
+  exactly one page arrives, not five.
+- Confirm a 400/403/404 never pages, even though all of them also pass
+  through `AllExceptionsFilter`.
+- Set `ALERTING_ENABLED=false` again and confirm the same forced 500
+  produces zero calls to the incident API.
+
 ## Release process
 
 1. Merge to `main` — the CI gate (`.github/workflows/ci.yml`) runs

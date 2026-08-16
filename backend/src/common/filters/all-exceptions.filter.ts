@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { IncidentAlertService } from '../../alerting/incident-alert.service';
 
 // Global safety net (registered as APP_FILTER in app.module.ts). Every
 // thrown HttpException (BadRequestException, NotFoundException, etc.)
@@ -20,6 +21,8 @@ import type { Request, Response } from 'express';
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger('ExceptionsHandler');
+
+  constructor(private readonly incidentAlertService: IncidentAlertService) {}
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -35,6 +38,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
           `${request.method} ${request.url} -> ${status}`,
           exception.stack,
         );
+        this.pageOnCall(request, status, exception);
       }
       response.status(status).json(exception.getResponse());
       return;
@@ -46,10 +50,28 @@ export class AllExceptionsFilter implements ExceptionFilter {
       `${request.method} ${request.url} -> unhandled: ${error.message}`,
       error.stack,
     );
+    this.pageOnCall(request, HttpStatus.INTERNAL_SERVER_ERROR, error);
 
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       message: 'Internal server error',
+    });
+  }
+
+  // Only ever called for the >=500 branches above — never for expected
+  // 4xx outcomes, which would make an on-call page meaningless within a
+  // day. Uses the real, unsanitized error message/details for whoever
+  // gets paged — a different concern from the sanitized body the actual
+  // HTTP client receives above, which must never see this. Fire-and-
+  // forget: IncidentAlertService itself never throws, and this must never
+  // delay or affect the response already being sent to the client.
+  private pageOnCall(request: Request, status: number, exception: Error) {
+    void this.incidentAlertService.trigger({
+      route: request.route?.path ?? request.url,
+      method: request.method,
+      statusCode: status,
+      errorMessage: exception.message,
+      requestId: request.headers['x-request-id'] as string | undefined,
     });
   }
 }
