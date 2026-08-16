@@ -94,38 +94,51 @@ cents/month once the credit period ends.
 
 ---
 
-## 4. Betterstack (monitoring/logging/on-call paging)
+## 4. Betterstack (monitoring/logging)
 
 **What you need:**
 - `BETTERSTACK_SOURCE_TOKEN` (for log shipping)
 - `BETTERSTACK_HEARTBEAT_URL` or monitor API key (for uptime checks)
-- `BETTERSTACK_INCIDENT_API_TOKEN` — a **separate** token from the log
-  source token above, scoped for incident creation only. Paired with
-  `ALERTING_ENABLED=true` and `BETTERSTACK_REQUESTER_EMAIL`, this pages a
-  real phone (via whatever escalation policy is configured in Betterstack)
-  the moment the backend throws a genuine 5xx — see
-  `backend/src/alerting/`. Real secret — goes through the SSM pipeline
-  (`scripts/push-secrets.sh`), never committed.
-- `BETTERSTACK_REQUESTER_EMAIL` — the email address on the Betterstack
-  account creating the incident. Not really a secret, but small/low-risk
-  enough to just set alongside the token in whatever `.env` is in use.
-- `ALERTING_ENABLED` — plain flag, `true`/`false`, **not** a secret. Leave
-  unset or `false` everywhere except the real production server — without
-  this gate, every local dev exception while actively coding would page
-  whoever's on call.
 
 **Where to get it:** Betterstack Dashboard → **Logs → Sources** → create a
 source (choose "Node.js"/"HTTP" as the integration) → copy the source token.
 For uptime: **Uptime → Monitors** → create a monitor for your health-check
 endpoint, or create a **Heartbeat** if you want the app itself to ping
-Betterstack on a schedule. For on-call paging specifically: **Uptime →
-On-Call** → create/confirm an escalation policy with a real notification
-method (push/SMS/call — check what your plan actually supports), then
-**Uptime → Settings → API tokens** → generate a token scoped for incident
-creation (not the logging token). Send one manual test incident via `curl`
-before wiring it into the app to confirm the escalation policy actually
-pages a phone end to end — see `docs/DEPLOYMENT.md`'s "On-call alerting"
-section for the exact command.
+Betterstack on a schedule.
+
+---
+
+## 4b. ntfy.sh (on-call phone paging)
+
+**What you need:**
+- `NTFY_TOPIC_URL` — a URL like `https://ntfy.sh/<topic-name>`, where
+  `<topic-name>` is a long, random, unguessable string you make up
+  yourself (e.g. `use-eg-alerts-x7k2p9qz4m`) — **not** a real word or
+  anything guessable. ntfy.sh topics have no authentication; the topic
+  name itself is what stands in for a secret. Anyone who knows it can post
+  to it or subscribe to it, so treat it exactly like a credential: real
+  secret, goes through the SSM pipeline (`scripts/push-secrets.sh`), never
+  committed, never shared outside this checklist.
+- `ALERTING_ENABLED` — plain flag, `true`/`false`, **not** a secret. Leave
+  unset or `false` everywhere except the real production server — without
+  this gate, every local dev exception while actively coding would page
+  whoever's on call.
+
+**Where to get it:** nowhere to "get" — ntfy.sh needs no account or
+signup. Just:
+1. Pick a random, unguessable topic name (a password generator works
+   fine for this).
+2. Install the **ntfy** app (iOS/Android) and subscribe to that exact
+   topic name.
+3. Send one manual test notification via `curl` before wiring it into the
+   app, to confirm it actually reaches your phone — see
+   `docs/DEPLOYMENT.md`'s "On-call alerting" section for the exact
+   command.
+
+This replaces what would otherwise be a paid Betterstack On-Call
+escalation policy — completely free, no account, same phone-push outcome
+for this app's purposes. `backend/src/alerting/` posts directly to this
+topic URL the moment a genuine 5xx happens.
 
 ---
 
@@ -243,11 +256,10 @@ S3_BUCKET_NAME=
 BETTERSTACK_SOURCE_TOKEN=
 BETTERSTACK_HEARTBEAT_URL=
 
-# On-call phone paging (real server only — leave ALERTING_ENABLED unset
-# or false everywhere else, see section 4)
+# On-call phone paging via ntfy.sh (real server only — leave
+# ALERTING_ENABLED unset or false everywhere else, see section 4b)
 ALERTING_ENABLED=false
-BETTERSTACK_INCIDENT_API_TOKEN=
-BETTERSTACK_REQUESTER_EMAIL=
+NTFY_TOPIC_URL=
 
 # Redis
 REDIS_URL=

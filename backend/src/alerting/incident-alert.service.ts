@@ -4,10 +4,13 @@ import { RedisService } from '../redis/redis.service';
 const COOLDOWN_SECONDS = 15 * 60; // one page per distinct failing route per 15 min
 const COOLDOWN_KEY_PREFIX = 'alert:cooldown:';
 
-// Pages a real phone via Betterstack's Uptime/On-Call Incident API the
-// moment a genuine 5xx happens — a log line alone doesn't wake anyone up
-// unless a log-based alert rule is configured (fragile, easy to silently
-// break). This calls the incident API directly instead.
+// Pages a real phone via ntfy.sh the moment a genuine 5xx happens — a log
+// line alone doesn't wake anyone up unless a log-based alert rule is
+// configured (fragile, easy to silently break). This posts directly to a
+// topic URL instead, which ntfy's mobile app (iOS/Android) is subscribed
+// to and turns into a push notification. Free, no account/API key —
+// NTFY_TOPIC_URL's unguessable topic name is what stands in for auth (see
+// docs/CREDENTIALS_CHECKLIST.md for why that matters and how to pick one).
 //
 // Off by default everywhere except a real server that explicitly opts in
 // (ALERTING_ENABLED=true) — without that, every local dev exception while
@@ -16,13 +19,11 @@ const COOLDOWN_KEY_PREFIX = 'alert:cooldown:';
 export class IncidentAlertService {
   private readonly logger = new Logger(IncidentAlertService.name);
   private readonly enabled: boolean;
-  private readonly apiToken: string | undefined;
-  private readonly requesterEmail: string | undefined;
+  private readonly topicUrl: string | undefined;
 
   constructor(private readonly redis: RedisService) {
     this.enabled = process.env.ALERTING_ENABLED === 'true';
-    this.apiToken = process.env.BETTERSTACK_INCIDENT_API_TOKEN;
-    this.requesterEmail = process.env.BETTERSTACK_REQUESTER_EMAIL;
+    this.topicUrl = process.env.NTFY_TOPIC_URL;
   }
 
   // Never throws — a failure to page must never become a second unhandled
@@ -35,9 +36,9 @@ export class IncidentAlertService {
     requestId?: string;
   }): Promise<void> {
     if (!this.enabled) return;
-    if (!this.apiToken || !this.requesterEmail) {
+    if (!this.topicUrl) {
       this.logger.warn(
-        'ALERTING_ENABLED=true but BETTERSTACK_INCIDENT_API_TOKEN or BETTERSTACK_REQUESTER_EMAIL is missing — cannot page.',
+        'ALERTING_ENABLED=true but NTFY_TOPIC_URL is missing — cannot page.',
       );
       return;
     }
@@ -59,35 +60,40 @@ export class IncidentAlertService {
         return;
       }
 
-      const res = await fetch('https://uptime.betterstack.com/api/v2/incidents', {
+      const body = [
+        `Status: ${params.statusCode}`,
+        `Route: ${params.method} ${params.route}`,
+        params.requestId ? `Request ID: ${params.requestId}` : null,
+        `Environment: ${process.env.NODE_ENV}`,
+        '',
+        params.errorMessage.slice(0, 500),
+      ]
+        .filter((line) => line !== null)
+        .join('\n');
+
+      const res = await fetch(this.topicUrl, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${this.apiToken}`,
-          'Content-Type': 'application/json',
+          Title: `500 on ${params.method} ${params.route}`,
+          // 5 = "urgent" — ntfy's max priority, meant to bypass a phone's
+          // normal notification quiet-hours behavior where the app allows
+          // it. Anything lower risks this getting silently batched instead
+          // of actually waking someone up.
+          Priority: '5',
+          Tags: 'rotating_light',
         },
-        body: JSON.stringify({
-          requester_email: this.requesterEmail,
-          name: `500 on ${params.method} ${params.route}`,
-          summary: params.errorMessage.slice(0, 500),
-          description: [
-            `Status: ${params.statusCode}`,
-            `Route: ${params.method} ${params.route}`,
-            params.requestId ? `Request ID: ${params.requestId}` : null,
-            `Environment: ${process.env.NODE_ENV}`,
-          ]
-            .filter(Boolean)
-            .join('\n'),
-        }),
+        body,
       });
 
       if (!res.ok) {
         this.logger.error(
-          `Betterstack incident API returned ${res.status}: ${await res.text()}`,
+          `ntfy returned ${res.status}: ${await res.text()}`,
         );
       }
     } catch (err) {
       // Swallow — see the doc comment above. Still logged, so it's visible
-      // in Betterstack Logs (the one channel still working if this fails).
+      // in Betterstack Logs (the log-shipping pipeline, unaffected by this
+      // failing) — the one channel still working if this fails.
       this.logger.error('Failed to trigger incident alert', err as Error);
     }
   }

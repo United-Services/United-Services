@@ -99,8 +99,7 @@ services:
       # set to "true" in .env (the real production one, never local dev)
       # for this to do anything at all.
       ALERTING_ENABLED: ${ALERTING_ENABLED:-false}
-      BETTERSTACK_INCIDENT_API_TOKEN: ${BETTERSTACK_INCIDENT_API_TOKEN}
-      BETTERSTACK_REQUESTER_EMAIL: ${BETTERSTACK_REQUESTER_EMAIL}
+      NTFY_TOPIC_URL: ${NTFY_TOPIC_URL}
       WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-localhost}
       WEBAUTHN_RP_ORIGIN: ${WEBAUTHN_RP_ORIGIN:-http://localhost}
       TOTP_KEK_PROVIDER: local

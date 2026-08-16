@@ -225,13 +225,15 @@ aws ssm get-parameters-by-path --path "/united-services/staging/" --query "Param
 
 ## On-call alerting
 
-`backend/src/alerting/` pages a real phone via Betterstack's Uptime/On-Call
-Incident API the moment `AllExceptionsFilter` catches a genuine 5xx — not a
-log-based alert rule (fragile, easy to silently break), a direct API call
-the instant it happens. Only fires for `statusCode >= 500`; a 400/403/404 is
-an expected, handled outcome and never pages anyone. A 15-minute per-route
-Redis cooldown means a burst of identical failures (a real outage, a bug in
-a hot path) pages once, not once per request.
+`backend/src/alerting/` pages a real phone via [ntfy.sh](https://ntfy.sh)
+the moment `AllExceptionsFilter` catches a genuine 5xx — not a log-based
+alert rule (fragile, easy to silently break), a direct HTTP POST the
+instant it happens. Free, no account — the destination is just a topic URL
+whose random, unguessable name is what stands in for a secret (see
+`docs/CREDENTIALS_CHECKLIST.md` §4b). Only fires for `statusCode >= 500`; a
+400/403/404 is an expected, handled outcome and never pages anyone. A
+15-minute per-route Redis cooldown means a burst of identical failures (a
+real outage, a bug in a hot path) pages once, not once per request.
 
 **Off everywhere except a real server that explicitly opts in** —
 `ALERTING_ENABLED` defaults to unset/`false`, and without it being
@@ -240,42 +242,37 @@ without ever calling `fetch`. Never set this to `true` in local dev or a
 staging box that isn't meant to page you — every exception while actively
 coding would otherwise ring your phone.
 
-**Setup** (dashboard steps, not scriptable):
-1. Betterstack Dashboard → **Uptime → On-Call** → create/confirm an
-   escalation policy with a real on-call user and notification method —
-   confirm what your plan actually supports (push via the mobile app is on
-   most tiers; SMS/phone calls may need a paid plan).
-2. Install the Better Stack mobile app and confirm push notifications are
-   allowed for it at the OS level — a configured alert can still get
-   silently suppressed by the phone's own notification settings even if
-   Betterstack's side is correct.
-3. **Uptime → Settings → API tokens** → generate a token scoped for
-   incident creation — a **different token type** from the log-shipping
-   source token already in use. This is `BETTERSTACK_INCIDENT_API_TOKEN`,
-   pushed through the SSM pipeline above like any other real secret.
-4. Send one manual test incident before wiring anything into the app, to
-   confirm the escalation policy actually reaches a phone end to end (a
-   misconfigured policy still returns 200 from the API without paging
-   anyone):
+**Setup** (no dashboard/account needed — this is deliberately the free
+alternative to a paid Betterstack On-Call escalation policy):
+1. Pick a long, random, unguessable topic name — not a real word or
+   anything guessable, since ntfy.sh topics have no authentication and
+   the name itself is the only thing keeping a stranger from posting to
+   (or subscribing to) it. `NTFY_TOPIC_URL` is `https://ntfy.sh/<that
+   name>`.
+2. Install the **ntfy** app (iOS/Android) and subscribe to that exact
+   topic. Confirm push notifications are allowed for the app at the OS
+   level — a correctly-sent notification can still get silently
+   suppressed by the phone's own settings.
+3. Send one manual test notification before wiring anything into the app,
+   to confirm it actually reaches your phone (a typo'd topic name still
+   returns 200 from ntfy without notifying anyone real):
    ```bash
-   curl https://uptime.betterstack.com/api/v2/incidents \
-     -H "Authorization: Bearer $BETTERSTACK_INCIDENT_API_TOKEN" \
-     -H "Content-Type: application/json" \
-     -d '{"requester_email":"you@example.com","name":"Test alert — ignore","summary":"Verifying the pipeline works end to end"}'
+   curl -H "Title: Test alert" -H "Priority: 5" -d "Verifying the pipeline works end to end" "$NTFY_TOPIC_URL"
    ```
-   Resolve/acknowledge it in the app afterward so it doesn't sit open.
+4. Push the real topic URL through the SSM pipeline above like any other
+   real secret (`scripts/push-secrets.sh`) — never commit it.
 
-**Before trusting this in production**, verify with real credentials
+**Before trusting this in production**, verify with the real topic URL
 (never in a committed `.env`):
 - Force a real 500 (e.g. temporarily throw in a route) with
-  `ALERTING_ENABLED=true` and confirm an actual page arrives — not just
-  that the API call returns 200.
+  `ALERTING_ENABLED=true` and confirm an actual push notification arrives
+  — not just that the `fetch` call returns 200.
 - Trigger the same failure 5 times in a row within 15 minutes and confirm
-  exactly one page arrives, not five.
+  exactly one notification arrives, not five.
 - Confirm a 400/403/404 never pages, even though all of them also pass
   through `AllExceptionsFilter`.
 - Set `ALERTING_ENABLED=false` again and confirm the same forced 500
-  produces zero calls to the incident API.
+  produces zero calls to ntfy.
 
 ## Release process
 
