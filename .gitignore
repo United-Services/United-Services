@@ -33,6 +33,7 @@ yarn-error.log*
 .windsurf/
 .codex/
 .github/hooks/
+.impeccable/
 skills-lock.json
 
 # TypeScript build info
