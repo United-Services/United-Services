@@ -6,8 +6,9 @@ Claude Code without ever putting a real secret in a chat window or a commit.
 **Golden rule:** never paste an actual secret value into this chat, into
 Claude Code's chat panel, or into any file that gets committed to git. Put
 real values only in a local `.env` file (already git-ignored) that Claude
-Code reads directly off disk. Below, `.env.example` shows the *shape*, not
-real values.
+Code reads directly off disk. The "`.env.example` shape" section below
+shows the *shape*, not real values — there's no template file in the repo
+to copy; create `.env` yourself using that section as the reference.
 
 ---
 
@@ -199,7 +200,7 @@ a surprise later.
 
 ---
 
-## `.env.example` shape (commit this file, never the real one)
+## `.env.example` shape (no template file in the repo — create `.env` yourself using this)
 
 ```
 # Supabase
@@ -243,7 +244,7 @@ API_GLOBAL_PREFIX=api/v1
 
 ## Handing these to Claude Code safely
 
-1. Copy `.env.example` to `.env` in the project root.
+1. Create `.env` in the project root using the shape above.
 2. Fill in real values yourself, directly in that file (not in chat).
 3. Confirm `.env` is listed in `.gitignore` before the first commit.
 4. Tell Claude Code "the `.env` is filled in, continue" rather than pasting

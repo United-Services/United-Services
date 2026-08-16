@@ -58,9 +58,10 @@ Postgres+Redis, real migrations + KEK bootstrap, real nginx routing both
 `/api/*` and the frontend on one port).
 
 1. Provision a server (any VPS/dedicated box with Docker installed).
-2. Copy `.env.example` → `.env` at the repo root, fill in real values
-   (Clerk, AWS, etc. — see `backend/.env.example` for what each means),
-   then `docker compose up -d --build`. This gives you:
+2. Create `.env` at the repo root with real values (Clerk, AWS, etc. —
+   see `docs/CREDENTIALS_CHECKLIST.md`'s "`.env.example` shape" section
+   for the full list and what each one means), then
+   `docker compose up -d --build`. This gives you:
    - `postgres` + `redis` containers (or point `DATABASE_URL`/`REDIS_URL`
      at managed services instead and ignore these two — see the comment
      at the top of `docker-compose.yml`)

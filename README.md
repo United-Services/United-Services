@@ -39,7 +39,9 @@ a Clerk application (dev instance keys are fine locally).
 ```bash
 # Backend
 cd backend
-cp .env.example .env        # fill in DATABASE_URL, Clerk keys, AWS S3, etc.
+# Create .env with real values — see docs/CREDENTIALS_CHECKLIST.md's
+# "`.env.example` shape" section for the full list (DATABASE_URL, Clerk
+# keys, AWS S3, etc.)
 pnpm install
 pnpm prisma:migrate
 pnpm seed                   # optional: seed fixture data
@@ -58,14 +60,18 @@ pnpm dev                     # http://localhost:3000
 ## Running with Docker
 
 ```bash
-cp .env.example .env         # fill in secrets — see file for what each var means
+# Create .env at the repo root — see docs/CREDENTIALS_CHECKLIST.md's
+# "`.env.example` shape" section for what each var means
 docker compose up --build
 ```
 
 This starts `postgres`, `redis`, `backend`, `frontend`, and `nginx` (port 80
-by default, `$NGINX_PORT`). For a production deploy, start from
-[`.env.prod`](.env.prod) instead — it's pre-filled with the production
-domain (`use-eg.com`) and only needs real secrets, not real endpoints.
+by default, `$NGINX_PORT`). For a production deploy, use the same `.env`
+but with production values — the real domain for `CORS_ORIGINS`/
+`NEXT_PUBLIC_API_URL`/`WEBAUTHN_RP_ID`/`WEBAUTHN_RP_ORIGIN`, and Clerk's
+production instance keys, not the dev/test ones. See
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md#environment-variables) for the
+full list of what changes between dev and production.
 
 ## Testing, linting, and type-checking
 
