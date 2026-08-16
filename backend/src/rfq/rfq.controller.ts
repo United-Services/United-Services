@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -92,10 +93,11 @@ export class RfqController {
     @Param('id') id: string,
     @Body() dto: UpdateRfqStatusDto,
   ) {
-    const existing = await this.prisma.serviceRequest.findUniqueOrThrow({
+    const existing = await this.prisma.serviceRequest.findUnique({
       where: { id },
       select: { contactedAt: true },
     });
+    if (!existing) throw new NotFoundException('RFQ not found');
     if (existing.contactedAt) {
       throw new BadRequestException(
         'This request has already been marked contacted and can no longer be changed.',
@@ -123,10 +125,11 @@ export class RfqController {
   @Roles(Role.admin)
   @Patch(':id/contacted')
   async markContacted(@CurrentUser() admin: User, @Param('id') id: string) {
-    const existing = await this.prisma.serviceRequest.findUniqueOrThrow({
+    const existing = await this.prisma.serviceRequest.findUnique({
       where: { id },
       select: { contactedAt: true },
     });
+    if (!existing) throw new NotFoundException('RFQ not found');
     if (existing.contactedAt) {
       throw new BadRequestException(
         'This request has already been marked contacted.',
