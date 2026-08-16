@@ -169,7 +169,7 @@ describe('RfqController', () => {
 
     const result = await controller.list('acme');
 
-    expect(result).toEqual([expect.objectContaining({ id: 'rfq-1' })]);
+    expect(result.items).toEqual([expect.objectContaining({ id: 'rfq-1' })]);
   });
 
   it('list returns everything (no filter) when q is omitted', async () => {
@@ -178,7 +178,7 @@ describe('RfqController', () => {
       { id: 'rfq-1', client: {}, projectDetails: '' },
     ]);
     const result = await controller.list();
-    expect(result).toHaveLength(1);
+    expect(result.items).toHaveLength(1);
     const where = (prisma.serviceRequest.findMany as jest.Mock).mock.calls[0][0]
       .where;
     expect(where).toBeUndefined();

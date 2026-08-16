@@ -3,9 +3,11 @@ import {
   Body,
   ConflictException,
   Controller,
+  DefaultValuePipe,
   Get,
   NotFoundException,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
   Query,
@@ -17,6 +19,8 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { generateTempPassword } from '../common/utils/generate-temp-password';
 import { fuzzyMatch, searchableText } from '../common/utils/fuzzy-match';
+import { SEARCH_SCAN_LIMIT } from '../common/constants/search-scan-limit';
+import { DEFAULT_PAGE_SIZE, paginate } from '../common/utils/paginate';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { Role, Prisma, type User } from '../generated/prisma';
@@ -117,15 +121,22 @@ export class AdminUsersController {
   }
 
   // Fuzzy-matched in-app rather than via a SQL `contains` — see
-  // fuzzy-match.ts. This table is admin-panel scale (companies/staff, not
-  // end users), so filtering the role-scoped result set in memory is
-  // cheap and lets a typo'd or partial query ("jsmth") still find "John
-  // Smith" the way a substring match never could.
+  // fuzzy-match.ts. Without a `role` filter this includes candidate
+  // accounts too, which do scale with applicant volume — not just
+  // companies/staff — so this is bounded by SEARCH_SCAN_LIMIT the same as
+  // every other in-app-fuzzy-matched admin list, not left unbounded.
   @Get()
-  async list(@Query('q') q?: string, @Query('role') role?: Role) {
+  async list(
+    @Query('q') q?: string,
+    @Query('role') role?: Role,
+    @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip = 0,
+    @Query('take', new DefaultValuePipe(DEFAULT_PAGE_SIZE), ParseIntPipe)
+    take = DEFAULT_PAGE_SIZE,
+  ) {
     const users = await this.prisma.user.findMany({
       where: role ? { role } : {},
       orderBy: { createdAt: 'desc' },
+      take: SEARCH_SCAN_LIMIT,
       select: {
         id: true,
         role: true,
@@ -139,13 +150,15 @@ export class AdminUsersController {
         disabledAt: true,
       },
     });
-    if (!q) return users;
-    return users.filter((u) =>
-      fuzzyMatch(
-        searchableText(u.firstName, u.lastName, u.email, u.companyName),
-        q,
-      ),
-    );
+    const filtered = q
+      ? users.filter((u) =>
+          fuzzyMatch(
+            searchableText(u.firstName, u.lastName, u.email, u.companyName),
+            q,
+          ),
+        )
+      : users;
+    return paginate(filtered, skip, take);
   }
 
   @Patch(':id/disable')

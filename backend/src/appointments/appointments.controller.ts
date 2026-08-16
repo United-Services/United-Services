@@ -2,8 +2,10 @@ import {
   Body,
   ConflictException,
   Controller,
+  DefaultValuePipe,
   Get,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
   Query,
@@ -17,6 +19,8 @@ import { BookSlotDto } from './dto/book-slot.dto';
 import { UpdateSlotDto } from './dto/update-slot.dto';
 import { UpdateAppointmentStatusDto } from './dto/update-appointment-status.dto';
 import { fuzzyMatch, searchableText } from '../common/utils/fuzzy-match';
+import { SEARCH_SCAN_LIMIT } from '../common/constants/search-scan-limit';
+import { DEFAULT_PAGE_SIZE, paginate } from '../common/utils/paginate';
 import { Role, type User } from '../generated/prisma';
 
 @Controller('appointments')
@@ -155,9 +159,15 @@ export class AppointmentsController {
   // AdminUsersController.list.
   @Roles(Role.admin)
   @Get()
-  async list(@Query('q') q?: string) {
+  async list(
+    @Query('q') q?: string,
+    @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip = 0,
+    @Query('take', new DefaultValuePipe(DEFAULT_PAGE_SIZE), ParseIntPipe)
+    take = DEFAULT_PAGE_SIZE,
+  ) {
     const appointments = await this.prisma.appointment.findMany({
       orderBy: { createdAt: 'desc' },
+      take: SEARCH_SCAN_LIMIT,
       include: {
         slot: true,
         client: {
@@ -170,17 +180,19 @@ export class AppointmentsController {
         },
       },
     });
-    if (!q) return appointments;
-    return appointments.filter((a) =>
-      fuzzyMatch(
-        searchableText(
-          a.client.firstName,
-          a.client.lastName,
-          a.client.companyName,
-        ),
-        q,
-      ),
-    );
+    const filtered = q
+      ? appointments.filter((a) =>
+          fuzzyMatch(
+            searchableText(
+              a.client.firstName,
+              a.client.lastName,
+              a.client.companyName,
+            ),
+            q,
+          ),
+        )
+      : appointments;
+    return paginate(filtered, skip, take);
   }
 
   // "done" (client showed up) / "cancelled" (admin called it off) — see

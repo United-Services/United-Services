@@ -2,10 +2,12 @@ import {
   Body,
   ConflictException,
   Controller,
+  DefaultValuePipe,
   ForbiddenException,
   Get,
   NotFoundException,
   Param,
+  ParseIntPipe,
   Post,
   Query,
 } from '@nestjs/common';
@@ -17,6 +19,8 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreateFileAccessRequestDto } from './dto/create-file-access-request.dto';
 import { DecideFileAccessRequestDto } from './dto/decide-file-access-request.dto';
 import { fuzzyMatch, searchableText } from '../common/utils/fuzzy-match';
+import { SEARCH_SCAN_LIMIT } from '../common/constants/search-scan-limit';
+import { DEFAULT_PAGE_SIZE, paginate } from '../common/utils/paginate';
 import { FileAccessStatus, Role, type User } from '../generated/prisma';
 
 const DOWNLOAD_URL_TTL_SECONDS = 300;
@@ -77,10 +81,14 @@ export class FileAccessController {
   async list(
     @Query('q') q?: string,
     @Query('status') status?: FileAccessStatus,
+    @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip = 0,
+    @Query('take', new DefaultValuePipe(DEFAULT_PAGE_SIZE), ParseIntPipe)
+    take = DEFAULT_PAGE_SIZE,
   ) {
     const requests = await this.prisma.fileAccessRequest.findMany({
       where: status ? { status } : {},
       orderBy: { requestedAt: 'desc' },
+      take: SEARCH_SCAN_LIMIT,
       include: {
         client: {
           select: {
@@ -95,19 +103,21 @@ export class FileAccessController {
         },
       },
     });
-    if (!q) return requests;
-    return requests.filter((r) =>
-      fuzzyMatch(
-        searchableText(
-          r.client.firstName,
-          r.client.lastName,
-          r.client.email,
-          r.client.companyName,
-          r.serviceFile.originalFilename,
-        ),
-        q,
-      ),
-    );
+    const filtered = q
+      ? requests.filter((r) =>
+          fuzzyMatch(
+            searchableText(
+              r.client.firstName,
+              r.client.lastName,
+              r.client.email,
+              r.client.companyName,
+              r.serviceFile.originalFilename,
+            ),
+            q,
+          ),
+        )
+      : requests;
+    return paginate(filtered, skip, take);
   }
 
   @Roles(Role.admin)

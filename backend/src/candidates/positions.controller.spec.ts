@@ -2,6 +2,7 @@ import { PositionsController } from './positions.controller';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { TranslationService } from '../translations/translation.service';
 import type { AuditLogService } from '../audit-log/audit-log.service';
+import type { RedisService } from '../redis/redis.service';
 import { Role, type User } from '../generated/prisma';
 import { ROLES_KEY } from '../common/decorators/roles.decorator';
 
@@ -24,11 +25,22 @@ describe('PositionsController', () => {
     const auditLog = {
       record: jest.fn().mockResolvedValue(undefined),
     } as unknown as AuditLogService;
+    const redis = {
+      get: jest.fn().mockResolvedValue(null),
+      set: jest.fn(),
+      del: jest.fn(),
+    } as unknown as RedisService;
     return {
-      controller: new PositionsController(prisma, translations, auditLog),
+      controller: new PositionsController(
+        prisma,
+        translations,
+        auditLog,
+        redis,
+      ),
       prisma,
       translations,
       auditLog,
+      redis,
     };
   }
 

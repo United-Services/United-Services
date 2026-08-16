@@ -211,7 +211,7 @@ model FileAccessRequest {
   decidedByAdmin         User?            @relation("FileAccessRequestDecidedBy", fields: [decidedByAdminId], references: [id])
   downloadTokenExpiresAt DateTime?
 
-  @@index([clientId])
+  @@index([clientId, requestedAt])
   @@index([serviceFileId])
   @@index([status])
 }
@@ -235,7 +235,7 @@ model ServiceRequest {
   contactedAt    DateTime?
   createdAt      DateTime             @default(now())
 
-  @@index([clientId])
+  @@index([clientId, createdAt])
   @@index([status])
 }
 
@@ -274,7 +274,7 @@ model Appointment {
   status    AppointmentStatus @default(booked)
   createdAt DateTime          @default(now())
 
-  @@index([clientId])
+  @@index([clientId, createdAt])
   @@index([status])
 }
 
@@ -300,7 +300,12 @@ model OpenPosition {
 
   applications CandidateApplication[]
 
-  @@index([isOpen])
+  // No @@index([isOpen]) here — the public listing endpoint always filters
+  // WHERE isOpen = true, so a plain index would carry every closed
+  // position for no benefit. Replaced by a partial index on (createdAt)
+  // WHERE isOpen, added via raw SQL in the migration (Prisma's schema DSL
+  // can't express a partial index's WHERE clause) — see
+  // migrations/*_add_open_position_partial_index/migration.sql.
 }
 
 model CandidateApplication {
@@ -362,7 +367,7 @@ model AuditLog {
   metadata    Json?
   createdAt   DateTime @default(now())
 
-  @@index([actorUserId])
+  @@index([actorUserId, createdAt])
   @@index([targetType, targetId])
   @@index([createdAt])
 }

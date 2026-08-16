@@ -10,6 +10,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { TranslationService } from '../translations/translation.service';
+import { RedisService } from '../redis/redis.service';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -22,12 +23,20 @@ import { Role, type User } from '../generated/prisma';
 // routing.locales minus "en" in the frontend's i18n/routing.ts.
 const TRANSLATABLE_LOCALES = ['ar', 'zh'];
 
+// Public, read-heavy, low-churn — same cache-aside pattern as
+// ServicesController's list cache (Phase 6 of the perf audit). Keyed per
+// locale bucket since listOpen()'s response shape differs by locale.
+const OPEN_POSITIONS_CACHE_KEY = (locale: string) =>
+  `cache:positions:open:${locale}`;
+const CACHE_TTL_SECONDS = 300;
+
 @Controller('positions')
 export class PositionsController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly translations: TranslationService,
     private readonly auditLog: AuditLogService,
+    private readonly redis: RedisService,
   ) {}
 
   // Public Careers page — only ever shows isOpen positions. `locale` is
@@ -37,17 +46,31 @@ export class PositionsController {
   @Public()
   @Get()
   async listOpen(@Query('locale') locale?: string) {
+    const cacheKey = OPEN_POSITIONS_CACHE_KEY(locale ?? 'en');
+    const cached = await this.redis.get(cacheKey);
+    if (cached) return JSON.parse(cached) as unknown;
+
     const positions = await this.prisma.openPosition.findMany({
       where: { isOpen: true },
       orderBy: { createdAt: 'desc' },
     });
-    if (!locale || !TRANSLATABLE_LOCALES.includes(locale)) return positions;
 
-    const translated = await this.translations.getTranslatedPositions(
-      positions,
-      locale,
+    let result: unknown = positions;
+    if (locale && TRANSLATABLE_LOCALES.includes(locale)) {
+      const translated = await this.translations.getTranslatedPositions(
+        positions,
+        locale,
+      );
+      result = positions.map((p) => ({ ...p, ...translated.get(p.id) }));
+    }
+
+    await this.redis.set(
+      cacheKey,
+      JSON.stringify(result),
+      'EX',
+      CACHE_TTL_SECONDS,
     );
-    return positions.map((p) => ({ ...p, ...translated.get(p.id) }));
+    return result;
   }
 
   @Roles(Role.admin)
@@ -64,6 +87,7 @@ export class PositionsController {
     const created = await this.prisma.openPosition.create({
       data: { ...dto, createdByAdminId: admin.id },
     });
+    await this.invalidateListCache();
     if (created.isOpen) {
       this.translations.triggerAsync(created, TRANSLATABLE_LOCALES); // fire-and-forget
     }
@@ -77,6 +101,7 @@ export class PositionsController {
       where: { id },
       data: dto,
     });
+    await this.invalidateListCache();
     // Triggered regardless of which fields changed — the hash check
     // inside triggerAsync/getTranslatedPositions makes a no-op retrigger
     // on an update that didn't touch title/description/department cheap
@@ -85,6 +110,18 @@ export class PositionsController {
       this.translations.triggerAsync(updated, TRANSLATABLE_LOCALES); // fire-and-forget
     }
     return updated;
+  }
+
+  // A create/update can flip which positions are `isOpen` or change
+  // translated fields — clear every locale bucket rather than trying to
+  // reason about which ones are stale. Cheap: the next listOpen() per
+  // locale just repopulates it, and this only runs on admin writes.
+  private async invalidateListCache() {
+    await Promise.all(
+      ['en', ...TRANSLATABLE_LOCALES].map((locale) =>
+        this.redis.del(OPEN_POSITIONS_CACHE_KEY(locale)),
+      ),
+    );
   }
 
   // Lets an admin force a specific translation to regenerate (e.g. to fix

@@ -62,7 +62,9 @@ describe('AuditLogService', () => {
       .where;
     expect(where.actorUserId).toBe('u1');
     expect(where.action).toBe('user.disabled');
-    expect(result).toEqual([expect.objectContaining({ targetId: 'acme-1' })]);
+    expect(result.items).toEqual([
+      expect.objectContaining({ targetId: 'acme-1' }),
+    ]);
   });
 
   it('search respects a custom skip/take for pagination, applied in-app over the filtered results', async () => {
@@ -73,9 +75,10 @@ describe('AuditLogService', () => {
 
     const result = await service.search({ skip: 2, take: 2 });
 
-    expect(result).toEqual([
+    expect(result.items).toEqual([
       expect.objectContaining({ targetId: 'row-2' }),
       expect.objectContaining({ targetId: 'row-3' }),
     ]);
+    expect(result.hasMore).toBe(true);
   });
 });
