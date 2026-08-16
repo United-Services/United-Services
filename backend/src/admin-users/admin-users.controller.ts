@@ -4,6 +4,7 @@ import {
   ConflictException,
   Controller,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -151,6 +152,12 @@ export class AdminUsersController {
   async disable(@CurrentUser() admin: User, @Param('id') id: string) {
     if (id === admin.id)
       throw new BadRequestException('You cannot disable your own account');
+    // .update() on a nonexistent id throws Prisma's unhandled P2025, which
+    // isn't an HttpException — the global exception filter's catch-all
+    // turned that into a generic 500 instead of a 404. Confirmed live
+    // during a penetration test.
+    const existing = await this.prisma.user.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('User not found');
     const updated = await this.prisma.user.update({
       where: { id },
       data: { disabledAt: new Date() },
@@ -166,6 +173,8 @@ export class AdminUsersController {
 
   @Patch(':id/enable')
   async enable(@CurrentUser() admin: User, @Param('id') id: string) {
+    const existing = await this.prisma.user.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('User not found');
     const updated = await this.prisma.user.update({
       where: { id },
       data: { disabledAt: null },
@@ -195,9 +204,8 @@ export class AdminUsersController {
     if (id === admin.id)
       throw new BadRequestException('You cannot change your own role');
 
-    const target = await this.prisma.user.findUniqueOrThrow({
-      where: { id },
-    });
+    const target = await this.prisma.user.findUnique({ where: { id } });
+    if (!target) throw new NotFoundException('User not found');
     const updated = await this.prisma.user.update({
       where: { id },
       data: { role: dto.role },
@@ -225,9 +233,8 @@ export class AdminUsersController {
   // pick a real one on next sign-in.
   @Post(':id/reset-password')
   async resetPassword(@CurrentUser() admin: User, @Param('id') id: string) {
-    const target = await this.prisma.user.findUniqueOrThrow({
-      where: { id },
-    });
+    const target = await this.prisma.user.findUnique({ where: { id } });
+    if (!target) throw new NotFoundException('User not found');
     const tempPassword = generateTempPassword();
 
     await this.clerkClient.users.updateUser(target.clerkId, {

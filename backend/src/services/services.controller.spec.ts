@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { ServicesController } from './services.controller';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { S3Service } from '../s3/s3.service';
@@ -10,7 +11,7 @@ describe('ServicesController', () => {
 
   function makeController() {
     const prisma = {
-      service: { findMany: jest.fn(), update: jest.fn() },
+      service: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
       serviceFile: {
         count: jest.fn(),
         create: jest.fn(),
@@ -71,6 +72,32 @@ describe('ServicesController', () => {
         JSON.stringify([{ id: 'svc-1' }]),
         'EX',
         300,
+      );
+    });
+  });
+
+  describe('bySlug', () => {
+    it('returns the service for a matching slug', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.service.findUnique as jest.Mock).mockResolvedValue({
+        id: 'svc-1',
+        slug: 'gre-lining',
+      });
+
+      const result = await controller.bySlug('gre-lining');
+
+      expect(prisma.service.findUnique).toHaveBeenCalledWith({
+        where: { slug: 'gre-lining' },
+      });
+      expect(result).toEqual({ id: 'svc-1', slug: 'gre-lining' });
+    });
+
+    it('404s for an unknown slug instead of a generic 500', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.service.findUnique as jest.Mock).mockResolvedValue(null);
+
+      await expect(controller.bySlug('does-not-exist')).rejects.toThrow(
+        NotFoundException,
       );
     });
   });

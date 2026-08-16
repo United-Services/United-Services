@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -74,8 +75,10 @@ export class ServicesController {
 
   @Public()
   @Get(':slug')
-  bySlug(@Param('slug') slug: string) {
-    return this.prisma.service.findUniqueOrThrow({ where: { slug } });
+  async bySlug(@Param('slug') slug: string) {
+    const service = await this.prisma.service.findUnique({ where: { slug } });
+    if (!service) throw new NotFoundException('Service not found');
+    return service;
   }
 
   @Roles(Role.admin)
