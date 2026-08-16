@@ -66,9 +66,12 @@ docker compose up --build
 ```
 
 This starts `postgres`, `redis`, `backend`, `frontend`, and `nginx` (port 80
-by default, `$NGINX_PORT`). For a production deploy, start from
-[`.env.prod`](.env.prod) instead — it's pre-filled with the production
-domain (`use-eg.com`) and only needs real secrets, not real endpoints.
+by default, `$NGINX_PORT`). For a production deploy, use the same `.env`
+but with production values — the real domain for `CORS_ORIGINS`/
+`NEXT_PUBLIC_API_URL`/`WEBAUTHN_RP_ID`/`WEBAUTHN_RP_ORIGIN`, and Clerk's
+production instance keys, not the dev/test ones. See
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md#environment-variables) for the
+full list of what changes between dev and production.
 
 ## Testing, linting, and type-checking
 
