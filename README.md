@@ -39,7 +39,9 @@ a Clerk application (dev instance keys are fine locally).
 ```bash
 # Backend
 cd backend
-cp .env.example .env        # fill in DATABASE_URL, Clerk keys, AWS S3, etc.
+# Create .env with real values — see docs/CREDENTIALS_CHECKLIST.md's
+# "`.env.example` shape" section for the full list (DATABASE_URL, Clerk
+# keys, AWS S3, etc.)
 pnpm install
 pnpm prisma:migrate
 pnpm seed                   # optional: seed fixture data
@@ -58,7 +60,8 @@ pnpm dev                     # http://localhost:3000
 ## Running with Docker
 
 ```bash
-cp .env.example .env         # fill in secrets — see file for what each var means
+# Create .env at the repo root — see docs/CREDENTIALS_CHECKLIST.md's
+# "`.env.example` shape" section for what each var means
 docker compose up --build
 ```
 
