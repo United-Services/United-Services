@@ -15,6 +15,13 @@ set -euo pipefail
 # scripts/, or `scripts/push-secrets.sh` from the repo root).
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# Defaults to the app's own dedicated AWS profile rather than relying on
+# whatever "default" happens to be configured on this machine (which may
+# belong to an unrelated account/tool — that mismatch is exactly what broke
+# this the first time). Override with `AWS_PROFILE=foo scripts/push-secrets.sh`
+# if you deliberately want a different identity.
+export AWS_PROFILE="${AWS_PROFILE:-united-services}"
+
 ENVIRONMENT="${1:-staging}"
 ENV_FILE="$REPO_ROOT/backend/.env"
 
@@ -46,7 +53,12 @@ for key in "${SECRET_KEYS[@]}"; do
   # Strips optional surrounding quotes — backend/.env sometimes wraps
   # values in "double quotes" (e.g. connection strings), SSM shouldn't
   # store the literal quote characters as part of the value.
-  value=$(grep -E "^${key}=" "$ENV_FILE" | head -n1 | cut -d'=' -f2- | sed -E 's/^"(.*)"$/\1/')
+  # `grep` (correctly) exits nonzero when a key isn't in .env at all —
+  # under `set -e`, that would otherwise kill the whole script right here
+  # instead of hitting the "skip and warn" handling below, which is the
+  # actual intended behavior for an optional/not-yet-set key. `|| true`
+  # neutralizes that so the emptiness check further down is what decides.
+  value=$( (grep -E "^${key}=" "$ENV_FILE" || true) | head -n1 | cut -d'=' -f2- | sed -E 's/^"(.*)"$/\1/')
   if [ -z "$value" ]; then
     echo "WARNING: $key not found (or empty) in $ENV_FILE, skipping" >&2
     continue
