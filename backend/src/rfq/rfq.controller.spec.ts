@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { RfqController } from './rfq.controller';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { AuditLogService } from '../audit-log/audit-log.service';
@@ -14,7 +14,7 @@ describe('RfqController', () => {
         create: jest.fn(),
         findMany: jest.fn(),
         update: jest.fn(),
-        findUniqueOrThrow: jest.fn(),
+        findUnique: jest.fn(),
       },
     } as unknown as PrismaService;
     const auditLog = {
@@ -57,7 +57,7 @@ describe('RfqController', () => {
 
   it('records an audit entry with the new status when an admin updates one', async () => {
     const { controller, prisma, auditLog } = makeController();
-    (prisma.serviceRequest.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+    (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue({
       contactedAt: null,
     });
     (prisma.serviceRequest.update as jest.Mock).mockResolvedValue({
@@ -78,7 +78,7 @@ describe('RfqController', () => {
 
   it('freely moves status between pending and in_review before contact', async () => {
     const { controller, prisma } = makeController();
-    (prisma.serviceRequest.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+    (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue({
       contactedAt: null,
     });
     (prisma.serviceRequest.update as jest.Mock).mockResolvedValue({
@@ -98,13 +98,23 @@ describe('RfqController', () => {
 
   it('rejects any status change once the request is already contacted', async () => {
     const { controller, prisma } = makeController();
-    (prisma.serviceRequest.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+    (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue({
       contactedAt: new Date('2026-01-01'),
     });
 
     await expect(
       controller.updateStatus(admin, 'rfq-1', { status: 'in_review' } as any),
     ).rejects.toThrow(BadRequestException);
+    expect(prisma.serviceRequest.update).not.toHaveBeenCalled();
+  });
+
+  it('404s updateStatus for an unknown RFQ id instead of a generic 500', async () => {
+    const { controller, prisma } = makeController();
+    (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue(null);
+
+    await expect(
+      controller.updateStatus(admin, 'missing', { status: 'quoted' } as any),
+    ).rejects.toThrow(NotFoundException);
     expect(prisma.serviceRequest.update).not.toHaveBeenCalled();
   });
 
@@ -142,7 +152,7 @@ describe('RfqController', () => {
 
   it('marks a not-yet-contacted request as contacted', async () => {
     const { controller, prisma, auditLog } = makeController();
-    (prisma.serviceRequest.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+    (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue({
       contactedAt: null,
     });
     (prisma.serviceRequest.update as jest.Mock).mockImplementation(
@@ -166,12 +176,22 @@ describe('RfqController', () => {
 
   it('rejects marking an already-contacted request again — contacted is final', async () => {
     const { controller, prisma } = makeController();
-    (prisma.serviceRequest.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+    (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue({
       contactedAt: new Date('2026-01-01'),
     });
 
     await expect(controller.markContacted(admin, 'rfq-1')).rejects.toThrow(
       BadRequestException,
+    );
+    expect(prisma.serviceRequest.update).not.toHaveBeenCalled();
+  });
+
+  it('404s markContacted for an unknown RFQ id instead of a generic 500', async () => {
+    const { controller, prisma } = makeController();
+    (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue(null);
+
+    await expect(controller.markContacted(admin, 'missing')).rejects.toThrow(
+      NotFoundException,
     );
     expect(prisma.serviceRequest.update).not.toHaveBeenCalled();
   });

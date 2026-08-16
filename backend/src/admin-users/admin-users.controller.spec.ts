@@ -1,4 +1,8 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { AdminUsersController } from './admin-users.controller';
 import { Role, type User } from '../generated/prisma';
 import type { PrismaService } from '../prisma/prisma.service';
@@ -34,7 +38,7 @@ describe('AdminUsersController.disable', () => {
           .mockResolvedValue({ id: 'client-1', disabledAt: new Date() }),
         findMany: jest.fn().mockResolvedValue([]),
         create: jest.fn(),
-        findUniqueOrThrow: jest.fn(),
+        findUnique: jest.fn(),
       },
     } as unknown as PrismaService;
     const auditLog = {
@@ -203,11 +207,11 @@ describe('AdminUsersController.disable', () => {
   describe('updateRole', () => {
     it('refuses to let an admin change their own role', async () => {
       const { controller, prisma } = makeController();
-      // Mock findUniqueOrThrow to resolve (as it would for real against the
+      // Mock findUnique to resolve (as it would for real against the
       // admin's own row) so this test fails only if the guard itself is
       // missing — not incidentally, via an unrelated crash on a later,
       // unmocked call reading a field off an undefined `target`.
-      (prisma.user.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
         id: admin.id,
         clerkId: 'clerk-admin-1',
         role: Role.admin,
@@ -223,7 +227,7 @@ describe('AdminUsersController.disable', () => {
 
     it('updates the local role, mirrors it into Clerk publicMetadata, and audit-logs old/new role', async () => {
       const { controller, prisma, auditLog } = makeController();
-      (prisma.user.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
         id: 'user-1',
         clerkId: 'clerk-1',
         role: Role.client,
@@ -253,7 +257,7 @@ describe('AdminUsersController.disable', () => {
 
     it('still commits the local role change even if mirroring to Clerk fails', async () => {
       const { controller, prisma } = makeController();
-      (prisma.user.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
         id: 'user-1',
         clerkId: 'clerk-1',
         role: Role.client,
@@ -269,12 +273,22 @@ describe('AdminUsersController.disable', () => {
       });
       expect(result).toEqual({ id: 'user-1', role: Role.admin });
     });
+
+    it('404s for an unknown user id instead of a generic 500', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        controller.updateRole(admin, 'missing', { role: Role.admin }),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('resetPassword', () => {
     it('sets a generated temp password in Clerk, signs out other sessions, sets mustChangePassword, and returns the password once', async () => {
       const { controller, prisma, auditLog } = makeController();
-      (prisma.user.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
         id: 'user-1',
         clerkId: 'clerk-1',
       });
@@ -296,6 +310,16 @@ describe('AdminUsersController.disable', () => {
           targetId: 'user-1',
         }),
       );
+    });
+
+    it('404s for an unknown user id instead of a generic 500', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        controller.resetPassword(admin, 'missing'),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
     });
   });
 });

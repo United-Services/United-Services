@@ -4,6 +4,7 @@ import {
   ConflictException,
   Controller,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -195,9 +196,8 @@ export class AdminUsersController {
     if (id === admin.id)
       throw new BadRequestException('You cannot change your own role');
 
-    const target = await this.prisma.user.findUniqueOrThrow({
-      where: { id },
-    });
+    const target = await this.prisma.user.findUnique({ where: { id } });
+    if (!target) throw new NotFoundException('User not found');
     const updated = await this.prisma.user.update({
       where: { id },
       data: { role: dto.role },
@@ -225,9 +225,8 @@ export class AdminUsersController {
   // pick a real one on next sign-in.
   @Post(':id/reset-password')
   async resetPassword(@CurrentUser() admin: User, @Param('id') id: string) {
-    const target = await this.prisma.user.findUniqueOrThrow({
-      where: { id },
-    });
+    const target = await this.prisma.user.findUnique({ where: { id } });
+    if (!target) throw new NotFoundException('User not found');
     const tempPassword = generateTempPassword();
 
     await this.clerkClient.users.updateUser(target.clerkId, {
