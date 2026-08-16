@@ -1,12 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { fuzzyMatch, searchableText } from '../common/utils/fuzzy-match';
+import { SEARCH_SCAN_LIMIT } from '../common/constants/search-scan-limit';
+import { DEFAULT_PAGE_SIZE, paginate } from '../common/utils/paginate';
 import { Prisma } from '../generated/prisma';
-
-// Caps how many actor/action-filtered rows are pulled before fuzzy-
-// matching and paginating in-app (see search() below) — a generous bound
-// for admin-panel scale, not a real pagination limit.
-const SEARCH_SCAN_LIMIT = 1000;
 
 // Every admin action that changes state must call this — see
 // docs/BUSINESS_RULES.md rule 8. Kept as a thin wrapper so call sites read
@@ -37,7 +34,13 @@ export class AuditLogService {
     skip?: number;
     take?: number;
   }) {
-    const { q, actorUserId, action, skip = 0, take = 25 } = params;
+    const {
+      q,
+      actorUserId,
+      action,
+      skip = 0,
+      take = DEFAULT_PAGE_SIZE,
+    } = params;
     const rows = await this.prisma.auditLog.findMany({
       where: {
         ...(actorUserId ? { actorUserId } : {}),
@@ -56,6 +59,6 @@ export class AuditLogService {
           fuzzyMatch(searchableText(r.action, r.targetType, r.targetId), q),
         )
       : rows;
-    return filtered.slice(skip, skip + take);
+    return paginate(filtered, skip, take);
   }
 }

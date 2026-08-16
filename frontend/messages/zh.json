@@ -1142,7 +1142,9 @@
       "actionFailed": "Something went wrong. Please try again.",
       "dismiss": "Dismiss",
       "retry": "Retry"
-    }
+    },
+    "loadMore": "Load more",
+    "loadingMore": "Loading…"
   },
   "auth": {
     "signInTagline": "登录以管理您的服务、请求和文件。",

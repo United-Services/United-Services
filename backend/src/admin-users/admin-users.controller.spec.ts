@@ -149,7 +149,7 @@ describe('AdminUsersController.disable', () => {
     expect((prisma.user.findMany as jest.Mock).mock.calls[0][0].where).toEqual({
       role: Role.client,
     });
-    expect(result).toEqual([expect.objectContaining({ id: 'u1' })]);
+    expect(result.items).toEqual([expect.objectContaining({ id: 'u1' })]);
   });
 
   it('list never selects a password or credential field', async () => {

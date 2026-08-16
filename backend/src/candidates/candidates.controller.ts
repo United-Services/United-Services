@@ -1,7 +1,9 @@
 import {
   Controller,
+  DefaultValuePipe,
   Get,
   Param,
+  ParseIntPipe,
   Patch,
   Body,
   Query,
@@ -15,6 +17,8 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { DecideApplicationDto } from './dto/decide-application.dto';
 import { RequestDocumentsDto } from './dto/request-documents.dto';
 import { fuzzyMatch, searchableText } from '../common/utils/fuzzy-match';
+import { SEARCH_SCAN_LIMIT } from '../common/constants/search-scan-limit';
+import { DEFAULT_PAGE_SIZE, paginate } from '../common/utils/paginate';
 import { ApplicationStatus, Role, type User } from '../generated/prisma';
 
 const DOCUMENT_URL_TTL_SECONDS = 300;
@@ -36,10 +40,14 @@ export class CandidatesController {
   async list(
     @Query('q') q?: string,
     @Query('status') status?: ApplicationStatus,
+    @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip = 0,
+    @Query('take', new DefaultValuePipe(DEFAULT_PAGE_SIZE), ParseIntPipe)
+    take = DEFAULT_PAGE_SIZE,
   ) {
     const applications = await this.prisma.candidateApplication.findMany({
       where: status ? { status } : {},
       orderBy: { id: 'desc' },
+      take: SEARCH_SCAN_LIMIT,
       include: {
         candidateUser: {
           select: { firstName: true, lastName: true, email: true },
@@ -47,17 +55,19 @@ export class CandidatesController {
         position: { select: { title: true, department: true } },
       },
     });
-    if (!q) return applications;
-    return applications.filter((a) =>
-      fuzzyMatch(
-        searchableText(
-          a.candidateUser.firstName,
-          a.candidateUser.lastName,
-          a.candidateUser.email,
-        ),
-        q,
-      ),
-    );
+    const filtered = q
+      ? applications.filter((a) =>
+          fuzzyMatch(
+            searchableText(
+              a.candidateUser.firstName,
+              a.candidateUser.lastName,
+              a.candidateUser.email,
+            ),
+            q,
+          ),
+        )
+      : applications;
+    return paginate(filtered, skip, take);
   }
 
   @Get(':id/documents')

@@ -1142,7 +1142,9 @@
       "actionFailed": "Something went wrong. Please try again.",
       "dismiss": "Dismiss",
       "retry": "Retry"
-    }
+    },
+    "loadMore": "Load more",
+    "loadingMore": "Loading…"
   },
   "auth": {
     "signInTagline": "سجّل الدخول لإدارة خدماتك وطلباتك ومستنداتك.",

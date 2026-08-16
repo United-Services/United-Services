@@ -53,6 +53,7 @@ import PublicNav from "../components/PublicNav"
 import { axios, authHeader } from "../lib/api"
 import { getErrorMessage } from "../lib/errors"
 import { useRequestGuard } from "../lib/useRequestGuard"
+import { usePaginatedList } from "../lib/usePaginatedList"
 import AdminSecuritySection from "./AdminSecuritySection"
 import {
   FileAccessStatus,
@@ -290,6 +291,44 @@ function SearchBox({
   )
 }
 
+function LoadMoreButton({
+  hasMore,
+  loading,
+  onClick,
+}: {
+  hasMore: boolean
+  loading: boolean
+  onClick: () => void
+}) {
+  const tCommon = useTranslations("common")
+  if (!hasMore) return null
+  return (
+    <div style={{ display: "flex", justifyContent: "center", padding: 16 }}>
+      <button
+        onClick={onClick}
+        disabled={loading}
+        style={{
+          background: "#F8FAFC",
+          color: palette.navy,
+          border: "1.5px solid #E2E8F0",
+          borderRadius: 9999,
+          padding: "9px 22px",
+          fontWeight: 600,
+          fontSize: 13,
+          cursor: loading ? "default" : "pointer",
+          fontFamily: "Poppins, sans-serif",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
+        {loading && <InlineSpinner size={13} />}
+        {loading ? tCommon("loadingMore") : tCommon("loadMore")}
+      </button>
+    </div>
+  )
+}
+
 export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   const { getToken } = useAuth()
   const t = useTranslations("adminDashboard")
@@ -308,14 +347,21 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   // guard, a slow mount-time response can resolve after a faster later
   // one and overwrite fresher (e.g. searched) results with stale data.
   const overviewGuard = useRequestGuard()
-  const clientsGuard = useRequestGuard()
-  const requestsGuard = useRequestGuard()
   const positionsGuard = useRequestGuard()
-  const candidatesGuard = useRequestGuard()
-  const rfqsGuard = useRequestGuard()
-  const appointmentsGuard = useRequestGuard()
   const slotsGuard = useRequestGuard()
-  const auditLogGuard = useRequestGuard()
+
+  // Backend list endpoints (clients/requests/candidates/rfqs/appointments/
+  // audit log) are paginated 20-at-a-time with a Load More button — see
+  // usePaginatedList and backend/src/common/utils/paginate.ts. Each list's
+  // own request guard lives inside the hook.
+  const onListError = (err: unknown) =>
+    setError(getErrorMessage(err, tCommon("errors.loadFailed")))
+  const clientsList = usePaginatedList<AdminUser>(onListError)
+  const requestsList = usePaginatedList<FileRequestRow>(onListError)
+  const candidatesList = usePaginatedList<CandidateRow>(onListError)
+  const rfqsList = usePaginatedList<RfqRow>(onListError)
+  const appointmentsList = usePaginatedList<AppointmentRow>(onListError)
+  const auditLogList = usePaginatedList<AuditLogRow>(onListError)
 
   const NAV = [
     { id: "overview", label: t("nav.overview"), icon: <IconChart /> },
@@ -335,7 +381,6 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
     country: string
     count: number
   }[]>([])
-  const [clients, setClients] = useState<AdminUser[]>([])
   const [clientQuery, setClientQuery] = useState("")
   const [clientRoleFilter, setClientRoleFilter] = useState("")
   const [showCreateUserForm, setShowCreateUserForm] = useState(false)
@@ -357,7 +402,6 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
     useState<Record<string, ServiceFile[]>>({})
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
-  const [requests, setRequests] = useState<FileRequestRow[]>([])
   const [requestQuery, setRequestQuery] = useState("")
   const [positions, setPositions] = useState<PositionRow[]>([])
   const [positionForm, setPositionForm] = useState({
@@ -369,12 +413,9 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
     null,
   )
   const [positionSaving, setPositionSaving] = useState(false)
-  const [candidates, setCandidates] = useState<CandidateRow[]>([])
   const [candidateQuery, setCandidateQuery] = useState("")
-  const [rfqs, setRfqs] = useState<RfqRow[]>([])
   const [viewingRfq, setViewingRfq] = useState<RfqRow | null>(null)
   const [rfqQuery, setRfqQuery] = useState("")
-  const [appointments, setAppointments] = useState<AppointmentRow[]>([])
   const [bookingQuery, setBookingQuery] = useState("")
   const [newSlot, setNewSlot] = useState({
     date: "",
@@ -388,7 +429,6 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
     startTime: "",
     endTime: "",
   })
-  const [auditLog, setAuditLog] = useState<AuditLogRow[]>([])
   const [auditQuery, setAuditQuery] = useState("")
 
   const loadOverview = async () => {
@@ -412,24 +452,19 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
       setError(getErrorMessage(err, tCommon("errors.loadFailed")))
     }
   }
-  const loadClients = async (q = "", role = clientRoleFilter) => {
-    const reqId = clientsGuard.start()
-    try {
+  const clientsFetchPage =
+    (q: string, role: string) => async (skip: number, take: number) => {
       const headers = await authed()
       const { data } = await axios.get("/admin/users", {
         headers,
-        params: {
-          role: role || undefined,
-          q: q || undefined,
-        },
+        params: { role: role || undefined, q: q || undefined, skip, take },
       })
-      if (clientsGuard.stale(reqId)) return
-      setClients(data)
-    } catch (err) {
-      if (clientsGuard.stale(reqId)) return
-      setError(getErrorMessage(err, tCommon("errors.loadFailed")))
+      return data
     }
-  }
+  const loadClients = (q = "", role = clientRoleFilter) =>
+    clientsList.reload(clientsFetchPage(q, role))
+  const loadMoreClients = () =>
+    clientsList.loadMore(clientsFetchPage(clientQuery, clientRoleFilter))
   const loadServices = async () => {
     try {
       const headers = await authed()
@@ -446,23 +481,17 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
       setError(getErrorMessage(err, tCommon("errors.loadFailed")))
     }
   }
-  const loadRequests = async (q = "") => {
-    const reqId = requestsGuard.start()
-    try {
-      const headers = await authed()
-      const { data } = await axios.get("/file-access-requests", {
-        headers,
-        params: {
-          q: q || undefined,
-        },
-      })
-      if (requestsGuard.stale(reqId)) return
-      setRequests(data)
-    } catch (err) {
-      if (requestsGuard.stale(reqId)) return
-      setError(getErrorMessage(err, tCommon("errors.loadFailed")))
-    }
+  const requestsFetchPage = (q: string) => async (skip: number, take: number) => {
+    const headers = await authed()
+    const { data } = await axios.get("/file-access-requests", {
+      headers,
+      params: { q: q || undefined, skip, take },
+    })
+    return data
   }
+  const loadRequests = (q = "") => requestsList.reload(requestsFetchPage(q))
+  const loadMoreRequests = () =>
+    requestsList.loadMore(requestsFetchPage(requestQuery))
   const loadPositions = async () => {
     const reqId = positionsGuard.start()
     try {
@@ -475,57 +504,44 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
       setError(getErrorMessage(err, tCommon("errors.loadFailed")))
     }
   }
-  const loadCandidates = async (q = "") => {
-    const reqId = candidatesGuard.start()
-    try {
+  const candidatesFetchPage =
+    (q: string) => async (skip: number, take: number) => {
       const headers = await authed()
       const { data } = await axios.get("/candidate-applications", {
         headers,
-        params: {
-          q: q || undefined,
-        },
+        params: { q: q || undefined, skip, take },
       })
-      if (candidatesGuard.stale(reqId)) return
-      setCandidates(data)
-    } catch (err) {
-      if (candidatesGuard.stale(reqId)) return
-      setError(getErrorMessage(err, tCommon("errors.loadFailed")))
+      return data
     }
+  const loadCandidates = (q = "") =>
+    candidatesList.reload(candidatesFetchPage(q))
+  const loadMoreCandidates = () =>
+    candidatesList.loadMore(candidatesFetchPage(candidateQuery))
+
+  const rfqsFetchPage = (q: string) => async (skip: number, take: number) => {
+    const headers = await authed()
+    const { data } = await axios.get("/rfqs", {
+      headers,
+      params: { q: q || undefined, skip, take },
+    })
+    return data
   }
-  const loadRfqs = async (q = "") => {
-    const reqId = rfqsGuard.start()
-    try {
-      const headers = await authed()
-      const { data } = await axios.get("/rfqs", {
-        headers,
-        params: {
-          q: q || undefined,
-        },
-      })
-      if (rfqsGuard.stale(reqId)) return
-      setRfqs(data)
-    } catch (err) {
-      if (rfqsGuard.stale(reqId)) return
-      setError(getErrorMessage(err, tCommon("errors.loadFailed")))
-    }
-  }
-  const loadAppointments = async (q = "") => {
-    const reqId = appointmentsGuard.start()
-    try {
+  const loadRfqs = (q = "") => rfqsList.reload(rfqsFetchPage(q))
+  const loadMoreRfqs = () => rfqsList.loadMore(rfqsFetchPage(rfqQuery))
+
+  const appointmentsFetchPage =
+    (q: string) => async (skip: number, take: number) => {
       const headers = await authed()
       const { data } = await axios.get("/appointments", {
         headers,
-        params: {
-          q: q || undefined,
-        },
+        params: { q: q || undefined, skip, take },
       })
-      if (appointmentsGuard.stale(reqId)) return
-      setAppointments(data)
-    } catch (err) {
-      if (appointmentsGuard.stale(reqId)) return
-      setError(getErrorMessage(err, tCommon("errors.loadFailed")))
+      return data
     }
-  }
+  const loadAppointments = (q = "") =>
+    appointmentsList.reload(appointmentsFetchPage(q))
+  const loadMoreAppointments = () =>
+    appointmentsList.loadMore(appointmentsFetchPage(bookingQuery))
   const loadSlots = async () => {
     const reqId = slotsGuard.start()
     try {
@@ -538,23 +554,18 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
       setError(getErrorMessage(err, tCommon("errors.loadFailed")))
     }
   }
-  const loadAuditLog = async (q = "") => {
-    const reqId = auditLogGuard.start()
-    try {
+  const auditLogFetchPage =
+    (q: string) => async (skip: number, take: number) => {
       const headers = await authed()
       const { data } = await axios.get("/audit-log", {
         headers,
-        params: {
-          q: q || undefined,
-        },
+        params: { q: q || undefined, skip, take },
       })
-      if (auditLogGuard.stale(reqId)) return
-      setAuditLog(data)
-    } catch (err) {
-      if (auditLogGuard.stale(reqId)) return
-      setError(getErrorMessage(err, tCommon("errors.loadFailed")))
+      return data
     }
-  }
+  const loadAuditLog = (q = "") => auditLogList.reload(auditLogFetchPage(q))
+  const loadMoreAuditLog = () =>
+    auditLogList.loadMore(auditLogFetchPage(auditQuery))
 
   useEffect(() => {
     // Standard fetch-on-mount (react.dev/learn/you-might-not-need-an-effect
@@ -1317,7 +1328,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 >
                   {t("overview.recentActivity")}
                 </div>
-                {auditLog.slice(0, 6).map((a) => (
+                {auditLogList.items.slice(0, 6).map((a) => (
                   <div
                     key={a.id}
                     style={{
@@ -1341,7 +1352,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                     </div>
                   </div>
                 ))}
-                {auditLog.length === 0 && (
+                {auditLogList.items.length === 0 && (
                   <div style={{ fontSize: 13, color: palette.muted }}>
                     {t("overview.noActivity")}
                   </div>
@@ -1821,7 +1832,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   {tableHead(t.raw("clients.cols"))}
                   <tbody>
-                    {clients.map((c, i) => (
+                    {clientsList.items.map((c, i) => (
                       <tr
                         key={c.id}
                         style={{ background: i % 2 === 0 ? "#fff" : "#FAFAFA" }}
@@ -1955,7 +1966,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                         </td>
                       </tr>
                     ))}
-                    {clients.length === 0 && (
+                    {clientsList.items.length === 0 && (
                       <tr>
                         <td
                           colSpan={8}
@@ -1972,6 +1983,11 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                     )}
                   </tbody>
                 </table>
+                <LoadMoreButton
+                  hasMore={clientsList.hasMore}
+                  loading={clientsList.loadingMore}
+                  onClick={loadMoreClients}
+                />
               </div>
             </>
           )}
@@ -2096,7 +2112,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   {tableHead(t.raw("requests.cols"))}
                   <tbody>
-                    {requests.map((r, i) => (
+                    {requestsList.items.map((r, i) => (
                       <tr
                         key={r.id}
                         style={{ background: i % 2 === 0 ? "#fff" : "#FAFAFA" }}
@@ -2149,7 +2165,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                         </td>
                       </tr>
                     ))}
-                    {requests.length === 0 && (
+                    {requestsList.items.length === 0 && (
                       <tr>
                         <td
                           colSpan={5}
@@ -2166,6 +2182,11 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                     )}
                   </tbody>
                 </table>
+                <LoadMoreButton
+                  hasMore={requestsList.hasMore}
+                  loading={requestsList.loadingMore}
+                  onClick={loadMoreRequests}
+                />
               </div>
             </>
           )}
@@ -2475,7 +2496,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   {tableHead(t.raw("candidates.cols"))}
                   <tbody>
-                    {candidates.map((c, i) => (
+                    {candidatesList.items.map((c, i) => (
                       <tr
                         key={c.id}
                         style={{ background: i % 2 === 0 ? "#fff" : "#FAFAFA" }}
@@ -2575,7 +2596,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                         </td>
                       </tr>
                     ))}
-                    {candidates.length === 0 && (
+                    {candidatesList.items.length === 0 && (
                       <tr>
                         <td
                           colSpan={6}
@@ -2592,6 +2613,11 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                     )}
                   </tbody>
                 </table>
+                <LoadMoreButton
+                  hasMore={candidatesList.hasMore}
+                  loading={candidatesList.loadingMore}
+                  onClick={loadMoreCandidates}
+                />
               </div>
             </>
           )}
@@ -2616,7 +2642,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   {tableHead(t.raw("rfqs.cols"))}
                   <tbody>
-                    {rfqs.map((r, i) => (
+                    {rfqsList.items.map((r, i) => (
                       <tr
                         key={r.id}
                         onClick={() => setViewingRfq(r)}
@@ -2740,7 +2766,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                         </td>
                       </tr>
                     ))}
-                    {rfqs.length === 0 && (
+                    {rfqsList.items.length === 0 && (
                       <tr>
                         <td
                           colSpan={6}
@@ -2757,6 +2783,11 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                     )}
                   </tbody>
                 </table>
+                <LoadMoreButton
+                  hasMore={rfqsList.hasMore}
+                  loading={rfqsList.loadingMore}
+                  onClick={loadMoreRfqs}
+                />
               </div>
 
               {viewingRfq && (
@@ -3312,7 +3343,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   {tableHead(t.raw("bookings.cols"))}
                   <tbody>
-                    {appointments.map((b, i) => (
+                    {appointmentsList.items.map((b, i) => (
                       <tr
                         key={b.id}
                         style={{ background: i % 2 === 0 ? "#fff" : "#FAFAFA" }}
@@ -3403,7 +3434,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                         </td>
                       </tr>
                     ))}
-                    {appointments.length === 0 && (
+                    {appointmentsList.items.length === 0 && (
                       <tr>
                         <td
                           colSpan={6}
@@ -3420,6 +3451,11 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                     )}
                   </tbody>
                 </table>
+                <LoadMoreButton
+                  hasMore={appointmentsList.hasMore}
+                  loading={appointmentsList.loadingMore}
+                  onClick={loadMoreAppointments}
+                />
               </div>
             </>
           )}
@@ -3444,7 +3480,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   {tableHead(t.raw("audit.cols"))}
                   <tbody>
-                    {auditLog.map((a, i) => (
+                    {auditLogList.items.map((a, i) => (
                       <tr
                         key={a.id}
                         style={{ background: i % 2 === 0 ? "#fff" : "#FAFAFA" }}
@@ -3494,7 +3530,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                         </td>
                       </tr>
                     ))}
-                    {auditLog.length === 0 && (
+                    {auditLogList.items.length === 0 && (
                       <tr>
                         <td
                           colSpan={4}
@@ -3511,6 +3547,11 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                     )}
                   </tbody>
                 </table>
+                <LoadMoreButton
+                  hasMore={auditLogList.hasMore}
+                  loading={auditLogList.loadingMore}
+                  onClick={loadMoreAuditLog}
+                />
               </div>
             </>
           )}

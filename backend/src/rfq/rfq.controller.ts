@@ -2,9 +2,11 @@ import {
   BadRequestException,
   Body,
   Controller,
+  DefaultValuePipe,
   Get,
   NotFoundException,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
   Query,
@@ -16,6 +18,8 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreateRfqDto } from './dto/create-rfq.dto';
 import { UpdateRfqStatusDto } from './dto/update-rfq-status.dto';
 import { fuzzyMatch, searchableText } from '../common/utils/fuzzy-match';
+import { SEARCH_SCAN_LIMIT } from '../common/constants/search-scan-limit';
+import { DEFAULT_PAGE_SIZE, paginate } from '../common/utils/paginate';
 import { Role, type User } from '../generated/prisma';
 
 @Controller('rfqs')
@@ -62,9 +66,15 @@ export class RfqController {
   // AdminUsersController.list.
   @Roles(Role.admin)
   @Get()
-  async list(@Query('q') q?: string) {
+  async list(
+    @Query('q') q?: string,
+    @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip = 0,
+    @Query('take', new DefaultValuePipe(DEFAULT_PAGE_SIZE), ParseIntPipe)
+    take = DEFAULT_PAGE_SIZE,
+  ) {
     const rfqs = await this.prisma.serviceRequest.findMany({
       orderBy: { createdAt: 'desc' },
+      take: SEARCH_SCAN_LIMIT,
       include: {
         client: {
           select: {
@@ -77,18 +87,20 @@ export class RfqController {
         service: { select: { name: true, slug: true } },
       },
     });
-    if (!q) return rfqs;
-    return rfqs.filter((r) =>
-      fuzzyMatch(
-        searchableText(
-          r.client.firstName,
-          r.client.lastName,
-          r.client.companyName,
-          r.projectDetails,
-        ),
-        q,
-      ),
-    );
+    const filtered = q
+      ? rfqs.filter((r) =>
+          fuzzyMatch(
+            searchableText(
+              r.client.firstName,
+              r.client.lastName,
+              r.client.companyName,
+              r.projectDetails,
+            ),
+            q,
+          ),
+        )
+      : rfqs;
+    return paginate(filtered, skip, take);
   }
 
   // Free to move between pending <-> in_review in either direction, but
