@@ -7,9 +7,9 @@
 # them running unused — backend/frontend only ever talk to whatever URL
 # is in the env vars, not directly to these container names).
 #
-# Required .env at the repo root (see backend/.env.example and
-# frontend's env vars for the full list) — this file intentionally
-# does NOT hardcode any secret values.
+# Required .env at the repo root — see docs/CREDENTIALS_CHECKLIST.md's
+# "`.env.example` shape" section for the full list. This file
+# intentionally does NOT hardcode any secret values.
 
 services:
   # Both local containers are opt-in via the "local-db" profile

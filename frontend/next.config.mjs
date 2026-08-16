@@ -64,6 +64,17 @@ const nextConfig = {
           // accounted for. A real fix would be nonce-based CSP (a fresh
           // nonce per request, threaded through middleware to every inline
           // script) — bigger effort, not done here.
+          //
+          // 'unsafe-eval' is also required — NOT a leftover, and NOT
+          // optional. clerk-js evaluates code dynamically as part of its
+          // WASM-backed crypto (WebAuthn/passkey) support. Without it, the
+          // entire <SignIn>/<SignUp> widget fails to mount at all — the
+          // panel it should render into is just blank, with a CSP
+          // violation as the only clue in the console. Confirmed live:
+          // this was silently broken end-to-end (every sign-in/sign-up
+          // page) between the CSP being added and this fix, caught only
+          // because a real login was attempted rather than just checking
+          // for console errors on pages that never invoke Clerk's widget.
           {
             key: "Content-Security-Policy",
             value: [
@@ -72,7 +83,16 @@ const nextConfig = {
               "form-action 'self'",
               "frame-ancestors 'none'",
               "object-src 'none'",
-              "script-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev https://*.clerk.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://*.clerk.com",
+              // clerk-js also spawns a Web Worker from a blob: URL. With no
+              // worker-src set, browsers fall back to script-src for
+              // worker creation too — but a blob: worker doesn't satisfy a
+              // host-based allowlist (https://*.clerk...) the way a
+              // same-origin or explicitly-allowed blob: source does, so it
+              // was still being blocked even after 'unsafe-eval' fixed the
+              // base widget. Confirmed live: this exact worker-src gap
+              // remained even once <SignIn> was visibly rendering.
+              "worker-src 'self' blob:",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: https: blob:",
               "font-src 'self' data: https://fonts.gstatic.com",

@@ -51,7 +51,19 @@ describe('MeController', () => {
         findUnique: jest.fn(),
         update: jest.fn(),
       },
-      $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
+      candidateDocument: {
+        create: jest.fn(),
+      },
+      // Supports both the array form (Promise.all(ops)) used elsewhere in
+      // this controller and the callback form ($transaction(async tx =>
+      // ...)) used by uploadOtherDocument — tx is just `prisma` itself
+      // here, same as the other candidateApplication/candidateDocument
+      // mocks above, since nothing in these tests needs real isolation.
+      $transaction: jest.fn((arg: unknown) =>
+        typeof arg === 'function'
+          ? arg(prisma)
+          : Promise.all(arg as unknown[]),
+      ),
     } as unknown as PrismaService;
     const s3 = {
       readLeadingBytes: jest.fn((key: string) =>
@@ -213,6 +225,9 @@ describe('MeController', () => {
         status: 'pending',
         idPhotoS3Key: null,
         cvS3Key: 'candidates/u1/candidate-cv-1.pdf',
+        otherDocuments: [
+          { id: 'doc-1', originalFilename: 'transcript.pdf', uploadedAt: new Date('2026-01-01') },
+        ],
         documentsRequested: true,
         documentsRequestedNote: 'Please upload a clearer ID photo',
         position: { title: 'Welder', department: 'Ops' },
@@ -228,6 +243,9 @@ describe('MeController', () => {
         status: 'pending',
         hasIdPhoto: false,
         hasCv: true,
+        otherDocuments: [
+          { id: 'doc-1', originalFilename: 'transcript.pdf', uploadedAt: new Date('2026-01-01') },
+        ],
         documentsRequested: true,
         documentsRequestedNote: 'Please upload a clearer ID photo',
         position: { title: 'Welder', department: 'Ops' },
@@ -313,6 +331,104 @@ describe('MeController', () => {
         'pending/candidates/u1/candidate-id-photo-1.jpg',
       );
       expect(s3.promoteUpload).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('uploadOtherDocument', () => {
+    it('rejects a non-candidate account', async () => {
+      const { controller } = makeController();
+      await expect(
+        controller.uploadOtherDocument(client, {
+          s3Key: 'pending/candidates/u1/candidate-other-document-1.pdf',
+          originalFilename: 'transcript.pdf',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('404s when the candidate has no application row', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue(
+        null,
+      );
+      await expect(
+        controller.uploadOtherDocument(candidate, {
+          s3Key: 'pending/candidates/u1/candidate-other-document-1.pdf',
+          originalFilename: 'transcript.pdf',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects an S3 key that does not belong to the caller', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
+        id: 'app-1',
+      });
+      await expect(
+        controller.uploadOtherDocument(candidate, {
+          s3Key: 'pending/candidates/someone-else/candidate-other-document-1.pdf',
+          originalFilename: 'transcript.pdf',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('creates a new document row (appending, not replacing) and clears a pending documents-requested flag', async () => {
+      const { controller, prisma, s3 } = makeController();
+      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
+        id: 'app-1',
+      });
+      (prisma.candidateDocument.create as jest.Mock).mockResolvedValue({
+        id: 'doc-1',
+        originalFilename: 'transcript.pdf',
+        uploadedAt: new Date('2026-01-01'),
+      });
+
+      const result = await controller.uploadOtherDocument(candidate, {
+        s3Key: 'pending/candidates/u1/candidate-other-document-1.pdf',
+        originalFilename: 'transcript.pdf',
+      });
+
+      expect(s3.promoteUpload).toHaveBeenCalledWith(
+        'pending/candidates/u1/candidate-other-document-1.pdf',
+        'candidates/u1/candidate-other-document-1.pdf',
+      );
+      expect(prisma.candidateDocument.create).toHaveBeenCalledWith({
+        data: {
+          applicationId: 'app-1',
+          s3Key: 'candidates/u1/candidate-other-document-1.pdf',
+          originalFilename: 'transcript.pdf',
+        },
+      });
+      expect(prisma.candidateApplication.update).toHaveBeenCalledWith({
+        where: { id: 'app-1' },
+        data: { documentsRequested: false, documentsRequestedNote: null },
+      });
+      expect(result).toEqual({
+        id: 'doc-1',
+        originalFilename: 'transcript.pdf',
+        uploadedAt: new Date('2026-01-01'),
+      });
+    });
+
+    it('deletes the pending object and never creates a row when content validation fails', async () => {
+      const { controller, prisma, s3 } = makeController();
+      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
+        id: 'app-1',
+      });
+      (s3.readLeadingBytes as jest.Mock).mockResolvedValueOnce(
+        Buffer.from('<?php system($_GET[0]); ?>'),
+      );
+
+      await expect(
+        controller.uploadOtherDocument(candidate, {
+          s3Key: 'pending/candidates/u1/candidate-other-document-1.pdf',
+          originalFilename: 'shell.pdf',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(s3.deleteObject).toHaveBeenCalledWith(
+        'pending/candidates/u1/candidate-other-document-1.pdf',
+      );
+      expect(prisma.candidateDocument.create).not.toHaveBeenCalled();
     });
   });
 

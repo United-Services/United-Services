@@ -64,12 +64,18 @@ export class CandidatesController {
   async documents(@Param('id') id: string) {
     const application = await this.prisma.candidateApplication.findUnique({
       where: { id },
+      include: {
+        otherDocuments: {
+          select: { id: true, originalFilename: true, s3Key: true },
+          orderBy: { uploadedAt: 'desc' },
+        },
+      },
     });
     if (!application) throw new NotFoundException('Application not found');
 
     // Either document may not have been uploaded yet — the candidate
     // dashboard lets them upload ID/CV after signup, not during it.
-    const [idPhotoUrl, cvUrl] = await Promise.all([
+    const [idPhotoUrl, cvUrl, otherDocuments] = await Promise.all([
       application.idPhotoS3Key
         ? this.s3.createDownloadUrl(
             application.idPhotoS3Key,
@@ -82,8 +88,23 @@ export class CandidatesController {
             DOCUMENT_URL_TTL_SECONDS,
           )
         : Promise.resolve(null),
+      Promise.all(
+        application.otherDocuments.map(async (doc) => ({
+          id: doc.id,
+          originalFilename: doc.originalFilename,
+          url: await this.s3.createDownloadUrl(
+            doc.s3Key,
+            DOCUMENT_URL_TTL_SECONDS,
+          ),
+        })),
+      ),
     ]);
-    return { idPhotoUrl, cvUrl, expiresInSeconds: DOCUMENT_URL_TTL_SECONDS };
+    return {
+      idPhotoUrl,
+      cvUrl,
+      otherDocuments,
+      expiresInSeconds: DOCUMENT_URL_TTL_SECONDS,
+    };
   }
 
   // Lets an admin ask a candidate to (re-)submit a document — surfaced as

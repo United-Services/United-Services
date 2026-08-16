@@ -64,6 +64,15 @@ describe('UploadsController', () => {
     expect(result.key.endsWith('.png')).toBe(true);
   });
 
+  it('accepts an image content type for candidate-other-document, unlike candidate-cv', async () => {
+    const { controller } = makeController();
+    const result = await controller.presign(user, {
+      kind: 'candidate-other-document',
+      contentType: 'image/jpeg',
+    });
+    expect(result.key.endsWith('.jpg')).toBe(true);
+  });
+
   it('generates an unguessable key — two presigns for the same user/kind never collide', async () => {
     const { controller } = makeController();
     const a = await controller.presign(user, {
