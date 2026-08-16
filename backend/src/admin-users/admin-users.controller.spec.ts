@@ -38,7 +38,7 @@ describe('AdminUsersController.disable', () => {
           .mockResolvedValue({ id: 'client-1', disabledAt: new Date() }),
         findMany: jest.fn().mockResolvedValue([]),
         create: jest.fn(),
-        findUnique: jest.fn(),
+        findUnique: jest.fn().mockResolvedValue({ id: 'client-1' }),
       },
     } as unknown as PrismaService;
     const auditLog = {
@@ -73,6 +73,26 @@ describe('AdminUsersController.disable', () => {
         targetId: 'client-1',
       }),
     );
+  });
+
+  it('404s disable for an unknown user id instead of a generic 500', async () => {
+    const { controller, prisma } = makeController();
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+
+    await expect(controller.disable(admin, 'missing')).rejects.toThrow(
+      NotFoundException,
+    );
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('404s enable for an unknown user id instead of a generic 500', async () => {
+    const { controller, prisma } = makeController();
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+
+    await expect(controller.enable(admin, 'missing')).rejects.toThrow(
+      NotFoundException,
+    );
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
   it('enable clears disabledAt and records an audit entry', async () => {
