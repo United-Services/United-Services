@@ -20,6 +20,17 @@ const ALLOWED_CONTENT_TYPES: Record<
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
       'docx',
   },
+  // Free-form supporting documents (transcript, certificate, portfolio,
+  // etc.) — a superset of the CV/ID formats since we don't know in advance
+  // what an admin might ask a candidate to submit.
+  'candidate-other-document': {
+    'application/pdf': 'pdf',
+    'application/msword': 'doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+      'docx',
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+  },
 };
 
 @Controller('uploads')

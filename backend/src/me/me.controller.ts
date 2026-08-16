@@ -19,22 +19,32 @@ import { MfaService } from '../mfa/mfa.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { BecomeCandidateDto } from './dto/become-candidate.dto';
 import { UploadCandidateDocumentsDto } from './dto/upload-candidate-documents.dto';
+import { UploadOtherDocumentDto } from './dto/upload-other-document.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { Role, type User } from '../generated/prisma';
 import { matchesContentType } from '../common/utils/file-security';
 
+type CandidateUploadKind =
+  | 'candidate-id-photo'
+  | 'candidate-cv'
+  | 'candidate-other-document';
+
 // Mirrors the extension the server picked in UploadsController for each
 // upload kind — used both to enforce the key belongs to this user/kind and
 // to know which magic-byte signature to expect.
-const CANDIDATE_UPLOAD_TYPES: Record<
-  'candidate-id-photo' | 'candidate-cv',
-  string[]
-> = {
+const CANDIDATE_UPLOAD_TYPES: Record<CandidateUploadKind, string[]> = {
   'candidate-id-photo': ['image/jpeg', 'image/png'],
   'candidate-cv': [
     'application/pdf',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ],
+  'candidate-other-document': [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'image/jpeg',
+    'image/png',
   ],
 };
 
@@ -50,7 +60,7 @@ const CANDIDATE_UPLOAD_TYPES: Record<
 async function promoteValidatedCandidateUpload(
   s3: S3Service,
   userId: string,
-  kind: 'candidate-id-photo' | 'candidate-cv',
+  kind: CandidateUploadKind,
   pendingKey: string,
 ): Promise<string> {
   const expectedPrefix = `pending/candidates/${userId}/${kind}-`;
@@ -203,7 +213,13 @@ export class MeController {
     }
     const application = await this.prisma.candidateApplication.findUnique({
       where: { candidateUserId: user.id },
-      include: { position: { select: { title: true, department: true } } },
+      include: {
+        position: { select: { title: true, department: true } },
+        otherDocuments: {
+          select: { id: true, originalFilename: true, uploadedAt: true },
+          orderBy: { uploadedAt: 'desc' },
+        },
+      },
     });
     if (!application) throw new NotFoundException('No application found');
     return {
@@ -211,6 +227,7 @@ export class MeController {
       status: application.status,
       hasIdPhoto: application.idPhotoS3Key !== null,
       hasCv: application.cvS3Key !== null,
+      otherDocuments: application.otherDocuments,
       documentsRequested: application.documentsRequested,
       documentsRequestedNote: application.documentsRequestedNote,
       position: application.position,
@@ -268,6 +285,55 @@ export class MeController {
     return {
       hasIdPhoto: updated.idPhotoS3Key !== null,
       hasCv: updated.cvS3Key !== null,
+    };
+  }
+
+  // Lets a candidate attach additional supporting documents (transcript,
+  // certificate, portfolio, etc.) beyond the fixed ID/CV slots — unlike
+  // uploadDocuments above, each call adds a new row rather than replacing
+  // one. Also clears a pending "documents requested" flag, same reasoning
+  // as uploadDocuments.
+  @Post('candidate-documents/other')
+  async uploadOtherDocument(
+    @CurrentUser() user: User,
+    @Body() dto: UploadOtherDocumentDto,
+  ) {
+    if (user.role !== Role.candidate) {
+      throw new ForbiddenException(
+        'Only candidate accounts can upload documents',
+      );
+    }
+    const application = await this.prisma.candidateApplication.findUnique({
+      where: { candidateUserId: user.id },
+    });
+    if (!application) throw new NotFoundException('No application found');
+
+    const s3Key = await promoteValidatedCandidateUpload(
+      this.s3,
+      user.id,
+      'candidate-other-document',
+      dto.s3Key,
+    );
+
+    const document = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.candidateDocument.create({
+        data: {
+          applicationId: application.id,
+          s3Key,
+          originalFilename: dto.originalFilename,
+        },
+      });
+      await tx.candidateApplication.update({
+        where: { id: application.id },
+        data: { documentsRequested: false, documentsRequestedNote: null },
+      });
+      return created;
+    });
+
+    return {
+      id: document.id,
+      originalFilename: document.originalFilename,
+      uploadedAt: document.uploadedAt,
     };
   }
 

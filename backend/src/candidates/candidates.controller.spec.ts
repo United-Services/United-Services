@@ -84,6 +84,7 @@ describe('CandidatesController', () => {
         id: 'app-1',
         idPhotoS3Key: 'candidates/x/id.png',
         cvS3Key: 'candidates/x/cv.pdf',
+        otherDocuments: [],
       });
 
       const result = await controller.documents('app-1');
@@ -99,6 +100,7 @@ describe('CandidatesController', () => {
       expect(result).toEqual({
         idPhotoUrl: 'https://s3.example/signed',
         cvUrl: 'https://s3.example/signed',
+        otherDocuments: [],
         expiresInSeconds: 300,
       });
     });
@@ -109,6 +111,7 @@ describe('CandidatesController', () => {
         id: 'app-1',
         idPhotoS3Key: null,
         cvS3Key: null,
+        otherDocuments: [],
       });
 
       const result = await controller.documents('app-1');
@@ -117,8 +120,45 @@ describe('CandidatesController', () => {
       expect(result).toEqual({
         idPhotoUrl: null,
         cvUrl: null,
+        otherDocuments: [],
         expiresInSeconds: 300,
       });
+    });
+
+    it('also issues a presigned URL for each additional document', async () => {
+      const { controller, prisma, s3 } = makeController();
+      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
+        id: 'app-1',
+        idPhotoS3Key: null,
+        cvS3Key: null,
+        otherDocuments: [
+          { id: 'doc-1', originalFilename: 'transcript.pdf', s3Key: 'candidates/x/other-1.pdf' },
+          { id: 'doc-2', originalFilename: 'cert.jpg', s3Key: 'candidates/x/other-2.jpg' },
+        ],
+      });
+
+      const result = await controller.documents('app-1');
+
+      expect(s3.createDownloadUrl).toHaveBeenCalledWith(
+        'candidates/x/other-1.pdf',
+        300,
+      );
+      expect(s3.createDownloadUrl).toHaveBeenCalledWith(
+        'candidates/x/other-2.jpg',
+        300,
+      );
+      expect(result.otherDocuments).toEqual([
+        {
+          id: 'doc-1',
+          originalFilename: 'transcript.pdf',
+          url: 'https://s3.example/signed',
+        },
+        {
+          id: 'doc-2',
+          originalFilename: 'cert.jpg',
+          url: 'https://s3.example/signed',
+        },
+      ]);
     });
   });
 
