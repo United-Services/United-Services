@@ -168,6 +168,16 @@ model Service {
   name             String
   shortDescription String
   longDescription  String
+  // Short pill-badge specs shown on the public services page (e.g. "API
+  // 15CLT Compliant", "DN50 – DN600") — admin-editable, unlike iconKey.
+  specs            String[] @default([])
+  // Private S3 key for the service's hero image (block-all-public-access
+  // bucket, same as every other object here — see S3Service's doc comment
+  // and docs/BUSINESS_RULES.md rule 9). Never a raw/permanent URL: the
+  // API always resolves this to a short-lived presigned GET URL at read
+  // time (see ServicesController.list/bySlug), so the DB never stores
+  // anything a client could use directly.
+  imageS3Key       String?
   iconKey          String
   order            Int      @default(0)
   updatedAt        DateTime @updatedAt

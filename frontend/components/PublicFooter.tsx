@@ -1,10 +1,17 @@
 "use client" /* Brand */ /* Company */ /* Services */ /* Contact */
+import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { palette } from "../theme"
+import { axios } from "../lib/api"
 const footerLogo = "/images/logo-footer.png"
 
 interface Props {
   onNavigate: (page: string) => void
+}
+
+interface FooterService {
+  id: string
+  name: string
 }
 
 const CERTS = [
@@ -15,12 +22,18 @@ const CERTS = [
   "EGPC Registered",
 ]
 const COMPANY_LINKS = ["about", "vision", "careers", "contact"] as const
-const SERVICE_KEYS = ["gre", "wrap", "coating", "hdpe", "rtp", "rtv"] as const
 
 export default function PublicFooter({ onNavigate }: Props) {
   const t = useTranslations("footer")
   const tNav = useTranslations("nav")
-  const tSvc = useTranslations("services.names")
+  const [services, setServices] = useState<FooterService[]>([])
+
+  useEffect(() => {
+    axios
+      .get("/services")
+      .then(({ data }) => setServices(data))
+      .catch(() => undefined)
+  }, [])
 
   return (
     <footer
@@ -128,9 +141,9 @@ export default function PublicFooter({ onNavigate }: Props) {
             >
               {t("servicesHeading")}
             </div>
-            {SERVICE_KEYS.map((s) => (
+            {services.map((s) => (
               <button
-                key={s}
+                key={s.id}
                 onClick={() => onNavigate("services")}
                 style={{
                   display: "block",
@@ -144,7 +157,7 @@ export default function PublicFooter({ onNavigate }: Props) {
                   textAlign: "start",
                 }}
               >
-                {tSvc(s)}
+                {s.name}
               </button>
             ))}
           </div>

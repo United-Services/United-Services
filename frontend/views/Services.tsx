@@ -1,29 +1,26 @@
 "use client" /* Page header */ /* Cross-section diagram */ /* Services list */ /* Collapsed header */ /* Expanded content */
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { palette } from "../theme"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { useReveal } from "../hooks/useReveal"
-
-const greApplicationImg = "/images/bp-valves.jpg"
-const insulatorImg = "/images/lux-power.jpg"
-
-const SVC_IMGS: Record<string, string> = {
-  gre: greApplicationImg,
-  wrap: "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=900&q=80",
-  coating:
-    "https://images.unsplash.com/photo-1678984239420-43cdc183bce6?w=900&q=80",
-  hdpe: "https://images.unsplash.com/photo-1684667273934-e5d39307eeae?w=900&q=80",
-  rtp: "https://images.unsplash.com/photo-1758965364875-e090e5423d2d?w=900&q=80",
-  rtv: insulatorImg,
-}
+import { axios } from "../lib/api"
 
 interface Props {
   onNavigate: (page: string) => void
 }
 
-const SERVICE_KEYS = ["gre", "wrap", "coating", "hdpe", "rtp", "rtv"] as const
+interface Service {
+  id: string
+  slug: string
+  name: string
+  shortDescription: string
+  longDescription: string
+  specs: string[]
+  imageUrl: string | null
+}
+
 const LAYER_KEYS = ["wrap", "coating", "steel", "lining", "flow"] as const
 const LAYER_STYLE: Record<typeof LAYER_KEYS[number], {
   color: string
@@ -39,9 +36,17 @@ const LAYER_STYLE: Record<typeof LAYER_KEYS[number], {
 export default function Services({ onNavigate }: Props) {
   useReveal()
   const t = useTranslations("servicesPage")
-  const tSvc = useTranslations("services.names")
   const tNav = useTranslations("nav")
   const [active, setActive] = useState<number | null>(null)
+  const [services, setServices] = useState<Service[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    axios
+      .get("/services")
+      .then(({ data }) => setServices(data))
+      .finally(() => setLoading(false))
+  }, [])
 
   return (
     <div style={{ fontFamily: "Poppins, sans-serif", background: "#fff" }}>
@@ -210,121 +215,128 @@ export default function Services({ onNavigate }: Props) {
             gap: 2,
           }}
         >
-          {SERVICE_KEYS.map((key, i) => {
-            const specs = t.raw(`specs.${key}`) as string[]
-            return (
-              <div
-                key={key}
-                className="reveal"
+          {loading && (
+            <div
+              style={{ padding: 40, textAlign: "center", color: palette.muted }}
+            >
+              {t("loading")}
+            </div>
+          )}
+          {services.map((svc, i) => (
+            <div
+              key={svc.id}
+              className="reveal"
+              style={{
+                border: "1px solid #E2E8F0",
+                borderRadius: 20,
+                overflow: "hidden",
+                transitionDelay: `${i * 0.06}s`,
+              }}
+            >
+              {}
+              <button
+                onClick={() => setActive(active === i ? null : i)}
                 style={{
-                  border: "1px solid #E2E8F0",
-                  borderRadius: 20,
-                  overflow: "hidden",
-                  transitionDelay: `${i * 0.06}s`,
+                  width: "100%",
+                  background: active === i ? "#FFF7ED" : "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "28px 32px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 24,
+                  fontFamily: "Poppins, sans-serif",
+                  transition: "background 0.2s",
                 }}
               >
-                {}
-                <button
-                  onClick={() => setActive(active === i ? null : i)}
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: 20 }}
+                >
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: active === i ? palette.accent : "#94A3B8",
+                      fontWeight: 700,
+                      letterSpacing: "0.12em",
+                      flexShrink: 0,
+                    }}
+                  >
+                    SVC-0{i + 1}
+                  </div>
+                  <div style={{ textAlign: "start" }}>
+                    <div
+                      style={{
+                        fontSize: 18,
+                        fontWeight: 700,
+                        color: palette.navy,
+                      }}
+                    >
+                      {svc.name}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: palette.muted,
+                        marginTop: 2,
+                      }}
+                    >
+                      {svc.shortDescription}
+                    </div>
+                  </div>
+                </div>
+                <div
                   style={{
-                    width: "100%",
-                    background: active === i ? "#FFF7ED" : "#fff",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: "28px 32px",
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    background: active === i ? palette.accent : "#F1F5F9",
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 24,
-                    fontFamily: "Poppins, sans-serif",
+                    justifyContent: "center",
+                    flexShrink: 0,
                     transition: "background 0.2s",
                   }}
                 >
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 20 }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: active === i ? palette.accent : "#94A3B8",
-                        fontWeight: 700,
-                        letterSpacing: "0.12em",
-                        flexShrink: 0,
-                      }}
-                    >
-                      SVC-0{i + 1}
-                    </div>
-                    <div style={{ textAlign: "start" }}>
-                      <div
-                        style={{
-                          fontSize: 18,
-                          fontWeight: 700,
-                          color: palette.navy,
-                        }}
-                      >
-                        {tSvc(key)}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: palette.muted,
-                          marginTop: 2,
-                        }}
-                      >
-                        {t(`tags.${key}` as any)}
-                      </div>
-                    </div>
-                  </div>
-                  <div
+                  <span
                     style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: "50%",
-                      background: active === i ? palette.accent : "#F1F5F9",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                      transition: "background 0.2s",
+                      fontSize: 18,
+                      color: active === i ? "#fff" : "#64748B",
+                      lineHeight: 1,
+                      transform: active === i ? "rotate(45deg)" : "none",
+                      display: "inline-block",
+                      transition: "transform 0.2s",
                     }}
                   >
-                    <span
-                      style={{
-                        fontSize: 18,
-                        color: active === i ? "#fff" : "#64748B",
-                        lineHeight: 1,
-                        transform: active === i ? "rotate(45deg)" : "none",
-                        display: "inline-block",
-                        transition: "transform 0.2s",
-                      }}
-                    >
-                      +
-                    </span>
-                  </div>
-                </button>
+                    +
+                  </span>
+                </div>
+              </button>
 
-                {}
-                {active === i && (
+              {}
+              {active === i && (
+                <div
+                  style={{
+                    background: "#FFFAF7",
+                    borderTop: "1px solid #FDE8D0",
+                    padding: "36px 32px",
+                  }}
+                >
                   <div
+                    className="responsive-card-grid"
                     style={{
-                      background: "#FFFAF7",
-                      borderTop: "1px solid #FDE8D0",
-                      padding: "36px 32px",
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 48,
+                      alignItems: "start",
                     }}
                   >
-                    <div
-                      className="responsive-card-grid"
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 48,
-                        alignItems: "start",
-                      }}
-                    >
-                      <div>
+                    <div>
+                      {svc.imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element -- admin-uploaded S3 presigned URL, not a static build-time asset next/image can optimize
                         <img
-                          src={SVC_IMGS[key]}
-                          alt={t(`imgAlt.${key}` as any)}
+                          src={svc.imageUrl}
+                          alt={svc.name}
                           style={{
                             width: "100%",
                             aspectRatio: "16/9",
@@ -333,81 +345,81 @@ export default function Services({ onNavigate }: Props) {
                             marginBottom: 24,
                           }}
                         />
-                        <div
-                          style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
-                        >
-                          {specs.map((sp) => (
-                            <span
-                              key={sp}
-                              style={{
-                                fontSize: 12,
-                                fontWeight: 600,
-                                color: palette.accent,
-                                background: palette.accentLight,
-                                borderRadius: 6,
-                                padding: "4px 10px",
-                                border: "1px solid #FED7AA",
-                              }}
-                            >
-                              {sp}
-                            </span>
-                          ))}
-                        </div>
+                      )}
+                      <div
+                        style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
+                      >
+                        {svc.specs.map((sp) => (
+                          <span
+                            key={sp}
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: palette.accent,
+                              background: palette.accentLight,
+                              borderRadius: 6,
+                              padding: "4px 10px",
+                              border: "1px solid #FED7AA",
+                            }}
+                          >
+                            {sp}
+                          </span>
+                        ))}
                       </div>
-                      <div>
-                        <p
+                    </div>
+                    <div>
+                      <p
+                        style={{
+                          fontSize: 15,
+                          color: palette.slate,
+                          lineHeight: 1.8,
+                          marginBottom: 32,
+                        }}
+                      >
+                        {svc.longDescription}
+                      </p>
+                      <div
+                        style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
+                      >
+                        <button
+                          onClick={() => onNavigate("client-login")}
                           style={{
-                            fontSize: 15,
-                            color: palette.slate,
-                            lineHeight: 1.8,
-                            marginBottom: 32,
+                            background: palette.accent,
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: 9999,
+                            padding: "11px 28px",
+                            fontWeight: 700,
+                            fontSize: 14,
+                            cursor: "pointer",
+                            fontFamily: "Poppins, sans-serif",
                           }}
                         >
-                          {t(`desc.${key}` as any)}
-                        </p>
-                        <div
-                          style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
+                          {t("requestSpecFile")}
+                        </button>
+                        <button
+                          onClick={() => onNavigate("contact")}
+                          style={{
+                            background: "#4B5563",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: 9999,
+                            padding: "11px 28px",
+                            fontWeight: 600,
+                            fontSize: 14,
+                            cursor: "pointer",
+                            fontFamily: "Poppins, sans-serif",
+                          }}
                         >
-                          <button
-                            onClick={() => onNavigate("client-login")}
-                            style={{
-                              background: palette.accent,
-                              color: "#fff",
-                              border: "none",
-                              borderRadius: 9999,
-                              padding: "11px 28px",
-                              fontWeight: 700,
-                              fontSize: 14,
-                              cursor: "pointer",
-                              fontFamily: "Poppins, sans-serif",
-                            }}
-                          >
-                            {t("requestSpecFile")}
-                          </button>
-                          <button
-                            onClick={() => onNavigate("contact")}
-                            style={{
-                              background: "#4B5563",
-                              color: "#fff",
-                              border: "none",
-                              borderRadius: 9999,
-                              padding: "11px 28px",
-                              fontWeight: 600,
-                              fontSize: 14,
-                              cursor: "pointer",
-                              fontFamily: "Poppins, sans-serif",
-                            }}
-                          >
-                            {tNav("requestConsultation")}
-                          </button>
-                        </div>
+                          {tNav("requestConsultation")}
+                        </button>
                       </div>
                     </div>
                   </div>
-                )}
-              </div>
-            )
-          })}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </section>
 

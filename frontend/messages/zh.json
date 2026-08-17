@@ -299,7 +299,8 @@
         "Operating 11 kV – 500 kV",
         "Brush / spray application"
       ]
-    }
+    },
+    "loading": "Loading services…"
   },
   "careers": {
     "eyebrow": "USE · 表 05 · 招聘",
@@ -796,7 +797,23 @@
       "noFile": "No spec file uploaded yet",
       "uploading": "Uploading…",
       "replaceFile": "Replace File",
-      "uploadFile": "Upload Spec File"
+      "uploadFile": "Upload Spec File",
+      "addService": "Add Service",
+      "createHeading": "Create a new service",
+      "createService": "Create Service",
+      "slug": "Slug",
+      "slugPlaceholder": "e.g. gre-tubular-lining",
+      "name": "Name",
+      "shortDescription": "Short description",
+      "longDescription": "Long description",
+      "specsLabel": "Specs (comma-separated)",
+      "specsPlaceholder": "e.g. API 15CLT Compliant, DN50 - DN600",
+      "order": "Order",
+      "edit": "Edit",
+      "save": "Save",
+      "cancel": "Cancel",
+      "uploadImage": "Upload Image",
+      "replaceImage": "Replace Image"
     },
     "requests": {
       "searchPlaceholder": "Search requests by client, company, or file",

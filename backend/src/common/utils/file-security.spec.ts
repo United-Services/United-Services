@@ -61,6 +61,24 @@ describe('matchesContentType', () => {
     ).toBe(true);
   });
 
+  it('confirms a real WEBP signature', () => {
+    const buf = Buffer.concat([
+      Buffer.from('RIFF', 'latin1'),
+      Buffer.from([0, 0, 0, 0]),
+      Buffer.from('WEBP', 'latin1'),
+    ]);
+    expect(matchesContentType(buf, 'image/webp')).toBe(true);
+  });
+
+  it('rejects a RIFF file that is not actually WEBP', () => {
+    const buf = Buffer.concat([
+      Buffer.from('RIFF', 'latin1'),
+      Buffer.from([0, 0, 0, 0]),
+      Buffer.from('AVI ', 'latin1'),
+    ]);
+    expect(matchesContentType(buf, 'image/webp')).toBe(false);
+  });
+
   it('returns false for an unrecognized content type', () => {
     expect(
       matchesContentType(Buffer.from('anything'), 'application/x-msdownload'),

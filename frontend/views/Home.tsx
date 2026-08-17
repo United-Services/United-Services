@@ -6,6 +6,7 @@ import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import Spinner from "../components/Spinner"
 import { useReveal } from "../hooks/useReveal"
+import { axios } from "../lib/api"
 
 const ldImg = "/images/LD-03.png"
 const heroImg = "/images/hero-petroleum-v001.webp"
@@ -64,29 +65,43 @@ const CERT_CODES: Record<typeof CERT_KEYS[number], string> = {
   iso45001: "ISO 45001",
   egpc: "EGPC",
 }
-const SERVICE_KEYS = ["gre", "wrap", "coating", "hdpe", "rtp", "rtv"] as const
-const SERVICE_COLORS: Record<typeof SERVICE_KEYS[number], string> = {
-  gre: "#FFF7ED",
-  wrap: "#F0FDF4",
-  coating: "#EFF6FF",
-  hdpe: "#FDF4FF",
-  rtp: "#FFF7ED",
-  rtv: "#F0FDF4",
+interface ServicePreview {
+  id: string
+  slug: string
+  name: string
+  shortDescription: string
 }
+
+// Purely decorative background cycling — not tied to any specific
+// service's identity, just a rotation so adjacent cards read as distinct.
+const SERVICE_CARD_COLORS = [
+  "#FFF7ED",
+  "#F0FDF4",
+  "#EFF6FF",
+  "#FDF4FF",
+  "#FFF7ED",
+  "#F0FDF4",
+]
 
 export default function Home({ onNavigate }: Props) {
   useReveal()
   const t = useTranslations("home")
-  const tSvc = useTranslations("services.names")
-  const tSpec = useTranslations("services.specs")
   const tNav = useTranslations("nav")
   const locale = useLocale()
   const arrow = locale === "ar" ? "←" : "→"
   const [loading, setLoading] = useState(true)
+  const [services, setServices] = useState<ServicePreview[]>([])
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 1600)
     return () => clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    axios
+      .get("/services")
+      .then(({ data }) => setServices(data))
+      .catch(() => undefined)
   }, [])
 
   const STATS = [
@@ -694,13 +709,14 @@ export default function Home({ onNavigate }: Props) {
                 gap: 20,
               }}
             >
-              {SERVICE_KEYS.map((key, i) => (
+              {services.map((svc, i) => (
                 <button
-                  key={key}
+                  key={svc.id}
                   className="reveal"
                   onClick={() => onNavigate("services")}
                   style={{
-                    background: SERVICE_COLORS[key],
+                    background:
+                      SERVICE_CARD_COLORS[i % SERVICE_CARD_COLORS.length],
                     border: "1px solid #E2E8F0",
                     borderRadius: 16,
                     padding: "28px 24px",
@@ -743,7 +759,7 @@ export default function Home({ onNavigate }: Props) {
                       marginBottom: 6,
                     }}
                   >
-                    {tSvc(key)}
+                    {svc.name}
                   </div>
                   <div
                     style={{
@@ -752,7 +768,7 @@ export default function Home({ onNavigate }: Props) {
                       fontWeight: 500,
                     }}
                   >
-                    {tSpec(key)}
+                    {svc.shortDescription}
                   </div>
                 </button>
               ))}
