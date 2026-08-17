@@ -23,13 +23,16 @@ Fax: (+2) 0227033656
 - [x] `OpenPosition` content (title/description/department) is machine-
       translated into ar/zh on demand, cached, and re-triggered on
       publish/edit — self-hosted LibreTranslate, no billing account
-      needed. `Service` content deliberately stays English-only (see
-      `docs/BUSINESS_RULES.md` rule 16 for why).
+      needed. `Service` content (name/short/long description — never the
+      technical `specs` codes) is machine-translated the same way (see
+      `docs/BUSINESS_RULES.md` rule 16).
 - [x] Site available in English (default), Arabic, Chinese; navbar dropdown
       switcher + a dismissible geo-detected-language prompt (asks, never
-      auto-switches). Services, admin surfaces, and the candidate
-      signup/status flow intentionally stay English in every locale;
-      Careers and all other public pages are fully translated.
+      auto-switches). Admin surfaces and the candidate signup/status flow
+      intentionally stay English in every locale; Careers, Services (both
+      the marketing page and everywhere else Service content renders —
+      Home's preview, the footer, the client dashboard), and all other
+      public pages are fully translated.
 - [x] SEO: per-page metadata, sitemap.xml, robots.txt, Open Graph,
       structured data (LocalBusiness on homepage)
 

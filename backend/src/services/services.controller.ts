@@ -8,12 +8,15 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { RedisService } from '../redis/redis.service';
+import { TranslationService } from '../translations/translation.service';
+import { TRANSLATABLE_LOCALES } from '../translations/translatable-locales';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -68,6 +71,7 @@ export class ServicesController {
     private readonly s3: S3Service,
     private readonly auditLog: AuditLogService,
     private readonly redis: RedisService,
+    private readonly translations: TranslationService,
   ) {}
 
   // Resolves each service's private imageS3Key (see the schema comment on
@@ -87,17 +91,38 @@ export class ServicesController {
     return { ...service, imageUrl };
   }
 
+  // Merges each service's machine translation (name/shortDescription/
+  // longDescription only — `specs` is technical standard codes and is
+  // deliberately never translated, see TranslationService's SERVICE_FIELDS)
+  // on top of the original record for 'ar'/'zh'. Omitted/'en'/anything
+  // else returns the services completely untouched.
+  private async withTranslations(
+    services: Service[],
+    locale?: string,
+  ): Promise<Service[]> {
+    if (!locale || !TRANSLATABLE_LOCALES.includes(locale)) return services;
+    const translated = await this.translations.getTranslatedServices(
+      services,
+      locale,
+    );
+    return services.map((s) => ({ ...s, ...translated.get(s.id) }));
+  }
+
   // Public marketing content — read-heavy, low-churn, so it's cached in
   // Redis with an explicit invalidation on admin edits (Phase 10). Never
   // cache anything containing per-user data — this endpoint never does.
+  // The cached payload is always the untranslated (English) record —
+  // translation is merged in afterward per-request, same reasoning as
+  // withImageUrl not being baked into the cache either.
   @Public()
   @Get()
-  async list() {
+  async list(@Query('locale') locale?: string) {
     const cached = await this.redis.get(SERVICES_LIST_CACHE_KEY);
     const services = cached
       ? (JSON.parse(cached) as Service[])
       : await this.fetchAndCacheServices();
-    return Promise.all(services.map((s) => this.withImageUrl(s)));
+    const withTranslations = await this.withTranslations(services, locale);
+    return Promise.all(withTranslations.map((s) => this.withImageUrl(s)));
   }
 
   private async fetchAndCacheServices(): Promise<Service[]> {
@@ -115,10 +140,11 @@ export class ServicesController {
 
   @Public()
   @Get(':slug')
-  async bySlug(@Param('slug') slug: string) {
+  async bySlug(@Param('slug') slug: string, @Query('locale') locale?: string) {
     const service = await this.prisma.service.findUnique({ where: { slug } });
     if (!service) throw new NotFoundException('Service not found');
-    return this.withImageUrl(service);
+    const [withTranslation] = await this.withTranslations([service], locale);
+    return this.withImageUrl(withTranslation);
   }
 
   @Roles(Role.admin)
@@ -157,6 +183,7 @@ export class ServicesController {
       targetId: created.id,
       metadata: { slug: dto.slug, name: dto.name },
     });
+    this.translations.triggerServiceAsync(created, TRANSLATABLE_LOCALES); // fire-and-forget
     return this.withImageUrl(created);
   }
 
@@ -179,6 +206,12 @@ export class ServicesController {
       targetId: id,
       metadata: dto as unknown as Prisma.InputJsonValue,
     });
+    // Triggered regardless of which fields changed — the hash check
+    // inside triggerServiceAsync/getTranslatedServices makes a no-op
+    // retrigger on an update that didn't touch name/shortDescription/
+    // longDescription cheap and correct, so there's no need to diff
+    // fields here (same reasoning as PositionsController.update).
+    this.translations.triggerServiceAsync(updated, TRANSLATABLE_LOCALES); // fire-and-forget
     return this.withImageUrl(updated);
   }
 

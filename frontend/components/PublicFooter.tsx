@@ -1,6 +1,6 @@
 "use client" /* Brand */ /* Company */ /* Services */ /* Contact */
 import { useEffect, useState } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { palette } from "../theme"
 import { axios } from "../lib/api"
 const footerLogo = "/images/logo-footer.png"
@@ -26,14 +26,15 @@ const COMPANY_LINKS = ["about", "vision", "careers", "contact"] as const
 export default function PublicFooter({ onNavigate }: Props) {
   const t = useTranslations("footer")
   const tNav = useTranslations("nav")
+  const locale = useLocale()
   const [services, setServices] = useState<FooterService[]>([])
 
   useEffect(() => {
     axios
-      .get("/services")
+      .get("/services", { params: locale !== "en" ? { locale } : undefined })
       .then(({ data }) => setServices(data))
       .catch(() => undefined)
-  }, [])
+  }, [locale])
 
   return (
     <footer

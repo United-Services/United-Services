@@ -202,36 +202,36 @@
   },
   "servicesPage": {
     "eyebrow": "USE · SHEET 02 · SYS-INDEX",
-    "title": "Systems Index",
-    "subtitle": "Six integrated corrosion-control and pipeline-integrity systems, each engineered to international standards at our 6,000 m² Cairo facility.",
+    "title": "系统索引",
+    "subtitle": "六套集成的防腐与管道完整性系统，均按照国际标准在我们占地6,000平方米的开罗工厂制造。",
     "diagram": {
       "eyebrow": "USE · CROSS-SECTION DETAIL · REV.03",
-      "title": "Layered Pipeline Protection",
-      "body": "A complete USE-engineered pipeline assembly integrates all protection layers into one specification, designed as a system — not as separate products.",
+      "title": "分层管道保护",
+      "body": "USE 设计的完整管道组件将所有保护层整合为一个统一规格，作为一个系统而非独立产品来设计。",
       "layers": {
         "wrap": {
-          "label": "External Wrap / Mechanical Protection",
+          "label": "外部缠绕 / 机械保护",
           "short": "EXTERNAL"
         },
         "coating": {
-          "label": "Anti-Corrosion Coating (FBE / Epoxy)",
+          "label": "防腐涂层 (FBE / 环氧树脂)",
           "short": "ANTI-CORROSION"
         },
         "steel": {
-          "label": "Steel Substrate",
+          "label": "钢基材",
           "short": "STEEL"
         },
         "lining": {
-          "label": "GRE / HDPE Internal Lining",
+          "label": "GRE / HDPE 内衬",
           "short": "GRE"
         },
         "flow": {
-          "label": "Protected Flow Zone",
+          "label": "受保护流通区",
           "short": "PROTECTED"
         }
       }
     },
-    "requestSpecFile": "Request Spec File",
+    "requestSpecFile": "申请规格文件",
     "tags": {
       "gre": "API 15CLT · Internal Corrosion Barrier",
       "wrap": "ISO 21809 · Multi-Layer Tape Systems",
@@ -300,7 +300,7 @@
         "Brush / spray application"
       ]
     },
-    "loading": "Loading services…"
+    "loading": "正在加载服务…"
   },
   "careers": {
     "eyebrow": "USE · 表 05 · 招聘",

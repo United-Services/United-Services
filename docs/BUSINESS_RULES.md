@@ -103,22 +103,28 @@ changes or a new one is discovered during implementation.
     responses with `lib/useRequestGuard.ts` — otherwise a slow earlier
     request can resolve after a faster later one and silently overwrite
     fresher state with stale data.
-16. `Service` content stays English-only everywhere — it only ever renders
-    inside the authenticated client/admin dashboards, never on the public
-    (fully static, already next-intl-translated) marketing Services page.
-    `OpenPosition` (Careers page) content is the one thing that's
-    machine-translated, via `TranslationService` + self-hosted
-    LibreTranslate (see `docker-compose.yml`'s `libretranslate` service —
-    no billing account required, unlike Google Cloud Translation). Cached
-    per `(contentType, contentId, locale)` in `ContentTranslation`,
+16. `Service` and `OpenPosition` content are both machine-translated via
+    `TranslationService` + self-hosted LibreTranslate (see
+    `docker-compose.yml`'s `libretranslate` service — no billing account
+    required, unlike Google Cloud Translation). The public Services page,
+    Home's services preview, the footer's services list, and the client
+    dashboard all render `Service` records directly from the DB (not
+    static i18n content), so this covers what a visitor/client actually
+    sees, not just the admin/dashboard views. For `Service`, only
+    `name`/`shortDescription`/`longDescription` are translated — `specs`
+    (technical standard codes like "API 15CLT Compliant", "DN50 – DN600")
+    is never run through machine translation and always stays as stored,
+    in every locale; see `TranslationService`'s `SERVICE_FIELDS` constant.
+    Cached per `(contentType, contentId, locale)` in `ContentTranslation`,
     invalidated by comparing a hash of the live source fields against the
-    hash stored at translation time — not a hash column on `OpenPosition`
-    itself, so adding translation support never touched that model's own
-    write paths. Concurrent requests for the same untranslated position
-    must never produce more than one LibreTranslate call — enforced with
-    a Redis lock (`lock:translation:open_position:{id}:{locale}`); a
-    request that loses the lock race polls briefly, then falls back to
-    English rather than blocking indefinitely. `TranslatableContentType`
-    is deliberately an enum with one member today so `service` can be
-    added later without a schema redesign — see the note on that enum in
-    `schema.prisma` for why it isn't now.
+    hash stored at translation time — not a hash column on `OpenPosition`/
+    `Service` themselves, so adding translation support never touched
+    either model's own write paths. Concurrent requests for the same
+    untranslated item must never produce more than one LibreTranslate
+    call — enforced with a Redis lock
+    (`lock:translation:{contentType}:{id}:{locale}`); a request that
+    loses the lock race polls briefly, then falls back to English rather
+    than blocking indefinitely. Admin surfaces (beyond the Services
+    content covered above) and the candidate signup/status flow still
+    intentionally stay English everywhere — see `docs/REQUIREMENTS.md`'s
+    public-site note.

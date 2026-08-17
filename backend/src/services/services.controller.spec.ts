@@ -4,6 +4,7 @@ import type { PrismaService } from '../prisma/prisma.service';
 import type { S3Service } from '../s3/s3.service';
 import type { AuditLogService } from '../audit-log/audit-log.service';
 import type { RedisService } from '../redis/redis.service';
+import type { TranslationService } from '../translations/translation.service';
 import type { User } from '../generated/prisma';
 
 describe('ServicesController', () => {
@@ -44,12 +45,23 @@ describe('ServicesController', () => {
       set: jest.fn(),
       del: jest.fn(),
     } as unknown as RedisService;
+    const translations = {
+      getTranslatedServices: jest.fn().mockResolvedValue(new Map()),
+      triggerServiceAsync: jest.fn(),
+    } as unknown as TranslationService;
     return {
-      controller: new ServicesController(prisma, s3, auditLog, redis),
+      controller: new ServicesController(
+        prisma,
+        s3,
+        auditLog,
+        redis,
+        translations,
+      ),
       prisma,
       s3,
       auditLog,
       redis,
+      translations,
     };
   }
 
@@ -103,6 +115,50 @@ describe('ServicesController', () => {
         3600,
       );
       expect(result[0].imageUrl).toBe('https://s3.example/get?signed=1');
+    });
+
+    it('with a translatable locale, merges the machine translation onto each service', async () => {
+      const { controller, redis, translations } = makeController();
+      (redis.get as jest.Mock).mockResolvedValue(
+        JSON.stringify([
+          { id: 'svc-1', name: 'GRE Lining', specs: ['API 15CLT Compliant'] },
+        ]),
+      );
+      (translations.getTranslatedServices as jest.Mock).mockResolvedValue(
+        new Map([
+          [
+            'svc-1',
+            {
+              status: 'translated',
+              name: 'تبطين GRE',
+              shortDescription: 'وصف',
+              longDescription: 'وصف طويل',
+            },
+          ],
+        ]),
+      );
+
+      const result = await controller.list('ar');
+
+      expect(translations.getTranslatedServices).toHaveBeenCalledWith(
+        [expect.objectContaining({ id: 'svc-1' })],
+        'ar',
+      );
+      expect(result[0].name).toBe('تبطين GRE');
+      // specs is never touched by translation — stays exactly as stored.
+      expect(result[0].specs).toEqual(['API 15CLT Compliant']);
+    });
+
+    it('with no locale (or "en"), never calls the translation service', async () => {
+      const { controller, redis, translations } = makeController();
+      (redis.get as jest.Mock).mockResolvedValue(
+        JSON.stringify([{ id: 'svc-1', imageS3Key: null }]),
+      );
+
+      await controller.list();
+      await controller.list('en');
+
+      expect(translations.getTranslatedServices).not.toHaveBeenCalled();
     });
   });
 

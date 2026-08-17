@@ -1,6 +1,6 @@
 "use client" /* Page header */ /* Cross-section diagram */ /* Services list */ /* Collapsed header */ /* Expanded content */
 import { useEffect, useState } from "react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { palette } from "../theme"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
@@ -37,16 +37,24 @@ export default function Services({ onNavigate }: Props) {
   useReveal()
   const t = useTranslations("servicesPage")
   const tNav = useTranslations("nav")
+  const locale = useLocale()
   const [active, setActive] = useState<number | null>(null)
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Re-fetch on locale change too, same reasoning as Careers.tsx's
+    // identical effect — a switched-language visitor should see
+    // translated content without needing a full page reload.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true)
     axios
-      .get("/services")
+      .get("/services", {
+        params: locale !== "en" ? { locale } : undefined,
+      })
       .then(({ data }) => setServices(data))
       .finally(() => setLoading(false))
-  }, [])
+  }, [locale])
 
   return (
     <div style={{ fontFamily: "Poppins, sans-serif", background: "#fff" }}>

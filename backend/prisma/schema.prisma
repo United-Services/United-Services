@@ -41,9 +41,11 @@ enum ApplicationStatus {
 
 enum TranslatableContentType {
   open_position
-  // Add `service` here (and nowhere else in this system) if Service
-  // translation is ever brought into scope — see docs/REQUIREMENTS.md's
-  // "Services... intentionally stay English" note for why it isn't now.
+  // Only name/shortDescription/longDescription — never `specs`, which is
+  // technical standard codes (e.g. "API 15CLT Compliant", "DN50 – DN600")
+  // that must stay as-is in every locale. See ServicesController /
+  // TranslationService's SERVICE_FIELDS.
+  service
 }
 
 enum TranslationStatus {

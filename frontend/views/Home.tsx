@@ -99,10 +99,10 @@ export default function Home({ onNavigate }: Props) {
 
   useEffect(() => {
     axios
-      .get("/services")
+      .get("/services", { params: locale !== "en" ? { locale } : undefined })
       .then(({ data }) => setServices(data))
       .catch(() => undefined)
-  }, [])
+  }, [locale])
 
   const STATS = [
     { value: "2005", label: t("proof.yearFoundedLabel") },
