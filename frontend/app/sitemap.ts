@@ -33,7 +33,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // ships with the static marketing routes above.
   try {
     const apiUrl =
-      process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3002/api/v1"
+      process.env.NEXT_PUBLIC_API_URL
     const res = await fetch(`${apiUrl}/services`, {
       next: { revalidate: 3600 },
     })
