@@ -5,6 +5,16 @@ import { usePathname, useRouter } from "@/i18n/navigation"
 import { routing } from "@/i18n/routing"
 import { palette } from "../theme"
 
+// Egypt for Arabic (this company's home market and primary Arabic-
+// speaking audience) rather than a pan-Arabic/other-country flag — a
+// judgment call, not a linguistic rule (Arabic has no single "the"
+// national flag the way most languages don't either).
+const FLAGS: Record<"en" | "ar" | "zh", string> = {
+  en: "🇬🇧",
+  ar: "🇪🇬",
+  zh: "🇨🇳",
+}
+
 export default function LanguageSwitcher() {
   const t = useTranslations("language")
   const locale = useLocale()
@@ -37,6 +47,7 @@ export default function LanguageSwitcher() {
           fontFamily: "Poppins, sans-serif",
         }}
       >
+        <span aria-hidden="true">{FLAGS[locale as "en" | "ar" | "zh"]}</span>
         {t(locale as "en" | "ar" | "zh")}
         <span
           style={{
@@ -73,7 +84,9 @@ export default function LanguageSwitcher() {
                 key={l}
                 onClick={() => switchTo(l)}
                 style={{
-                  display: "block",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
                   width: "100%",
                   textAlign: "start",
                   background: l === locale ? palette.accentLight : "#fff",
@@ -86,6 +99,7 @@ export default function LanguageSwitcher() {
                   fontFamily: "Poppins, sans-serif",
                 }}
               >
+                <span aria-hidden="true">{FLAGS[l]}</span>
                 {t(l)}
               </button>
             ))}
