@@ -1,10 +1,10 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
-import { palette } from "../theme"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { useReveal } from "../hooks/useReveal"
+import { INK, PAPER, TEXT, MUTED, HEAD, BODY } from "../lib/publicTheme"
 const headerImg = "/images/LD-01.png"
 
 const adnocLogo = "/images/adnoc.png"
@@ -200,14 +200,14 @@ export default function Projects({ onNavigate, company }: Props) {
     : COMPANIES
 
   return (
-    <div style={{ fontFamily: "Poppins, sans-serif", background: "#fff" }}>
+    <div style={{ fontFamily: BODY, background: PAPER, color: TEXT }}>
       <PublicNav current="projects" onNavigate={onNavigate} />
 
       <section
         style={{
           position: "relative",
           paddingTop: 68,
-          background: palette.navy,
+          background: INK,
           padding: "120px 28px 80px",
           overflow: "hidden",
         }}
@@ -221,7 +221,7 @@ export default function Projects({ onNavigate, company }: Props) {
             width: "100%",
             height: "100%",
             objectFit: "cover",
-            opacity: 0.5,
+            opacity: 0.4,
           }}
         />
         <div
@@ -229,7 +229,7 @@ export default function Projects({ onNavigate, company }: Props) {
             position: "absolute",
             inset: 0,
             background:
-              "linear-gradient(to bottom, rgba(15,23,42,0.75), rgba(15,23,42,0.96))",
+              "linear-gradient(to bottom, rgba(10,10,12,0.7), rgba(10,10,12,0.96))",
           }}
         />
         <div
@@ -242,10 +242,11 @@ export default function Projects({ onNavigate, company }: Props) {
         >
           <h1
             style={{
+              fontFamily: HEAD,
               fontSize: "clamp(36px, 5vw, 64px)",
-              fontWeight: 800,
+              fontWeight: 700,
               color: "#fff",
-              letterSpacing: "-0.03em",
+              letterSpacing: "-0.02em",
               marginBottom: 20,
               maxWidth: 700,
             }}
@@ -255,7 +256,7 @@ export default function Projects({ onNavigate, company }: Props) {
           <p
             style={{
               fontSize: 17,
-              color: "#94A3B8",
+              color: "#A9A9A9",
               maxWidth: 560,
               lineHeight: 1.7,
             }}
@@ -277,7 +278,7 @@ export default function Projects({ onNavigate, company }: Props) {
                 fontWeight: 600,
                 fontSize: 13,
                 cursor: "pointer",
-                fontFamily: "Poppins, sans-serif",
+                fontFamily: BODY,
               }}
             >
               {t("viewAllClients")}
@@ -289,9 +290,9 @@ export default function Projects({ onNavigate, company }: Props) {
       {!filter && (
         <section
           style={{
-            background: "#F8FAFC",
+            background: "#fff",
             padding: "48px 28px",
-            borderBottom: "1px solid #E2E8F0",
+            borderBottom: "1px solid #E6E5E0",
           }}
         >
           <div
@@ -312,15 +313,15 @@ export default function Projects({ onNavigate, company }: Props) {
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
-                  background: "#fff",
-                  border: "1px solid #E2E8F0",
+                  background: PAPER,
+                  border: "1px solid #E6E5E0",
                   borderRadius: 9999,
                   padding: "8px 18px",
                   cursor: "pointer",
-                  fontFamily: "Poppins, sans-serif",
+                  fontFamily: BODY,
                   fontSize: 13,
                   fontWeight: 600,
-                  color: palette.slate,
+                  color: MUTED,
                 }}
               >
                 {c.logo && (
@@ -356,7 +357,7 @@ export default function Projects({ onNavigate, company }: Props) {
                   gap: 16,
                   marginBottom: 24,
                   paddingBottom: 16,
-                  borderBottom: "1px solid #E2E8F0",
+                  borderBottom: "1px solid #E6E5E0",
                 }}
               >
                 {c.logo && (
@@ -369,14 +370,15 @@ export default function Projects({ onNavigate, company }: Props) {
                 <div>
                   <div
                     style={{
+                      fontFamily: HEAD,
                       fontSize: 20,
-                      fontWeight: 800,
-                      color: palette.navy,
+                      fontWeight: 700,
+                      color: TEXT,
                     }}
                   >
                     {c.name}
                   </div>
-                  <div style={{ fontSize: 12, color: palette.muted }}>
+                  <div style={{ fontSize: 12, color: MUTED }}>
                     {t(`companies.${c.slug}.region` as any)}
                   </div>
                 </div>
@@ -392,9 +394,10 @@ export default function Projects({ onNavigate, company }: Props) {
                   <div
                     key={p.key}
                     style={{
-                      border: "1px solid #E2E8F0",
+                      border: "1px solid #E6E5E0",
                       borderRadius: 16,
                       overflow: "hidden",
+                      background: "#fff",
                     }}
                   >
                     <img
@@ -411,10 +414,11 @@ export default function Projects({ onNavigate, company }: Props) {
                     <div style={{ padding: "20px 22px" }}>
                       <div
                         style={{
+                          fontFamily: "ui-monospace,monospace",
                           fontSize: 11,
-                          color: palette.accent,
+                          color: TEXT,
                           fontWeight: 700,
-                          letterSpacing: "0.1em",
+                          letterSpacing: "0.08em",
                           textTransform: "uppercase",
                           marginBottom: 8,
                         }}
@@ -423,9 +427,10 @@ export default function Projects({ onNavigate, company }: Props) {
                       </div>
                       <div
                         style={{
+                          fontFamily: HEAD,
                           fontSize: 16,
-                          fontWeight: 700,
-                          color: palette.navy,
+                          fontWeight: 600,
+                          color: TEXT,
                           marginBottom: 8,
                         }}
                       >
@@ -436,7 +441,7 @@ export default function Projects({ onNavigate, company }: Props) {
                       <p
                         style={{
                           fontSize: 13,
-                          color: palette.slate,
+                          color: MUTED,
                           lineHeight: 1.6,
                         }}
                       >

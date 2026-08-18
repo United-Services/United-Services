@@ -1,7 +1,7 @@
 // Shared source for the pipeline cross-section's five layers — used by
-// Services.tsx's diagram and the homepage's well-hero/layer-dive so both
-// read as one system instead of two unrelated designs. Order matters: it's
-// outside-in (wrap is the outermost layer, flow is the innermost core).
+// Services.tsx's diagram and the homepage's services-preview card colors
+// so both read as one system instead of two unrelated designs. Order
+// matters: it's outside-in (wrap is the outermost layer, flow the core).
 export const LAYER_KEYS = ["wrap", "coating", "steel", "lining", "flow"] as const
 export type LayerKey = (typeof LAYER_KEYS)[number]
 

@@ -2,14 +2,28 @@
 import { useState } from "react"
 import { useSignUp, useAuth } from "@clerk/nextjs"
 import { useTranslations } from "next-intl"
-import { palette, inputStyle } from "../theme"
 import { InlineSpinner } from "../components/Spinner"
 import { axios, authHeader } from "../lib/api"
 import PublicNav from "../components/PublicNav"
+import { PAPER, TEXT, MUTED, LIME, HEAD, BODY } from "../lib/publicTheme"
 
 interface Props {
   onNavigate: (page: string) => void
   positionId?: string | null
+}
+
+const fieldInputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "13px 16px",
+  borderRadius: 14,
+  border: "1.5px solid #E6E5E0",
+  fontSize: 15,
+  color: TEXT,
+  background: "#fff",
+  outline: "none",
+  transition: "border-color 0.2s",
+  boxSizing: "border-box",
+  fontFamily: BODY,
 }
 
 export default function CandidateSignup({ onNavigate, positionId }: Props) {
@@ -97,7 +111,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
 
   if (submitted) {
     return (
-      <div style={{ fontFamily: "Poppins, sans-serif" }}>
+      <div style={{ fontFamily: BODY, color: TEXT }}>
         <PublicNav current="candidate-signup" onNavigate={onNavigate} />
         <div
           style={{
@@ -106,7 +120,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "#F8FAFC",
+            background: PAPER,
             padding: 24,
           }}
         >
@@ -117,7 +131,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
             background: "#fff",
             borderRadius: 24,
             padding: "64px 48px",
-            border: "1px solid #E2E8F0",
+            border: "1px solid #E6E5E0",
             textAlign: "center",
           }}
         >
@@ -126,7 +140,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
               width: 72,
               height: 72,
               borderRadius: "50%",
-              background: "#FFF7ED",
+              background: PAPER,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -138,11 +152,12 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
           </div>
           <h2
             style={{
+              fontFamily: HEAD,
               fontSize: 26,
-              fontWeight: 800,
-              color: palette.navy,
+              fontWeight: 600,
+              color: TEXT,
               marginBottom: 12,
-              letterSpacing: "-0.02em",
+              letterSpacing: "-0.01em",
             }}
           >
             {t("submitted.title")}
@@ -150,7 +165,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
           <p
             style={{
               fontSize: 14,
-              color: palette.muted,
+              color: MUTED,
               lineHeight: 1.8,
               marginBottom: 32,
             }}
@@ -167,7 +182,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
           </p>
           <div
             style={{
-              background: "#F8FAFC",
+              background: PAPER,
               borderRadius: 14,
               padding: "20px 24px",
               marginBottom: 32,
@@ -177,9 +192,10 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
             <div
               style={{
                 fontSize: 11,
-                color: palette.accent,
+                color: TEXT,
                 fontWeight: 700,
-                letterSpacing: "0.12em",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
                 marginBottom: 12,
               }}
             >
@@ -204,11 +220,11 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                     width: 20,
                     height: 20,
                     borderRadius: "50%",
-                    background: palette.accent,
+                    background: LIME,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: "#fff",
+                    color: TEXT,
                     fontWeight: 700,
                     fontSize: 10,
                     flexShrink: 0,
@@ -219,7 +235,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                 <span
                   style={{
                     fontSize: 13,
-                    color: palette.slate,
+                    color: MUTED,
                     lineHeight: 1.5,
                   }}
                 >
@@ -231,15 +247,15 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
           <button
             onClick={() => onNavigate("candidate-dashboard")}
             style={{
-              background: palette.accent,
-              color: "#fff",
+              background: LIME,
+              color: TEXT,
               border: "none",
               borderRadius: 9999,
               padding: "12px 32px",
-              fontWeight: 700,
+              fontWeight: 600,
               fontSize: 14,
               cursor: "pointer",
-              fontFamily: "Poppins, sans-serif",
+              fontFamily: BODY,
             }}
           >
             {t("goToDashboard")}
@@ -251,7 +267,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
   }
 
   return (
-    <div style={{ fontFamily: "Poppins, sans-serif" }}>
+    <div style={{ fontFamily: BODY, color: TEXT }}>
       {/* Clerk manages this element itself (sizes/renders the CAPTCHA
           widget into it when a challenge is required) — without it present
           in the DOM before signUp.password() is called, Clerk silently
@@ -263,45 +279,27 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
         style={{
           marginTop: 68,
           minHeight: "calc(100vh - 68px)",
-          background: "#F8FAFC",
+          background: PAPER,
           padding: "40px 24px",
         }}
       >
       <div style={{ maxWidth: 680, margin: "0 auto" }}>
-        <button
-          onClick={() => onNavigate("home")}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            marginBottom: 36,
-          }}
-        >
-          <img
-            src="/images/logo-nav-future-energy.png"
-            alt="United Services Egypt"
-            style={{ height: 32, width: "auto", objectFit: "contain" }}
-          />
-        </button>
-
         <div
           style={{
             background: "#fff",
             borderRadius: 24,
             padding: "48px",
-            border: "1px solid #E2E8F0",
+            border: "1px solid #E6E5E0",
           }}
         >
           <h1
             style={{
+              fontFamily: HEAD,
               fontSize: 28,
-              fontWeight: 800,
-              color: palette.navy,
+              fontWeight: 600,
+              color: TEXT,
               marginBottom: 8,
-              letterSpacing: "-0.02em",
+              letterSpacing: "-0.01em",
             }}
           >
             {t("title")}
@@ -309,7 +307,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
           <p
             style={{
               fontSize: 14,
-              color: palette.muted,
+              color: MUTED,
               marginBottom: 36,
               lineHeight: 1.6,
             }}
@@ -320,7 +318,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
           {step === "verify" ? (
             <form onSubmit={handleVerify}>
               <p
-                style={{ fontSize: 14, color: palette.muted, marginBottom: 20 }}
+                style={{ fontSize: 14, color: MUTED, marginBottom: 20 }}
               >
                 {t("verify.prompt", { email: form.email })}
               </p>
@@ -330,7 +328,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                     display: "block",
                     fontSize: 13,
                     fontWeight: 600,
-                    color: palette.navy,
+                    color: TEXT,
                     marginBottom: 8,
                   }}
                 >
@@ -342,12 +340,12 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                   placeholder={t("verify.placeholder")}
                   required
                   autoComplete="one-time-code"
-                  style={inputStyle}
+                  style={fieldInputStyle}
                   onFocus={(e) => {
-                    e.target.style.borderColor = palette.accent
+                    e.target.style.borderColor = TEXT
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = "#E2E8F0"
+                    e.target.style.borderColor = "#E6E5E0"
                   }}
                 />
               </div>
@@ -371,12 +369,12 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                   padding: "14px",
                   borderRadius: 9999,
                   border: "none",
-                  background: loading ? "#9CA3AF" : palette.accent,
-                  color: "#fff",
-                  fontWeight: 700,
+                  background: loading ? "#B9B8B2" : LIME,
+                  color: TEXT,
+                  fontWeight: 600,
                   fontSize: 15,
                   cursor: "pointer",
-                  fontFamily: "Poppins, sans-serif",
+                  fontFamily: BODY,
                 }}
               >
                 {loading ? (
@@ -404,7 +402,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                       display: "block",
                       fontSize: 13,
                       fontWeight: 600,
-                      color: palette.navy,
+                      color: TEXT,
                       marginBottom: 8,
                     }}
                   >
@@ -415,12 +413,12 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                     onChange={set("firstName")}
                     placeholder={t("form.firstNamePlaceholder")}
                     required
-                    style={inputStyle}
+                    style={fieldInputStyle}
                     onFocus={(e) => {
-                      e.target.style.borderColor = palette.accent
+                      e.target.style.borderColor = TEXT
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = "#E2E8F0"
+                      e.target.style.borderColor = "#E6E5E0"
                     }}
                   />
                 </div>
@@ -430,7 +428,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                       display: "block",
                       fontSize: 13,
                       fontWeight: 600,
-                      color: palette.navy,
+                      color: TEXT,
                       marginBottom: 8,
                     }}
                   >
@@ -441,12 +439,12 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                     onChange={set("lastName")}
                     placeholder={t("form.lastNamePlaceholder")}
                     required
-                    style={inputStyle}
+                    style={fieldInputStyle}
                     onFocus={(e) => {
-                      e.target.style.borderColor = palette.accent
+                      e.target.style.borderColor = TEXT
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = "#E2E8F0"
+                      e.target.style.borderColor = "#E6E5E0"
                     }}
                   />
                 </div>
@@ -458,7 +456,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                     display: "block",
                     fontSize: 13,
                     fontWeight: 600,
-                    color: palette.navy,
+                    color: TEXT,
                     marginBottom: 8,
                   }}
                 >
@@ -469,12 +467,12 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                   value={form.dob}
                   onChange={set("dob")}
                   required
-                  style={inputStyle}
+                  style={fieldInputStyle}
                   onFocus={(e) => {
-                    e.target.style.borderColor = palette.accent
+                    e.target.style.borderColor = TEXT
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = "#E2E8F0"
+                    e.target.style.borderColor = "#E6E5E0"
                   }}
                 />
               </div>
@@ -485,7 +483,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                     display: "block",
                     fontSize: 13,
                     fontWeight: 600,
-                    color: palette.navy,
+                    color: TEXT,
                     marginBottom: 8,
                   }}
                 >
@@ -498,12 +496,12 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                   onChange={set("email")}
                   placeholder={t("form.emailPlaceholder")}
                   required
-                  style={inputStyle}
+                  style={fieldInputStyle}
                   onFocus={(e) => {
-                    e.target.style.borderColor = palette.accent
+                    e.target.style.borderColor = TEXT
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = "#E2E8F0"
+                    e.target.style.borderColor = "#E6E5E0"
                   }}
                 />
               </div>
@@ -514,7 +512,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                     display: "block",
                     fontSize: 13,
                     fontWeight: 600,
-                    color: palette.navy,
+                    color: TEXT,
                     marginBottom: 8,
                   }}
                 >
@@ -528,23 +526,23 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                   placeholder={t("form.passwordPlaceholder")}
                   required
                   minLength={8}
-                  style={inputStyle}
+                  style={fieldInputStyle}
                   onFocus={(e) => {
-                    e.target.style.borderColor = palette.accent
+                    e.target.style.borderColor = TEXT
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = "#E2E8F0"
+                    e.target.style.borderColor = "#E6E5E0"
                   }}
                 />
               </div>
 
               <div
                 style={{
-                  borderTop: "1px solid #F1F5F9",
+                  borderTop: "1px solid #E6E5E0",
                   paddingTop: 20,
                   marginBottom: 8,
                   fontSize: 12,
-                  color: palette.muted,
+                  color: MUTED,
                   lineHeight: 1.6,
                 }}
               >
@@ -572,12 +570,12 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                   padding: "14px",
                   borderRadius: 9999,
                   border: "none",
-                  background: loading ? "#9CA3AF" : palette.accent,
-                  color: "#fff",
-                  fontWeight: 700,
+                  background: loading ? "#B9B8B2" : LIME,
+                  color: TEXT,
+                  fontWeight: 600,
                   fontSize: 15,
                   cursor: loading ? "not-allowed" : "pointer",
-                  fontFamily: "Poppins, sans-serif",
+                  fontFamily: BODY,
                 }}
               >
                 {loading ? (
@@ -592,7 +590,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
               <p
                 style={{
                   fontSize: 11,
-                  color: "#94A3B8",
+                  color: MUTED,
                   textAlign: "center",
                   marginTop: 14,
                   lineHeight: 1.5,
@@ -610,11 +608,11 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
             style={{
               background: "none",
               border: "none",
-              color: palette.accent,
+              color: TEXT,
               fontSize: 13,
               fontWeight: 600,
               cursor: "pointer",
-              fontFamily: "Poppins, sans-serif",
+              fontFamily: BODY,
             }}
           >
             {t("backToCareers")}

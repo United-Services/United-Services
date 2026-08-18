@@ -1,14 +1,18 @@
 "use client" /* Logo */ /* Desktop links — hidden under 860px, see .public-nav-desktop in globals.css */ /* Desktop actions — hidden under 860px */ /* Mobile hamburger — only shown under 860px */ /* Mobile panel */
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useUser } from "@clerk/nextjs"
-import { palette } from "../theme"
 import LanguageSwitcher from "./LanguageSwitcher"
+import { PAPER, TEXT, MUTED, LIME, BODY } from "../lib/publicTheme"
 const navLogo = "/images/logo-nav-future-energy.png"
 
 interface Props {
   current: string
   onNavigate: (page: string, param?: string) => void
+  // Petrova reference: nav sits directly on the hero photo with no
+  // background, then picks up the normal solid/blurred treatment once
+  // the visitor scrolls past it. Only Home's hero passes this.
+  transparentOverHero?: boolean
 }
 
 const LINK_IDS = [
@@ -20,10 +24,19 @@ const LINK_IDS = [
   "contact",
 ] as const
 
-export default function PublicNav({ current, onNavigate }: Props) {
+export default function PublicNav({ current, onNavigate, transparentOverHero }: Props) {
   const t = useTranslations("nav")
   const [menuOpen, setMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(!transparentOverHero)
   const { isSignedIn } = useUser()
+
+  useEffect(() => {
+    if (!transparentOverHero) return
+    const onScroll = () => setScrolled(window.scrollY > 64)
+    onScroll()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [transparentOverHero])
 
   const go = (page: string) => {
     setMenuOpen(false)
@@ -35,6 +48,7 @@ export default function PublicNav({ current, onNavigate }: Props) {
   // which itself redirects to /dashboard once authenticated.
   const portalLabel = isSignedIn ? t("clientPortal") : t("logIn")
   const portalTarget = isSignedIn ? "dashboard" : "client-login"
+  const overlay = transparentOverHero && !scrolled
 
   return (
     <nav
@@ -44,9 +58,10 @@ export default function PublicNav({ current, onNavigate }: Props) {
         left: 0,
         right: 0,
         zIndex: 100,
-        background: "rgba(255,255,255,0.97)",
-        backdropFilter: "blur(12px)",
-        borderBottom: "1px solid #F1F5F9",
+        background: overlay ? "transparent" : "rgba(243,242,238,0.92)",
+        backdropFilter: overlay ? "none" : "blur(12px)",
+        borderBottom: overlay ? "1px solid transparent" : "1px solid #E6E5E0",
+        transition: "background 0.2s, border-color 0.2s",
       }}
     >
       <div
@@ -86,21 +101,50 @@ export default function PublicNav({ current, onNavigate }: Props) {
           className="public-nav-desktop"
           style={{ alignItems: "center", gap: 2 }}
         >
+          {overlay && (
+            <button
+              onClick={() => go("home")}
+              style={{
+                background: "rgba(24,24,26,0.38)",
+                backdropFilter: "blur(10px)",
+                border: "none",
+                cursor: "pointer",
+                padding: "9px 16px",
+                fontSize: 14,
+                fontWeight: 500,
+                color: "#fff",
+                borderRadius: 10,
+                fontFamily: "Poppins, sans-serif",
+                marginInlineEnd: 4,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              Home <span style={{ fontSize: 10, opacity: 0.8 }}>▾</span>
+            </button>
+          )}
           {LINK_IDS.map((id) => (
             <button
               key={id}
               onClick={() => go(id)}
               style={{
-                background: "none",
+                background: overlay ? "rgba(24,24,26,0.38)" : current === id ? "rgba(216,255,62,0.35)" : "none",
+                backdropFilter: overlay ? "blur(10px)" : "none",
                 border: "none",
                 cursor: "pointer",
-                padding: "8px 14px",
+                padding: overlay ? "9px 16px" : "8px 14px",
                 fontSize: 14,
                 fontWeight: current === id ? 700 : 500,
-                color: current === id ? palette.accent : palette.slate,
-                borderRadius: 8,
-                fontFamily: "Poppins, sans-serif",
-                transition: "color 0.15s",
+                color: overlay
+                  ? "#fff"
+                  : current === id
+                    ? TEXT
+                    : MUTED,
+                borderRadius: overlay ? 10 : 9999,
+                fontFamily: BODY,
+                marginInlineEnd: overlay ? 4 : 0,
+                transition: "color 0.15s, background 0.15s",
               }}
             >
               {t(id)}
@@ -117,15 +161,15 @@ export default function PublicNav({ current, onNavigate }: Props) {
           <button
             onClick={() => go(portalTarget)}
             style={{
-              background: "#F8FAFC",
-              color: palette.navy,
-              border: "1.5px solid #E2E8F0",
-              borderRadius: 9999,
+              background: LIME,
+              color: TEXT,
+              border: "none",
+              borderRadius: overlay ? 10 : 9999,
               padding: "9px 22px",
               fontWeight: 600,
               fontSize: 14,
               cursor: "pointer",
-              fontFamily: "Poppins, sans-serif",
+              fontFamily: BODY,
             }}
           >
             {portalLabel}
@@ -151,7 +195,7 @@ export default function PublicNav({ current, onNavigate }: Props) {
             height="24"
             viewBox="0 0 24 24"
             fill="none"
-            stroke={palette.navy}
+            stroke={overlay ? "#fff" : TEXT}
             strokeWidth="2"
             strokeLinecap="round"
           >
@@ -169,8 +213,8 @@ export default function PublicNav({ current, onNavigate }: Props) {
         <div
           className="public-nav-mobile-panel"
           style={{
-            borderTop: "1px solid #F1F5F9",
-            background: "#fff",
+            borderTop: "1px solid #E6E5E0",
+            background: PAPER,
             padding: "12px 20px 24px",
             display: "flex",
             flexDirection: "column",
@@ -182,16 +226,16 @@ export default function PublicNav({ current, onNavigate }: Props) {
               key={id}
               onClick={() => go(id)}
               style={{
-                background: current === id ? palette.accentLight : "none",
+                background: current === id ? "rgba(216,255,62,0.35)" : "none",
                 border: "none",
                 cursor: "pointer",
                 padding: "12px 14px",
                 fontSize: 15,
                 textAlign: "start",
                 fontWeight: current === id ? 700 : 500,
-                color: current === id ? palette.accent : palette.slate,
+                color: current === id ? TEXT : MUTED,
                 borderRadius: 10,
-                fontFamily: "Poppins, sans-serif",
+                fontFamily: BODY,
               }}
             >
               {t(id)}
@@ -203,15 +247,15 @@ export default function PublicNav({ current, onNavigate }: Props) {
           <button
             onClick={() => go(portalTarget)}
             style={{
-              background: "#F8FAFC",
-              color: palette.navy,
-              border: "1.5px solid #E2E8F0",
+              background: LIME,
+              color: TEXT,
+              border: "none",
               borderRadius: 9999,
               padding: "12px 22px",
               fontWeight: 600,
               fontSize: 15,
               cursor: "pointer",
-              fontFamily: "Poppins, sans-serif",
+              fontFamily: BODY,
               marginTop: 8,
             }}
           >

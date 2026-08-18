@@ -1,8 +1,8 @@
 "use client" /* Info */ /* Map */
 import { useTranslations } from "next-intl"
-import { palette } from "../theme"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
+import { PAPER, TEXT, MUTED, LIME, HEAD, BODY } from "../lib/publicTheme"
 
 interface Props {
   onNavigate: (page: string) => void
@@ -37,7 +37,7 @@ export default function Contact({ onNavigate }: Props) {
   ]
 
   return (
-    <div style={{ fontFamily: "Poppins, sans-serif", background: "#fff" }}>
+    <div style={{ fontFamily: BODY, background: PAPER, color: TEXT }}>
       <PublicNav current="contact" onNavigate={onNavigate} />
       <div style={{ height: 68 }} />
 
@@ -45,10 +45,11 @@ export default function Contact({ onNavigate }: Props) {
         <div style={{ maxWidth: 640, margin: "0 auto" }}>
           <h1
             style={{
+              fontFamily: HEAD,
               fontSize: 42,
-              fontWeight: 800,
-              color: palette.navy,
-              letterSpacing: "-0.03em",
+              fontWeight: 700,
+              color: TEXT,
+              letterSpacing: "-0.02em",
               marginBottom: 20,
               lineHeight: 1.1,
             }}
@@ -58,7 +59,7 @@ export default function Contact({ onNavigate }: Props) {
           <p
             style={{
               fontSize: 15,
-              color: palette.slate,
+              color: MUTED,
               lineHeight: 1.8,
               marginBottom: 40,
             }}
@@ -69,8 +70,7 @@ export default function Contact({ onNavigate }: Props) {
           {}
           <div
             style={{
-              background: palette.accentLight,
-              border: `1px solid ${palette.border}`,
+              background: LIME,
               borderRadius: 20,
               padding: "24px 28px",
               marginBottom: 40,
@@ -84,30 +84,31 @@ export default function Contact({ onNavigate }: Props) {
             <div>
               <div
                 style={{
+                  fontFamily: HEAD,
                   fontSize: 15,
-                  fontWeight: 700,
-                  color: palette.navy,
+                  fontWeight: 600,
+                  color: TEXT,
                   marginBottom: 4,
                 }}
               >
                 {t("servicePrompt.title")}
               </div>
-              <div style={{ fontSize: 13, color: palette.slate }}>
+              <div style={{ fontSize: 13, color: "#2c2e18" }}>
                 {t("servicePrompt.body")}
               </div>
             </div>
             <button
               onClick={() => onNavigate("client-login")}
               style={{
-                background: palette.accent,
+                background: TEXT,
                 color: "#fff",
                 border: "none",
                 borderRadius: 9999,
                 padding: "12px 26px",
-                fontWeight: 700,
+                fontWeight: 500,
                 fontSize: 14,
                 cursor: "pointer",
-                fontFamily: "Poppins, sans-serif",
+                fontFamily: HEAD,
                 whiteSpace: "nowrap",
                 flexShrink: 0,
               }}
@@ -127,7 +128,8 @@ export default function Contact({ onNavigate }: Props) {
                     width: 40,
                     height: 40,
                     borderRadius: 12,
-                    background: palette.accentLight,
+                    background: "#fff",
+                    border: "1px solid #E6E5E0",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -141,7 +143,7 @@ export default function Contact({ onNavigate }: Props) {
                   <div
                     style={{
                       fontSize: 12,
-                      color: palette.muted,
+                      color: MUTED,
                       fontWeight: 600,
                       textTransform: "uppercase",
                       letterSpacing: "0.06em",
@@ -154,7 +156,7 @@ export default function Contact({ onNavigate }: Props) {
                       href={c.href}
                       style={{
                         fontSize: 14,
-                        color: palette.navy,
+                        color: TEXT,
                         fontWeight: 600,
                         marginTop: 2,
                         display: "block",
@@ -167,7 +169,7 @@ export default function Contact({ onNavigate }: Props) {
                     <div
                       style={{
                         fontSize: 14,
-                        color: palette.navy,
+                        color: TEXT,
                         fontWeight: 600,
                         marginTop: 2,
                       }}
@@ -190,7 +192,7 @@ export default function Contact({ onNavigate }: Props) {
               marginTop: 32,
               borderRadius: 20,
               overflow: "hidden",
-              border: `1px solid ${palette.border}`,
+              border: "1px solid #E6E5E0",
               position: "relative",
             }}
           >
@@ -213,7 +215,7 @@ export default function Contact({ onNavigate }: Props) {
                 padding: "8px 16px",
                 fontSize: 12,
                 fontWeight: 700,
-                color: palette.accent,
+                color: TEXT,
                 boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
               }}
             >

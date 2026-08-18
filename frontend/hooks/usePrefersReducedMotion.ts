@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react"
 
-// Single shared source of truth for `prefers-reduced-motion` — every
-// scroll-linked or autoplaying animation added for the homepage upgrade
-// (well-hero, layer dive, operations map) reads this instead of querying
-// the media query itself, so there's one place that gets the SSR-safe
-// default (false, matching a static/instant first paint) and the change
-// listener right.
+// Single shared source of truth for `prefers-reduced-motion`. Originally
+// written for the homepage's well-hero/layer-dive/operations-map scroll
+// animations; the Petrova restyle removed all three in favor of a static
+// hero, so nothing currently imports this hook. Left in place — the CSS
+// fallback in app/globals.css covers the reveal/marquee/hover transitions
+// that remain, but any future JS-driven animation should read reduced
+// motion from here rather than querying the media query itself, so
+// there's one place that gets the SSR-safe default (false, matching a
+// static/instant first paint) and the change listener right.
 export function usePrefersReducedMotion(): boolean {
   // Lazy initializer, not an effect: computes the real value synchronously
   // on the first client render instead of defaulting to false and

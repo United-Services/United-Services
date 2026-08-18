@@ -1,11 +1,11 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { palette } from "../theme"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { useReveal } from "../hooks/useReveal"
 import { axios } from "../lib/api"
+import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY } from "../lib/publicTheme"
 
 interface Props {
   onNavigate: (page: string, param?: string) => void
@@ -57,17 +57,18 @@ export default function Careers({ onNavigate }: Props) {
       : positions.filter((p) => p.department === filter)
 
   return (
-    <div style={{ fontFamily: "Poppins, sans-serif", background: "#fff" }}>
+    <div style={{ fontFamily: BODY, background: PAPER, color: TEXT }}>
       <PublicNav current="careers" onNavigate={onNavigate} />
 
-      <section style={{ background: palette.navy, padding: "120px 28px 80px" }}>
+      <section style={{ background: INK, padding: "120px 28px 80px" }}>
         <div style={{ maxWidth: 1260, margin: "0 auto" }}>
           <h1
             style={{
+              fontFamily: HEAD,
               fontSize: "clamp(36px, 5vw, 64px)",
-              fontWeight: 800,
+              fontWeight: 700,
               color: "#fff",
-              letterSpacing: "-0.03em",
+              letterSpacing: "-0.02em",
               maxWidth: 640,
               lineHeight: 1.05,
               marginBottom: 20,
@@ -78,7 +79,7 @@ export default function Careers({ onNavigate }: Props) {
           <p
             style={{
               fontSize: 17,
-              color: "#94A3B8",
+              color: "#A9A9A9",
               maxWidth: 500,
               lineHeight: 1.7,
             }}
@@ -104,17 +105,15 @@ export default function Careers({ onNavigate }: Props) {
                   key={dept}
                   onClick={() => setFilter(dept)}
                   style={{
-                    background: filter === dept ? palette.accent : "#F8FAFC",
-                    color: filter === dept ? "#fff" : palette.slate,
-                    border: `1.5px solid ${
-                      filter === dept ? palette.accent : "#E2E8F0"
-                    }`,
+                    background: filter === dept ? LIME : "#fff",
+                    color: TEXT,
+                    border: `1.5px solid ${filter === dept ? LIME : "#E6E5E0"}`,
                     borderRadius: 9999,
                     padding: "8px 20px",
                     fontWeight: 600,
                     fontSize: 13,
                     cursor: "pointer",
-                    fontFamily: "Poppins, sans-serif",
+                    fontFamily: BODY,
                     transition: "all 0.15s",
                   }}
                 >
@@ -129,7 +128,7 @@ export default function Careers({ onNavigate }: Props) {
               <p
                 style={{
                   fontSize: 14,
-                  color: palette.muted,
+                  color: MUTED,
                   textAlign: "center",
                   padding: "48px 0",
                 }}
@@ -143,7 +142,7 @@ export default function Careers({ onNavigate }: Props) {
                 className="reveal"
                 style={{
                   background: "#fff",
-                  border: "1px solid #E2E8F0",
+                  border: "1px solid #E6E5E0",
                   borderRadius: 16,
                   padding: "24px 28px",
                   display: "flex",
@@ -168,7 +167,7 @@ export default function Careers({ onNavigate }: Props) {
                   <div
                     style={{
                       fontSize: 12,
-                      color: palette.muted,
+                      color: MUTED,
                       marginBottom: 6,
                     }}
                   >
@@ -176,9 +175,10 @@ export default function Careers({ onNavigate }: Props) {
                   </div>
                   <div
                     style={{
+                      fontFamily: HEAD,
                       fontSize: 17,
-                      fontWeight: 700,
-                      color: palette.navy,
+                      fontWeight: 600,
+                      color: TEXT,
                       marginBottom: 4,
                     }}
                   >
@@ -187,7 +187,7 @@ export default function Careers({ onNavigate }: Props) {
                   <div
                     style={{
                       fontSize: 13,
-                      color: palette.slate,
+                      color: MUTED,
                       maxWidth: 560,
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -200,25 +200,25 @@ export default function Careers({ onNavigate }: Props) {
                 <button
                   onClick={() => onNavigate("candidate-signup", p.id)}
                   style={{
-                    background: "#4B5563",
+                    background: TEXT,
                     color: "#fff",
                     border: "none",
                     borderRadius: 9999,
                     padding: "10px 22px",
-                    fontWeight: 600,
+                    fontWeight: 500,
                     fontSize: 13,
                     cursor: "pointer",
-                    fontFamily: "Poppins, sans-serif",
+                    fontFamily: HEAD,
                     transition: "background 0.2s",
                     flexShrink: 0,
                   }}
                   onMouseEnter={(e) => {
                     ;(e.currentTarget as HTMLButtonElement).style.background =
-                      "#374151"
+                      "#2a2a2c"
                   }}
                   onMouseLeave={(e) => {
                     ;(e.currentTarget as HTMLButtonElement).style.background =
-                      "#4B5563"
+                      TEXT
                   }}
                 >
                   {t("applyNow")}

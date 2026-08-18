@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
 @import 'tailwindcss';
 
 * { font-family: 'Poppins', sans-serif; }
@@ -106,6 +107,30 @@ html { scroll-behavior: smooth; }
 }
 .layer-dive-fade { animation: layerDiveFade 0.4s ease; }
 
+/* Respect the OS-level reduced-motion preference. The well-burst/layer-
+   dive/operations-map scroll animations this was originally written for
+   (see the now-unused hooks/usePrefersReducedMotion.ts) are gone — the
+   Petrova restyle replaced them with a static hero. What's left to guard
+   is the .reveal*/marquee-track CSS animations above, PublicNav's overlay
+   fade, and the hover-lift/color transitions set as inline `style` in
+   Home.tsx/Services.tsx/Careers.tsx. A universal duration override is the
+   only way to reach that last group without rewriting every inline
+   transition as a CSS class: an !important duration declared here beats a
+   non-!important inline-style transition regardless of the inline rule's
+   higher specificity, so nothing needs to change at the call sites. Every
+   element still lands in its final state (visible, lifted, recolored) —
+   only the animated motion between states is removed. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ── Mobile responsiveness ──────────────────────────────────────────────
    Dashboards and the client-signup wizard were built desktop-first with
    no breakpoints at all (fixed sidebar widths, hard 2-column grids). These
@@ -150,5 +175,21 @@ html { scroll-behavior: smooth; }
   .public-nav-desktop { display: none !important; }
   .public-nav-toggle { display: flex !important; }
   .public-nav-mobile-panel { display: flex !important; }
+}
+
+/* Home hero (Petrova-reference layout): the oversized lower-left wordmark
+   and the lower-right copy/CTA block sit side by side via flex on
+   desktop, matching the reference's proportions. That row overlaps and
+   clips text on a phone — stack it instead, and rein in the wordmark's
+   clamp() ceiling so it doesn't eat the whole viewport height. */
+@media (max-width: 700px) {
+  .hero-wordmark-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 24px !important;
+  }
+  .hero-wordmark-row h1 {
+    font-size: clamp(36px, 12vw, 56px) !important;
+  }
 }
 

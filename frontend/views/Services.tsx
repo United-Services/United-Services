@@ -1,12 +1,12 @@
 "use client" /* Page header */ /* Cross-section diagram */ /* Services list */ /* Collapsed header */ /* Expanded content */
 import { useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { palette } from "../theme"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { useReveal } from "../hooks/useReveal"
 import { axios } from "../lib/api"
 import { LAYER_KEYS, LAYER_STYLE } from "../lib/pipelineLayers"
+import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY } from "../lib/publicTheme"
 
 interface Props {
   onNavigate: (page: string) => void
@@ -46,24 +46,25 @@ export default function Services({ onNavigate }: Props) {
   }, [locale])
 
   return (
-    <div style={{ fontFamily: "Poppins, sans-serif", background: "#fff" }}>
+    <div style={{ fontFamily: BODY, background: PAPER, color: TEXT }}>
       <PublicNav current="services" onNavigate={onNavigate} />
 
       {}
       <section
         style={{
           paddingTop: 68,
-          background: palette.navy,
+          background: INK,
           padding: "120px 28px 80px",
         }}
       >
         <div style={{ maxWidth: 1260, margin: "0 auto" }}>
           <h1
             style={{
+              fontFamily: HEAD,
               fontSize: "clamp(36px, 5vw, 64px)",
-              fontWeight: 800,
+              fontWeight: 700,
               color: "#fff",
-              letterSpacing: "-0.03em",
+              letterSpacing: "-0.02em",
               marginBottom: 20,
               maxWidth: 700,
             }}
@@ -73,7 +74,7 @@ export default function Services({ onNavigate }: Props) {
           <p
             style={{
               fontSize: 17,
-              color: "#94A3B8",
+              color: "#A9A9A9",
               maxWidth: 540,
               lineHeight: 1.7,
             }}
@@ -86,9 +87,9 @@ export default function Services({ onNavigate }: Props) {
       {}
       <section
         style={{
-          background: "#F8FAFC",
+          background: "#fff",
           padding: "72px 28px",
-          borderBottom: "1px solid #E2E8F0",
+          borderBottom: "1px solid #E6E5E0",
         }}
       >
         <div
@@ -105,11 +106,12 @@ export default function Services({ onNavigate }: Props) {
           <div className="reveal-left">
             <h2
               style={{
+                fontFamily: HEAD,
                 fontSize: 32,
-                fontWeight: 800,
-                color: palette.navy,
+                fontWeight: 600,
+                color: TEXT,
                 marginBottom: 12,
-                letterSpacing: "-0.02em",
+                letterSpacing: "-0.01em",
               }}
             >
               {t("diagram.title")}
@@ -117,7 +119,7 @@ export default function Services({ onNavigate }: Props) {
             <p
               style={{
                 fontSize: 14,
-                color: palette.muted,
+                color: MUTED,
                 lineHeight: 1.7,
                 marginBottom: 32,
               }}
@@ -147,7 +149,7 @@ export default function Services({ onNavigate }: Props) {
                   <span
                     style={{
                       fontSize: 13,
-                      color: palette.slate,
+                      color: TEXT,
                       fontWeight: 500,
                     }}
                   >
@@ -177,7 +179,6 @@ export default function Services({ onNavigate }: Props) {
                     background: LAYER_STYLE[key].color,
                     borderRadius: 6,
                     width: LAYER_STYLE[key].width,
-                    transition: "width 1s ease",
                     display: "flex",
                     alignItems: "center",
                     paddingLeft: 12,
@@ -214,7 +215,7 @@ export default function Services({ onNavigate }: Props) {
         >
           {loading && (
             <div
-              style={{ padding: 40, textAlign: "center", color: palette.muted }}
+              style={{ padding: 40, textAlign: "center", color: MUTED }}
             >
               {t("loading")}
             </div>
@@ -224,7 +225,7 @@ export default function Services({ onNavigate }: Props) {
               key={svc.id}
               className="reveal"
               style={{
-                border: "1px solid #E2E8F0",
+                border: "1px solid #E6E5E0",
                 borderRadius: 20,
                 overflow: "hidden",
                 transitionDelay: `${i * 0.06}s`,
@@ -235,7 +236,7 @@ export default function Services({ onNavigate }: Props) {
                 onClick={() => setActive(active === i ? null : i)}
                 style={{
                   width: "100%",
-                  background: active === i ? "#FFF7ED" : "#fff",
+                  background: active === i ? "rgba(216,255,62,0.18)" : "#fff",
                   border: "none",
                   cursor: "pointer",
                   padding: "28px 32px",
@@ -243,7 +244,7 @@ export default function Services({ onNavigate }: Props) {
                   alignItems: "center",
                   justifyContent: "space-between",
                   gap: 24,
-                  fontFamily: "Poppins, sans-serif",
+                  fontFamily: BODY,
                   transition: "background 0.2s",
                 }}
               >
@@ -252,10 +253,11 @@ export default function Services({ onNavigate }: Props) {
                 >
                   <div
                     style={{
+                      fontFamily: "ui-monospace,monospace",
                       fontSize: 11,
-                      color: active === i ? palette.accent : "#94A3B8",
+                      color: active === i ? TEXT : MUTED,
                       fontWeight: 700,
-                      letterSpacing: "0.12em",
+                      letterSpacing: "0.1em",
                       flexShrink: 0,
                     }}
                   >
@@ -264,9 +266,10 @@ export default function Services({ onNavigate }: Props) {
                   <div style={{ textAlign: "start" }}>
                     <div
                       style={{
+                        fontFamily: HEAD,
                         fontSize: 18,
-                        fontWeight: 700,
-                        color: palette.navy,
+                        fontWeight: 600,
+                        color: TEXT,
                       }}
                     >
                       {svc.name}
@@ -274,7 +277,7 @@ export default function Services({ onNavigate }: Props) {
                     <div
                       style={{
                         fontSize: 12,
-                        color: palette.muted,
+                        color: MUTED,
                         marginTop: 2,
                       }}
                     >
@@ -287,7 +290,7 @@ export default function Services({ onNavigate }: Props) {
                     width: 32,
                     height: 32,
                     borderRadius: "50%",
-                    background: active === i ? palette.accent : "#F1F5F9",
+                    background: active === i ? LIME : PAPER,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -298,7 +301,7 @@ export default function Services({ onNavigate }: Props) {
                   <span
                     style={{
                       fontSize: 18,
-                      color: active === i ? "#fff" : "#64748B",
+                      color: TEXT,
                       lineHeight: 1,
                       transform: active === i ? "rotate(45deg)" : "none",
                       display: "inline-block",
@@ -314,8 +317,8 @@ export default function Services({ onNavigate }: Props) {
               {active === i && (
                 <div
                   style={{
-                    background: "#FFFAF7",
-                    borderTop: "1px solid #FDE8D0",
+                    background: PAPER,
+                    borderTop: "1px solid #E6E5E0",
                     padding: "36px 32px",
                   }}
                 >
@@ -352,11 +355,11 @@ export default function Services({ onNavigate }: Props) {
                             style={{
                               fontSize: 12,
                               fontWeight: 600,
-                              color: palette.accent,
-                              background: palette.accentLight,
+                              color: TEXT,
+                              background: "#fff",
                               borderRadius: 6,
                               padding: "4px 10px",
-                              border: "1px solid #FED7AA",
+                              border: "1px solid #E6E5E0",
                             }}
                           >
                             {sp}
@@ -368,7 +371,7 @@ export default function Services({ onNavigate }: Props) {
                       <p
                         style={{
                           fontSize: 15,
-                          color: palette.slate,
+                          color: MUTED,
                           lineHeight: 1.8,
                           marginBottom: 32,
                         }}
@@ -381,15 +384,15 @@ export default function Services({ onNavigate }: Props) {
                         <button
                           onClick={() => onNavigate("client-login")}
                           style={{
-                            background: palette.accent,
-                            color: "#fff",
+                            background: LIME,
+                            color: TEXT,
                             border: "none",
                             borderRadius: 9999,
                             padding: "11px 28px",
-                            fontWeight: 700,
+                            fontWeight: 600,
                             fontSize: 14,
                             cursor: "pointer",
-                            fontFamily: "Poppins, sans-serif",
+                            fontFamily: BODY,
                           }}
                         >
                           {t("requestSpecFile")}
@@ -397,15 +400,15 @@ export default function Services({ onNavigate }: Props) {
                         <button
                           onClick={() => onNavigate("contact")}
                           style={{
-                            background: "#4B5563",
+                            background: TEXT,
                             color: "#fff",
                             border: "none",
                             borderRadius: 9999,
                             padding: "11px 28px",
-                            fontWeight: 600,
+                            fontWeight: 500,
                             fontSize: 14,
                             cursor: "pointer",
-                            fontFamily: "Poppins, sans-serif",
+                            fontFamily: HEAD,
                           }}
                         >
                           {tNav("requestConsultation")}

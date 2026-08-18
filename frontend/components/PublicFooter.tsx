@@ -1,8 +1,8 @@
 "use client" /* Brand */ /* Company */ /* Services */ /* Contact */
 import { useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
-import { palette } from "../theme"
 import { axios } from "../lib/api"
+import { INK, LIME, HEAD, BODY } from "../lib/publicTheme"
 const footerLogo = "/images/logo-footer.png"
 
 interface Props {
@@ -39,9 +39,10 @@ export default function PublicFooter({ onNavigate }: Props) {
   return (
     <footer
       style={{
-        background: palette.navy,
+        background: INK,
         color: "#fff",
         padding: "64px 28px 32px",
+        fontFamily: BODY,
       }}
     >
       <div style={{ maxWidth: 1260, margin: "0 auto" }}>
@@ -66,7 +67,7 @@ export default function PublicFooter({ onNavigate }: Props) {
             <p
               style={{
                 fontSize: 14,
-                color: "#94A3B8",
+                color: "#A9A9A9",
                 lineHeight: 1.7,
                 maxWidth: 300,
                 marginBottom: 24,
@@ -81,8 +82,8 @@ export default function PublicFooter({ onNavigate }: Props) {
                   style={{
                     fontSize: 11,
                     fontWeight: 600,
-                    color: palette.accent,
-                    background: "rgba(234,88,12,0.12)",
+                    color: LIME,
+                    background: "rgba(216,255,62,0.1)",
                     borderRadius: 6,
                     padding: "4px 10px",
                     letterSpacing: "0.04em",
@@ -98,10 +99,10 @@ export default function PublicFooter({ onNavigate }: Props) {
           <div>
             <div
               style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: "#64748B",
-                letterSpacing: "0.1em",
+                fontSize: 11,
+                fontWeight: 600,
+                color: "#6f6f6b",
+                letterSpacing: "0.08em",
                 textTransform: "uppercase",
                 marginBottom: 16,
               }}
@@ -117,10 +118,10 @@ export default function PublicFooter({ onNavigate }: Props) {
                   background: "none",
                   border: "none",
                   cursor: "pointer",
-                  color: "#CBD5E1",
+                  color: "#A9A9A9",
                   fontSize: 14,
                   padding: "6px 0",
-                  fontFamily: "Poppins, sans-serif",
+                  fontFamily: BODY,
                 }}
               >
                 {tNav(p)}
@@ -132,10 +133,10 @@ export default function PublicFooter({ onNavigate }: Props) {
           <div>
             <div
               style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: "#64748B",
-                letterSpacing: "0.1em",
+                fontSize: 11,
+                fontWeight: 600,
+                color: "#6f6f6b",
+                letterSpacing: "0.08em",
                 textTransform: "uppercase",
                 marginBottom: 16,
               }}
@@ -151,10 +152,10 @@ export default function PublicFooter({ onNavigate }: Props) {
                   background: "none",
                   border: "none",
                   cursor: "pointer",
-                  color: "#CBD5E1",
+                  color: "#A9A9A9",
                   fontSize: 13,
                   padding: "5px 0",
-                  fontFamily: "Poppins, sans-serif",
+                  fontFamily: BODY,
                   textAlign: "start",
                 }}
               >
@@ -167,44 +168,44 @@ export default function PublicFooter({ onNavigate }: Props) {
           <div>
             <div
               style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: "#64748B",
-                letterSpacing: "0.1em",
+                fontSize: 11,
+                fontWeight: 600,
+                color: "#6f6f6b",
+                letterSpacing: "0.08em",
                 textTransform: "uppercase",
                 marginBottom: 16,
               }}
             >
               {t("contactHeading")}
             </div>
-            <div style={{ fontSize: 13, color: "#CBD5E1", lineHeight: 1.8 }}>
+            <div style={{ fontSize: 13, color: "#A9A9A9", lineHeight: 1.8 }}>
               <div>14S Building, El Oroba Street Extension</div>
-              <div style={{ color: "#94A3B8", fontSize: 12, marginBottom: 8 }}>
+              <div style={{ color: "#6f6f6b", fontSize: 12, marginBottom: 8 }}>
                 New Maadi, Cairo, Egypt
               </div>
               <a
                 href="tel:+20227033656"
                 style={{
                   display: "block",
-                  color: "#CBD5E1",
+                  color: "#A9A9A9",
                   textDecoration: "none",
                 }}
               >
                 {t("tel")}: (+2) 0227033656
               </a>
-              <div style={{ color: "#94A3B8", fontSize: 12, marginBottom: 8 }}>
+              <div style={{ color: "#6f6f6b", fontSize: 12, marginBottom: 8 }}>
                 {t("fax")}: (+2) 0227033656
               </div>
               <a
                 href="mailto:info@use-eg.com"
-                style={{ color: palette.accent, textDecoration: "none" }}
+                style={{ color: LIME, textDecoration: "none" }}
               >
                 info@use-eg.com
               </a>
-              <div style={{ marginTop: 16, fontSize: 12, color: "#64748B" }}>
+              <div style={{ marginTop: 16, fontSize: 12, color: "#6f6f6b" }}>
                 {t("alsoOperatingIn")}
               </div>
-              <div style={{ fontSize: 12, color: "#94A3B8" }}>
+              <div style={{ fontSize: 12, color: "#A9A9A9" }}>
                 {t("operatingRegions")}
               </div>
             </div>
@@ -213,7 +214,7 @@ export default function PublicFooter({ onNavigate }: Props) {
 
         <div
           style={{
-            borderTop: "1px solid #1E293B",
+            borderTop: "1px solid rgba(255,255,255,0.1)",
             paddingTop: 28,
             display: "flex",
             justifyContent: "space-between",
@@ -222,7 +223,7 @@ export default function PublicFooter({ onNavigate }: Props) {
             gap: 16,
           }}
         >
-          <div style={{ fontSize: 13, color: "#475569" }}>{t("copyright")}</div>
+          <div style={{ fontSize: 13, color: "#6f6f6b", fontFamily: HEAD }}>{t("copyright")}</div>
           <div style={{ display: "flex", gap: 24 }}>
             <button
               onClick={() => onNavigate("privacy")}
@@ -231,8 +232,8 @@ export default function PublicFooter({ onNavigate }: Props) {
                 border: "none",
                 cursor: "pointer",
                 fontSize: 13,
-                color: "#475569",
-                fontFamily: "Poppins, sans-serif",
+                color: "#6f6f6b",
+                fontFamily: BODY,
                 padding: 0,
               }}
             >
@@ -245,8 +246,8 @@ export default function PublicFooter({ onNavigate }: Props) {
                 border: "none",
                 cursor: "pointer",
                 fontSize: 13,
-                color: "#475569",
-                fontFamily: "Poppins, sans-serif",
+                color: "#6f6f6b",
+                fontFamily: BODY,
                 padding: 0,
               }}
             >
