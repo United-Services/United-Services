@@ -3,6 +3,7 @@ import {
   Body,
   ConflictException,
   Controller,
+  Delete,
   Get,
   NotFoundException,
   Param,
@@ -213,6 +214,67 @@ export class ServicesController {
     // fields here (same reasoning as PositionsController.update).
     this.translations.triggerServiceAsync(updated, TRANSLATABLE_LOCALES); // fire-and-forget
     return this.withImageUrl(updated);
+  }
+
+  // Blocked (409, not a raw FK-constraint 500) whenever real business
+  // records still point at this service — an RFQ against it, or a
+  // file-access request on one of its spec files — rather than silently
+  // cascading those away. ServiceFile rows themselves do cascade-delete
+  // (see the schema's onDelete: Cascade on ServiceFile.service), but only
+  // once we've confirmed nothing else references them.
+  @Roles(Role.admin)
+  @Delete(':id')
+  async remove(@CurrentUser() admin: User, @Param('id') id: string) {
+    const service = await this.prisma.service.findUnique({
+      where: { id },
+      include: { files: true },
+    });
+    if (!service) throw new NotFoundException('Service not found');
+
+    const rfqCount = await this.prisma.serviceRequest.count({
+      where: { serviceId: id },
+    });
+    if (rfqCount > 0) {
+      throw new ConflictException(
+        'Cannot delete a service with existing RFQs against it',
+      );
+    }
+
+    if (service.files.length > 0) {
+      const accessRequestCount = await this.prisma.fileAccessRequest.count({
+        where: { serviceFileId: { in: service.files.map((f) => f.id) } },
+      });
+      if (accessRequestCount > 0) {
+        throw new ConflictException(
+          'Cannot delete a service whose spec files have file-access requests on record',
+        );
+      }
+    }
+
+    await this.prisma.service.delete({ where: { id } });
+
+    // Best-effort — the DB delete above is already committed, so a
+    // failure here leaves an orphaned S3 object, not an inconsistent
+    // record. Never undo the delete over this.
+    const keysToDelete = [
+      ...service.files.map((f) => f.s3Key),
+      ...(service.imageS3Key ? [service.imageS3Key] : []),
+    ];
+    await Promise.all(
+      keysToDelete.map((key) =>
+        this.s3.deleteObject(key).catch(() => undefined),
+      ),
+    );
+
+    await this.redis.del(SERVICES_LIST_CACHE_KEY);
+    await this.auditLog.record({
+      actorUserId: admin.id,
+      action: 'service.deleted',
+      targetType: 'Service',
+      targetId: id,
+      metadata: { slug: service.slug, name: service.name },
+    });
+    return { ok: true };
   }
 
   // The service's public hero image — a different object/prefix from the

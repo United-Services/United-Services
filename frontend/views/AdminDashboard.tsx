@@ -440,6 +440,9 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
     specs: "",
   })
   const [savingService, setSavingService] = useState(false)
+  const [deletingServiceId, setDeletingServiceId] = useState<string | null>(
+    null,
+  )
   const [showCreateServiceForm, setShowCreateServiceForm] = useState(false)
   const [newServiceForm, setNewServiceForm] = useState({
     slug: "",
@@ -823,6 +826,28 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
       setError(getErrorMessage(err, tCommon("errors.actionFailed")))
     } finally {
       setSavingService(false)
+    }
+  }
+
+  const deleteService = async (svc: Service) => {
+    if (!window.confirm(t("specs.confirmDelete", { name: svc.name }))) return
+    setDeletingServiceId(svc.id)
+    try {
+      const headers = await authed()
+      await axios.delete(`/services/${svc.id}`, { headers })
+      setServices((prev) => prev.filter((s) => s.id !== svc.id))
+      setServiceFiles((prev) => {
+        const next = { ...prev }
+        delete next[svc.id]
+        return next
+      })
+    } catch (err) {
+      // The backend's message is specific and actionable here (e.g. "has
+      // existing RFQs against it") — worth showing over the generic
+      // fallback, which getErrorMessage already does when present.
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    } finally {
+      setDeletingServiceId(null)
     }
   }
 
@@ -2519,23 +2544,47 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                             </button>
                           </>
                         ) : (
-                          <button
-                            onClick={() => startEditService(svc)}
-                            style={{
-                              width: "100%",
-                              padding: "8px",
-                              background: "#fff",
-                              color: palette.navy,
-                              border: "1.5px solid #E2E8F0",
-                              borderRadius: 9999,
-                              fontWeight: 600,
-                              fontSize: 12,
-                              cursor: "pointer",
-                              fontFamily: "Poppins, sans-serif",
-                            }}
-                          >
-                            {t("specs.edit")}
-                          </button>
+                          <>
+                            <button
+                              onClick={() => startEditService(svc)}
+                              style={{
+                                flex: 1,
+                                padding: "8px",
+                                background: "#fff",
+                                color: palette.navy,
+                                border: "1.5px solid #E2E8F0",
+                                borderRadius: 9999,
+                                fontWeight: 600,
+                                fontSize: 12,
+                                cursor: "pointer",
+                                fontFamily: "Poppins, sans-serif",
+                              }}
+                            >
+                              {t("specs.edit")}
+                            </button>
+                            <button
+                              onClick={() => deleteService(svc)}
+                              disabled={deletingServiceId === svc.id}
+                              style={{
+                                flex: 1,
+                                padding: "8px",
+                                background: "#fff",
+                                color: "#DC2626",
+                                border: "1.5px solid #FCA5A5",
+                                borderRadius: 9999,
+                                fontWeight: 600,
+                                fontSize: 12,
+                                cursor: "pointer",
+                                fontFamily: "Poppins, sans-serif",
+                              }}
+                            >
+                              {deletingServiceId === svc.id ? (
+                                <InlineSpinner size={12} />
+                              ) : (
+                                t("specs.delete")
+                              )}
+                            </button>
+                          </>
                         )}
                       </div>
 

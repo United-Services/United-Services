@@ -812,6 +812,8 @@
       "specsLabel": "Specs (comma-separated)",
       "specsPlaceholder": "e.g. API 15CLT Compliant, DN50 - DN600",
       "edit": "Edit",
+      "delete": "Delete",
+      "confirmDelete": "Delete \"{name}\"? This cannot be undone.",
       "save": "Save",
       "cancel": "Cancel",
       "uploadImage": "Upload Image",

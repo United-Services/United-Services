@@ -17,6 +17,7 @@ describe('ServicesController', () => {
         findUnique: jest.fn(),
         update: jest.fn(),
         create: jest.fn(),
+        delete: jest.fn(),
         aggregate: jest.fn().mockResolvedValue({ _max: { order: 0 } }),
       },
       serviceFile: {
@@ -24,6 +25,12 @@ describe('ServicesController', () => {
         create: jest.fn(),
         findMany: jest.fn(),
         findFirst: jest.fn(),
+      },
+      serviceRequest: {
+        count: jest.fn().mockResolvedValue(0),
+      },
+      fileAccessRequest: {
+        count: jest.fn().mockResolvedValue(0),
       },
     } as unknown as PrismaService;
     const s3 = {
@@ -256,6 +263,79 @@ describe('ServicesController', () => {
       await controller.update(admin, 'svc-1', { name: 'New Name' });
 
       expect(redis.del).toHaveBeenCalledWith('cache:services:list');
+    });
+  });
+
+  describe('remove', () => {
+    it('404s for an unknown service id', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.service.findUnique as jest.Mock).mockResolvedValue(null);
+
+      await expect(controller.remove(admin, 'missing')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('refuses to delete a service with existing RFQs against it', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.service.findUnique as jest.Mock).mockResolvedValue({
+        id: 'svc-1',
+        slug: 'gre-lining',
+        name: 'GRE Lining',
+        imageS3Key: null,
+        files: [],
+      });
+      (prisma.serviceRequest.count as jest.Mock).mockResolvedValue(2);
+
+      await expect(controller.remove(admin, 'svc-1')).rejects.toThrow(
+        ConflictException,
+      );
+      expect(prisma.service.delete).not.toHaveBeenCalled();
+    });
+
+    it('refuses to delete a service whose spec files have file-access requests on record', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.service.findUnique as jest.Mock).mockResolvedValue({
+        id: 'svc-1',
+        slug: 'gre-lining',
+        name: 'GRE Lining',
+        imageS3Key: null,
+        files: [{ id: 'file-1', s3Key: 'service-specs/svc-1/spec.pdf' }],
+      });
+      (prisma.fileAccessRequest.count as jest.Mock).mockResolvedValue(1);
+
+      await expect(controller.remove(admin, 'svc-1')).rejects.toThrow(
+        ConflictException,
+      );
+      expect(prisma.service.delete).not.toHaveBeenCalled();
+    });
+
+    it('deletes the service, its S3 image and spec-file objects, and invalidates the cache', async () => {
+      const { controller, prisma, s3, redis, auditLog } = makeController();
+      (prisma.service.findUnique as jest.Mock).mockResolvedValue({
+        id: 'svc-1',
+        slug: 'gre-lining',
+        name: 'GRE Lining',
+        imageS3Key: 'service-images/svc-1/hero.jpg',
+        files: [{ id: 'file-1', s3Key: 'service-specs/svc-1/spec.pdf' }],
+      });
+
+      const result = await controller.remove(admin, 'svc-1');
+
+      expect(prisma.service.delete).toHaveBeenCalledWith({
+        where: { id: 'svc-1' },
+      });
+      expect(s3.deleteObject).toHaveBeenCalledWith(
+        'service-specs/svc-1/spec.pdf',
+      );
+      expect(s3.deleteObject).toHaveBeenCalledWith(
+        'service-images/svc-1/hero.jpg',
+      );
+      expect(redis.del).toHaveBeenCalledWith('cache:services:list');
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'service.deleted' }),
+      );
+      expect(result).toEqual({ ok: true });
     });
   });
 
