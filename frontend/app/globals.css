@@ -193,3 +193,10 @@ html { scroll-behavior: smooth; }
   }
 }
 
+/* Projects header's decorative Three.js globe sits to the right of the
+   title at desktop widths; on a phone that same fixed 260px box would
+   overlap the title/filter text, so it's dropped rather than shrunk. */
+@media (max-width: 860px) {
+  .projects-globe-accent { display: none !important; }
+}
+

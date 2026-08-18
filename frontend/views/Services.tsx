@@ -7,6 +7,7 @@ import { useReveal } from "../hooks/useReveal"
 import { axios } from "../lib/api"
 import { LAYER_KEYS, LAYER_STYLE } from "../lib/pipelineLayers"
 import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY } from "../lib/publicTheme"
+import PipeCrossSection3D from "../components/three/PipeCrossSection3D"
 
 interface Props {
   onNavigate: (page: string) => void
@@ -168,6 +169,9 @@ export default function Services({ onNavigate }: Props) {
               justifyContent: "center",
             }}
           >
+            <div style={{ position: "relative", height: 220, marginBottom: 12 }}>
+              <PipeCrossSection3D />
+            </div>
             {LAYER_KEYS.map((key) => (
               <div
                 key={key}

@@ -6,6 +6,7 @@ import PublicFooter from "../components/PublicFooter"
 import { useReveal } from "../hooks/useReveal"
 import { axios } from "../lib/api"
 import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY } from "../lib/publicTheme"
+import ParticleField from "../components/three/ParticleField"
 
 interface Props {
   onNavigate: (page: string, param?: string) => void
@@ -60,8 +61,9 @@ export default function Careers({ onNavigate }: Props) {
     <div style={{ fontFamily: BODY, background: PAPER, color: TEXT }}>
       <PublicNav current="careers" onNavigate={onNavigate} />
 
-      <section style={{ background: INK, padding: "120px 28px 80px" }}>
-        <div style={{ maxWidth: 1260, margin: "0 auto" }}>
+      <section style={{ position: "relative", background: INK, padding: "120px 28px 80px", overflow: "hidden" }}>
+        <ParticleField color={LIME} count={160} />
+        <div style={{ position: "relative", maxWidth: 1260, margin: "0 auto" }}>
           <h1
             style={{
               fontFamily: HEAD,

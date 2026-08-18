@@ -3,6 +3,7 @@ import { useTranslations } from "next-intl"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { PAPER, TEXT, MUTED, LIME, HEAD, BODY } from "../lib/publicTheme"
+import RegionGlobe3D from "../components/three/RegionGlobe3D"
 
 interface Props {
   onNavigate: (page: string) => void
@@ -43,19 +44,25 @@ export default function Contact({ onNavigate }: Props) {
 
       <section style={{ padding: "72px 28px" }}>
         <div style={{ maxWidth: 640, margin: "0 auto" }}>
-          <h1
-            style={{
-              fontFamily: HEAD,
-              fontSize: 42,
-              fontWeight: 700,
-              color: TEXT,
-              letterSpacing: "-0.02em",
-              marginBottom: 20,
-              lineHeight: 1.1,
-            }}
-          >
-            {t("title")}
-          </h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 20 }}>
+            <h1
+              style={{
+                fontFamily: HEAD,
+                fontSize: 42,
+                fontWeight: 700,
+                color: TEXT,
+                letterSpacing: "-0.02em",
+                margin: 0,
+                lineHeight: 1.1,
+                flex: 1,
+              }}
+            >
+              {t("title")}
+            </h1>
+            <div style={{ position: "relative", width: 84, height: 84, flexShrink: 0 }} aria-hidden="true">
+              <RegionGlobe3D wireColor="#8C8C88" />
+            </div>
+          </div>
           <p
             style={{
               fontSize: 15,

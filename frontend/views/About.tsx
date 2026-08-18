@@ -3,7 +3,8 @@ import { useTranslations } from "next-intl"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { useReveal } from "../hooks/useReveal"
-import { INK, PAPER, TEXT, MUTED, HEAD, BODY, PublicTag } from "../lib/publicTheme"
+import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY, PublicTag } from "../lib/publicTheme"
+import ParticleField from "../components/three/ParticleField"
 const worldImg = "/images/LD-02.png"
 const weldImg = "/images/bp-plant.jpg"
 
@@ -34,8 +35,9 @@ export default function About({ onNavigate }: Props) {
       <PublicNav current="about" onNavigate={onNavigate} />
 
       {}
-      <section style={{ background: INK, padding: "120px 28px 80px" }}>
-        <div style={{ maxWidth: 1260, margin: "0 auto" }}>
+      <section style={{ position: "relative", background: INK, padding: "120px 28px 80px", overflow: "hidden" }}>
+        <ParticleField color={LIME} count={160} />
+        <div style={{ position: "relative", maxWidth: 1260, margin: "0 auto" }}>
           <h1
             style={{
               fontFamily: HEAD,

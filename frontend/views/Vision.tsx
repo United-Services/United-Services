@@ -4,6 +4,7 @@ import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { useReveal } from "../hooks/useReveal"
 import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY, PublicTag } from "../lib/publicTheme"
+import ParticleField from "../components/three/ParticleField"
 const heroImg = "/images/lux-hero-petroleum.jpg"
 
 interface Props {
@@ -52,6 +53,7 @@ export default function Vision({ onNavigate }: Props) {
             background: "linear-gradient(to top, rgba(10,10,12,0.88) 0%, rgba(10,10,12,0.35) 60%)",
           }}
         />
+        <ParticleField color={LIME} count={140} style={{ zIndex: 1 }} />
         <div
           style={{
             position: "relative",

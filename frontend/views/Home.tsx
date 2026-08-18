@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import PublicNav from "../components/PublicNav"
 import Hero from "../components/home/Hero"
+import ParticleField from "../components/three/ParticleField"
+import RegionGlobe3D from "../components/three/RegionGlobe3D"
 import { useReveal } from "../hooks/useReveal"
 import { axios } from "../lib/api"
 import { LAYER_STYLE, SERVICE_SLUG_TO_LAYER } from "../lib/pipelineLayers"
@@ -97,51 +99,6 @@ function cardBackground(slug: string, fallbackIndex: number): string {
   return FALLBACK_CARD_COLORS[fallbackIndex % FALLBACK_CARD_COLORS.length]
 }
 
-// Coarse decorative dot-cluster (not literal geography) echoing the
-// design import's canvas map — same idea as its own ASCII-art blob.
-const DOT_MAP = [
-  "                                                        ",
-  "     ###        ####      ####################          ",
-  "   #######    ##   ##  ######################           ",
-  "  #########           ###########################       ",
-  "   ########          ############################       ",
-  "    ######    ##     ####### ###################        ",
-  "     ####    ####  #########  #############  ###        ",
-  "      ##      ########  #####  ###########    ##        ",
-  "              #######    ####   #########      #        ",
-  "       ##      ######     ###    ### ####               ",
-  "      ####      #####      ##    ##   ###               ",
-  "     ######      ###             #     ##   ##          ",
-  "      #####       ##                  ###  ####         ",
-  "       ####        #                   #   #####        ",
-  "       ###                                  ###         ",
-  "        ##                                   #          ",
-]
-
-function DotMap() {
-  const ref = useRef<HTMLCanvasElement>(null)
-  useEffect(() => {
-    const c = ref.current
-    if (!c) return
-    const ctx = c.getContext("2d")
-    if (!ctx) return
-    ctx.clearRect(0, 0, c.width, c.height)
-    const cols = 56
-    const cell = c.width / cols
-    const r = cell * 0.28
-    DOT_MAP.forEach((row, y) => {
-      for (let x = 0; x < row.length; x++) {
-        if (row[x] !== "#") continue
-        ctx.fillStyle = (x * 7 + y * 13) % 5 === 0 ? "#9DBB4A" : "#C9C8C0"
-        ctx.beginPath()
-        ctx.arc(x * cell + cell / 2, y * cell * 1.35 + 40, r, 0, Math.PI * 2)
-        ctx.fill()
-      }
-    })
-  }, [])
-  return <canvas ref={ref} width={640} height={340} style={{ width: "100%", height: "auto", display: "block" }} />
-}
-
 export default function Home({ onNavigate }: Props) {
   useReveal()
   const t = useTranslations("home")
@@ -192,6 +149,7 @@ export default function Home({ onNavigate }: Props) {
           <div style={{ position: "absolute", inset: 0 }}>
             <Hero />
           </div>
+          <ParticleField color={LIME} count={220} />
           <div
             style={{
               position: "absolute",
@@ -385,8 +343,8 @@ export default function Home({ onNavigate }: Props) {
                   2005
                 </div>
                 <div style={{ fontSize: 15, marginTop: 6 }}>Founded in Cairo · operating in 4 countries</div>
-                <div style={{ marginTop: "auto" }}>
-                  <DotMap />
+                <div style={{ marginTop: "auto", position: "relative", height: 220 }}>
+                  <RegionGlobe3D dotColor={LIME} wireColor="#C9C8C0" />
                 </div>
                 <div style={{ position: "absolute", right: 24, bottom: 24, display: "flex", gap: 5, alignItems: "center" }}>
                   <button

@@ -5,6 +5,7 @@ import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { useReveal } from "../hooks/useReveal"
 import { INK, PAPER, TEXT, MUTED, HEAD, BODY } from "../lib/publicTheme"
+import RegionGlobe3D from "../components/three/RegionGlobe3D"
 const headerImg = "/images/LD-01.png"
 
 const adnocLogo = "/images/adnoc.png"
@@ -232,6 +233,12 @@ export default function Projects({ onNavigate, company }: Props) {
               "linear-gradient(to bottom, rgba(10,10,12,0.7), rgba(10,10,12,0.96))",
           }}
         />
+        <div
+          className="projects-globe-accent"
+          style={{ position: "absolute", top: "50%", right: "6%", width: 260, height: 260, transform: "translateY(-50%)" }}
+        >
+          <RegionGlobe3D />
+        </div>
         <div
           style={{
             position: "relative",
