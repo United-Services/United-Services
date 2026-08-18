@@ -808,7 +808,6 @@
       "longDescription": "Long description",
       "specsLabel": "Specs (comma-separated)",
       "specsPlaceholder": "e.g. API 15CLT Compliant, DN50 - DN600",
-      "order": "Order",
       "edit": "Edit",
       "save": "Save",
       "cancel": "Cancel",

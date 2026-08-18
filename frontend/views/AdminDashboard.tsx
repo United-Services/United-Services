@@ -438,7 +438,6 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
     shortDescription: "",
     longDescription: "",
     specs: "",
-    order: 0,
   })
   const [savingService, setSavingService] = useState(false)
   const [showCreateServiceForm, setShowCreateServiceForm] = useState(false)
@@ -794,7 +793,6 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
       shortDescription: svc.shortDescription,
       longDescription: svc.longDescription,
       specs: svc.specs.join(", "),
-      order: svc.order,
     })
   }
 
@@ -814,7 +812,6 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
             .split(",")
             .map((s) => s.trim())
             .filter(Boolean),
-          order: serviceEditForm.order,
         },
         { headers },
       )
@@ -2448,18 +2445,6 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                               }))
                             }
                             placeholder={t("specs.specsPlaceholder")}
-                            style={{ ...fieldInputStyle, marginBottom: 8 }}
-                          />
-                          <input
-                            type="number"
-                            value={serviceEditForm.order}
-                            onChange={(e) =>
-                              setServiceEditForm((f) => ({
-                                ...f,
-                                order: Number(e.target.value),
-                              }))
-                            }
-                            placeholder={t("specs.order")}
                             style={fieldInputStyle}
                           />
                         </div>
