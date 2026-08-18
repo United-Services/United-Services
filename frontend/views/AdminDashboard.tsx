@@ -2234,6 +2234,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                             name: e.target.value,
                           }))
                         }
+                        placeholder={t("specs.namePlaceholder")}
                         required
                         style={fieldInputStyle}
                       />
@@ -2251,6 +2252,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                           shortDescription: e.target.value,
                         }))
                       }
+                      placeholder={t("specs.shortDescriptionPlaceholder")}
                       required
                       style={fieldInputStyle}
                     />
@@ -2267,6 +2269,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                           longDescription: e.target.value,
                         }))
                       }
+                      placeholder={t("specs.longDescriptionPlaceholder")}
                       required
                       rows={3}
                       style={{ ...fieldInputStyle, resize: "vertical" }}
