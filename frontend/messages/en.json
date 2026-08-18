@@ -75,7 +75,10 @@
     "world": {
       "eyebrow": "01 — THE WORLD",
       "title": "Infrastructure that spans nations demands protection that outlasts decades.",
-      "body": "From the Nile Delta to the Arabian Gulf, the pipelines and facilities that power modern civilization face relentless attack. Every joint, every weld, every exposed surface is a front line."
+      "body": "From the Nile Delta to the Arabian Gulf, the pipelines and facilities that power modern civilization face relentless attack. Every joint, every weld, every exposed surface is a front line.",
+      "operationsLabel": "Operations",
+      "hqLabel": "Headquarters — Cairo",
+      "hqFounded": "Est. 2005"
     },
     "problem": {
       "eyebrow": "02 — THE PROBLEM",
@@ -121,6 +124,17 @@
       "eyebrow": "USE · ENGAGEMENT",
       "title": "Ready to protect your infrastructure?",
       "body": "Speak with a USE engineer about your specific application and operating conditions."
+    },
+    "layerDive": {
+      "eyebrow": "The descent",
+      "title": "Five layers stand between crude oil and the ground beneath it",
+      "structural": {
+        "steel": "The load-bearing pipe itself — every layer around it exists to keep it intact for decades, not years.",
+        "flow": "What the entire system protects: an uninterrupted, uncontaminated path from wellhead to destination.",
+        "wrap": "The outermost barrier against soil corrosion, mechanical damage, and UV degradation.",
+        "coating": "A fusion-bonded or liquid epoxy layer applied before the pipe ever leaves the factory.",
+        "lining": "The internal barrier — GRE or HDPE — that keeps what's inside the pipe from ever touching the steel."
+      }
     }
   },
   "about": {

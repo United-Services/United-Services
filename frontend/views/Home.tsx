@@ -1,19 +1,33 @@
 "use client" /* Loading screen */ /* ── HERO ── */ /* ── CERT STRIP ── */ /* ── 01 THE WORLD ── */ /* ── 02 THE PROBLEM ── */ /* ── 03 METHODOLOGY ── */ /* ── 04 SERVICES PREVIEW ── */ /* ── 05 PROOF ── */ /* ── 06 CLIENTS ── */ /* Logo marquee — row 1 */ /* ── CTA ── */
 import { useEffect, useState } from "react"
+import dynamic from "next/dynamic"
 import { useLocale, useTranslations } from "next-intl"
 import { palette } from "../theme"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
-import Spinner from "../components/Spinner"
 import { useReveal } from "../hooks/useReveal"
 import { axios } from "../lib/api"
+import { LAYER_STYLE, SERVICE_SLUG_TO_LAYER } from "../lib/pipelineLayers"
+
+// All three depend on scroll position, viewport size, or matchMedia —
+// none of that exists during SSR, and none of them are needed for the
+// very first server-rendered paint (the hero's text/CTAs, which matter
+// for LCP, aren't inside these). Lazy-loaded so their code (plus the
+// framer-motion/react-simple-maps/d3-geo weight) isn't in the initial
+// bundle.
+const WellHero = dynamic(() => import("../components/home/WellHero"), {
+  ssr: false,
+})
+const LayerDive = dynamic(() => import("../components/home/LayerDive"), {
+  ssr: false,
+})
+const OperationsMap = dynamic(
+  () => import("../components/home/OperationsMap"),
+  { ssr: false },
+)
 
 const ldImg = "/images/LD-03.png"
-const heroImg = "/images/hero-petroleum-v001.webp"
-const worldImg = "/images/world-corridor.jpg"
 
-const HERO_URL = heroImg
-const WORLD_URL = worldImg
 const PIPES_URL =
   "https://images.unsplash.com/photo-1764835746713-34a671e73569?w=900&q=80"
 const WELD_URL =
@@ -72,16 +86,26 @@ interface ServicePreview {
   shortDescription: string
 }
 
-// Purely decorative background cycling — not tied to any specific
-// service's identity, just a rotation so adjacent cards read as distinct.
-const SERVICE_CARD_COLORS = [
-  "#FFF7ED",
-  "#F0FDF4",
-  "#EFF6FF",
-  "#FDF4FF",
-  "#FFF7ED",
-  "#F0FDF4",
-]
+// Fallback rotation for the two real services with no clean 1:1 mapping
+// to a pipeline cross-section layer (RTP Systems is a pipe product
+// category of its own; RTV Insulator Coating protects transmission-line
+// insulators, a different domain from a pipeline cross-section entirely)
+// — see lib/pipelineLayers.ts's SERVICE_SLUG_TO_LAYER comment. Forcing
+// either onto one of the five layer colors would misrepresent what the
+// color means everywhere else it's used on this site.
+const FALLBACK_CARD_COLORS = ["#FFF7ED", "#F0FDF4"]
+
+// Ties a service card's background to the same five-layer color system
+// used by the well-hero/layer-dive/Services.tsx diagram wherever a real
+// mapping exists; a light tint (not the full saturated layer color) to
+// stay readable as card background, not a swatch.
+function cardBackground(slug: string, fallbackIndex: number): string {
+  const layer = SERVICE_SLUG_TO_LAYER[slug]
+  if (layer) {
+    return `color-mix(in srgb, ${LAYER_STYLE[layer].color} 12%, white)`
+  }
+  return FALLBACK_CARD_COLORS[fallbackIndex % FALLBACK_CARD_COLORS.length]
+}
 
 export default function Home({ onNavigate }: Props) {
   useReveal()
@@ -91,11 +115,6 @@ export default function Home({ onNavigate }: Props) {
   const arrow = locale === "ar" ? "←" : "→"
   const [loading, setLoading] = useState(true)
   const [services, setServices] = useState<ServicePreview[]>([])
-
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1600)
-    return () => clearTimeout(timer)
-  }, [])
 
   useEffect(() => {
     axios
@@ -114,7 +133,52 @@ export default function Home({ onNavigate }: Props) {
   return (
     <>
       {}
-      {loading && <Spinner fullScreen size="lg" />}
+      {loading && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: palette.navy,
+          }}
+        >
+          <WellHero settled={false} onIgnitionComplete={() => setLoading(false)} />
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              pointerEvents: "none",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                letterSpacing: "0.2em",
+                color: "#94A3B8",
+                textTransform: "uppercase",
+              }}
+            >
+              {t("loading.portal")}
+            </div>
+            <div
+              className="blink"
+              style={{
+                fontSize: 13,
+                letterSpacing: "0.15em",
+                color: palette.accent,
+                fontWeight: 700,
+              }}
+            >
+              {t("loading.calibrating")}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div
         style={{
@@ -135,18 +199,9 @@ export default function Home({ onNavigate }: Props) {
             overflow: "hidden",
           }}
         >
-          <img
-            src={HERO_URL}
-            alt="Oil refinery industrial pipeline infrastructure"
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              objectPosition: "center",
-            }}
-          />
+          <div style={{ position: "absolute", inset: 0 }}>
+            <WellHero settled />
+          </div>
           <div
             style={{
               position: "absolute",
@@ -356,6 +411,8 @@ export default function Home({ onNavigate }: Props) {
           </div>
         </section>
 
+        <LayerDive services={services} onNavigate={onNavigate} />
+
         {}
         <section
           style={{
@@ -365,17 +422,7 @@ export default function Home({ onNavigate }: Props) {
             overflow: "hidden",
           }}
         >
-          <img
-            src={WORLD_URL}
-            alt="Industrial pipeline infrastructure"
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-            }}
-          />
+          <OperationsMap />
           <div
             style={{
               position: "absolute",
@@ -715,8 +762,7 @@ export default function Home({ onNavigate }: Props) {
                   className="reveal"
                   onClick={() => onNavigate("services")}
                   style={{
-                    background:
-                      SERVICE_CARD_COLORS[i % SERVICE_CARD_COLORS.length],
+                    background: cardBackground(svc.slug, i),
                     border: "1px solid #E2E8F0",
                     borderRadius: 16,
                     padding: "28px 24px",

@@ -6,6 +6,7 @@ import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { useReveal } from "../hooks/useReveal"
 import { axios } from "../lib/api"
+import { LAYER_KEYS, LAYER_STYLE } from "../lib/pipelineLayers"
 
 interface Props {
   onNavigate: (page: string) => void
@@ -19,18 +20,6 @@ interface Service {
   longDescription: string
   specs: string[]
   imageUrl: string | null
-}
-
-const LAYER_KEYS = ["wrap", "coating", "steel", "lining", "flow"] as const
-const LAYER_STYLE: Record<typeof LAYER_KEYS[number], {
-  color: string
-  width: string
-}> = {
-  wrap: { color: "#EA580C", width: "100%" },
-  coating: { color: "#FB923C", width: "88%" },
-  steel: { color: "#475569", width: "76%" },
-  lining: { color: "#0EA5E9", width: "62%" },
-  flow: { color: "#BAE6FD", width: "46%" },
 }
 
 export default function Services({ onNavigate }: Props) {
