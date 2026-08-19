@@ -132,8 +132,16 @@ describe('CandidatesController', () => {
         idPhotoS3Key: null,
         cvS3Key: null,
         otherDocuments: [
-          { id: 'doc-1', originalFilename: 'transcript.pdf', s3Key: 'candidates/x/other-1.pdf' },
-          { id: 'doc-2', originalFilename: 'cert.jpg', s3Key: 'candidates/x/other-2.jpg' },
+          {
+            id: 'doc-1',
+            originalFilename: 'transcript.pdf',
+            s3Key: 'candidates/x/other-1.pdf',
+          },
+          {
+            id: 'doc-2',
+            originalFilename: 'cert.jpg',
+            s3Key: 'candidates/x/other-2.jpg',
+          },
         ],
       });
 

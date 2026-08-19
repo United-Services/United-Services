@@ -60,9 +60,7 @@ describe('MeController', () => {
       // here, same as the other candidateApplication/candidateDocument
       // mocks above, since nothing in these tests needs real isolation.
       $transaction: jest.fn((arg: unknown) =>
-        typeof arg === 'function'
-          ? arg(prisma)
-          : Promise.all(arg as unknown[]),
+        typeof arg === 'function' ? arg(prisma) : Promise.all(arg as unknown[]),
       ),
     } as unknown as PrismaService;
     const s3 = {
@@ -226,7 +224,11 @@ describe('MeController', () => {
         idPhotoS3Key: null,
         cvS3Key: 'candidates/u1/candidate-cv-1.pdf',
         otherDocuments: [
-          { id: 'doc-1', originalFilename: 'transcript.pdf', uploadedAt: new Date('2026-01-01') },
+          {
+            id: 'doc-1',
+            originalFilename: 'transcript.pdf',
+            uploadedAt: new Date('2026-01-01'),
+          },
         ],
         documentsRequested: true,
         documentsRequestedNote: 'Please upload a clearer ID photo',
@@ -244,7 +246,11 @@ describe('MeController', () => {
         hasIdPhoto: false,
         hasCv: true,
         otherDocuments: [
-          { id: 'doc-1', originalFilename: 'transcript.pdf', uploadedAt: new Date('2026-01-01') },
+          {
+            id: 'doc-1',
+            originalFilename: 'transcript.pdf',
+            uploadedAt: new Date('2026-01-01'),
+          },
         ],
         documentsRequested: true,
         documentsRequestedNote: 'Please upload a clearer ID photo',
@@ -365,7 +371,8 @@ describe('MeController', () => {
       });
       await expect(
         controller.uploadOtherDocument(candidate, {
-          s3Key: 'pending/candidates/someone-else/candidate-other-document-1.pdf',
+          s3Key:
+            'pending/candidates/someone-else/candidate-other-document-1.pdf',
           originalFilename: 'transcript.pdf',
         }),
       ).rejects.toThrow(BadRequestException);
