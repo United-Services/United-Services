@@ -7,42 +7,39 @@ WORKDIR /app
 # the right libssl variant, and silently guesses (and can fail to load
 # at runtime) without it. See https://pris.ly/d/engine-not-found-openssl.
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
-RUN corepack enable && corepack prepare pnpm@9 --activate
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+COPY package.json package-lock.json ./
+RUN npm ci
 
 # ── build ────────────────────────────────────────────────────────────────
 FROM node:22-slim AS build
 WORKDIR /app
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
-RUN corepack enable && corepack prepare pnpm@9 --activate
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Prisma client generation only needs a schema-valid DATABASE_URL — it
 # doesn't connect. Real migrations run as a separate step at deploy time
-# (`pnpm run prisma:deploy`), never baked into the image.
+# (`npm run prisma:deploy`), never baked into the image.
 RUN DATABASE_URL="postgresql://user:password@localhost:5432/build" \
     DIRECT_URL="postgresql://user:password@localhost:5432/build" \
-    pnpm exec prisma generate
-RUN pnpm run build
+    npx prisma generate
+RUN npm run build
 
 # ── runtime ──────────────────────────────────────────────────────────────
 FROM node:22-slim AS runtime
 WORKDIR /app
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
-RUN corepack enable && corepack prepare pnpm@9 --activate \
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 1001 nodejs \
     && useradd --system --uid 1001 --gid nodejs nestjs
 
-COPY package.json pnpm-lock.yaml ./
-# Full install (not --prod): the entrypoint needs the `prisma` CLI
+COPY package.json package-lock.json ./
+# Full install (not --omit=dev): the entrypoint needs the `prisma` CLI
 # (migrate deploy) and `ts-node` (one-time kek:generate bootstrap on a
 # fresh DB) at container start, both devDependencies. Trades a larger
 # image for a simple, reliable entrypoint over a fragile separate
 # compile-scripts-with-a-second-tsc-invocation step.
-# NODE_ENV is deliberately NOT set yet — pnpm skips devDependencies
+# NODE_ENV is deliberately NOT set yet — npm skips devDependencies
 # entirely when NODE_ENV=production is already set at install time.
-RUN pnpm install --frozen-lockfile
+RUN npm ci
 ENV NODE_ENV=production
 
 COPY --from=build /app/dist ./dist

@@ -86,9 +86,7 @@ export class IncidentAlertService {
       });
 
       if (!res.ok) {
-        this.logger.error(
-          `ntfy returned ${res.status}: ${await res.text()}`,
-        );
+        this.logger.error(`ntfy returned ${res.status}: ${await res.text()}`);
       }
     } catch (err) {
       // Swallow — see the doc comment above. Still logged, so it's visible

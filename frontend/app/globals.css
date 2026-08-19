@@ -92,7 +92,7 @@ html { scroll-behavior: smooth; }
   40% { transform: scale(1.18); }
   100% { transform: scale(1); }
 }
-.step-circle-done { animation: stepCircleFill 0.4s cubic-bezier(.34,1.56,.64,1); }
+.step-circle-done { animation: stepCircleFill 0.4s cubic-bezier(.16,1,.3,1); }
 
 @keyframes stepBarFill {
   from { transform: scaleX(0); }

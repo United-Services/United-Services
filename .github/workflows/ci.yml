@@ -15,29 +15,26 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-          cache-dependency-path: backend/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
       # Prisma client generation needs a schema-valid DATABASE_URL string,
       # but not a reachable database — validate/generate don't connect.
-      - run: pnpm exec prisma generate
+      - run: npx prisma generate
         env:
           DATABASE_URL: postgresql://user:password@localhost:5432/ci
           DIRECT_URL: postgresql://user:password@localhost:5432/ci
-      - run: pnpm exec tsc --noEmit -p tsconfig.json
+      - run: npx tsc --noEmit -p tsconfig.json
       # Unit tests use a FakeKekKeyStore (real in-memory libsodium
       # keypairs, no disk/DB) — see crypto/testing/fake-kek-key-store.ts —
       # so no KEK_KEYS_DIR or seeded KekRegistry row is needed here.
       - name: Unit tests
-        run: pnpm test -- --ci
-      - run: pnpm run build
-      - run: pnpm audit --audit-level=high
+        run: npm test -- --ci
+      - run: npm run build
+      - run: npm audit --audit-level=high
 
   backend-integration:
     name: Backend — integration tests (real Postgres + Redis)
@@ -85,26 +82,23 @@ jobs:
       CORS_ORIGINS: http://localhost:3000
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-          cache-dependency-path: backend/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec prisma generate
-      - run: pnpm exec prisma migrate deploy
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma migrate deploy
       # AppModule bootstrap requires an active KekRegistry row + its
       # private key file on disk (KekKeyStore.onModuleInit) — generate one
       # fresh for this ephemeral CI database, same as a real first deploy.
-      - run: pnpm run kek:generate
+      - run: npm run kek:generate
       # Nest's Redis/Postgres client handles stay open at test-process
       # exit by design (they're app-lifetime singletons) — --forceExit is
       # expected here, not masking a real leak the unit-test job would fail.
       - name: Integration tests (e2e)
-        run: pnpm exec jest --config ./test/jest-e2e.json --forceExit
+        run: npx jest --config ./test/jest-e2e.json --forceExit
 
   frontend:
     name: Frontend — typecheck & build
@@ -114,25 +108,22 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec tsc --noEmit
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
       - name: Unit tests
-        run: pnpm test
+        run: npm test
       # NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must be a syntactically valid test
       # key for the build to succeed even though no real Clerk instance is
       # reachable in CI.
       - name: Build
-        run: pnpm run build
+        run: npm run build
         env:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2ktcGxhY2Vob2xkZXIta2V5LmNsZXJrLmFjY291bnRzLmRldiQ
           CLERK_SECRET_KEY: sk_test_ci-placeholder-key
           NEXT_PUBLIC_API_URL: http://localhost:3002/api/v1
-      - run: pnpm audit --audit-level=high
+      - run: npm audit --audit-level=high

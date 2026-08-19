@@ -23,7 +23,9 @@ describe('AllExceptionsFilter', () => {
   }
 
   function makeIncidentAlertService() {
-    return { trigger: jest.fn().mockResolvedValue(undefined) } as unknown as IncidentAlertService;
+    return {
+      trigger: jest.fn().mockResolvedValue(undefined),
+    } as unknown as IncidentAlertService;
   }
 
   it('passes an HttpException through with its own status and body untouched', () => {

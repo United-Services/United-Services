@@ -37,9 +37,9 @@ be added alongside this app later.
 
 ## Commands
 
-- `pnpm dev` — start the Next.js dev server (`next dev`).
-- `pnpm build` — production build (`next build`).
-- `pnpm start` — run the production build (`next start`).
+- `npm run dev` — start the Next.js dev server (`next dev`).
+- `npm run build` — production build (`next build`).
+- `npm start` — run the production build (`next start`).
 
 <!-- BEGIN:nextjs-agent-rules -->
 
