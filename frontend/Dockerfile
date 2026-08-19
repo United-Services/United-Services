@@ -3,14 +3,12 @@
 # ── deps ─────────────────────────────────────────────────────────────────
 FROM node:22-slim AS deps
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@9 --activate
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+COPY package.json package-lock.json .npmrc ./
+RUN npm ci
 
 # ── build ────────────────────────────────────────────────────────────────
 FROM node:22-slim AS build
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@9 --activate
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # A syntactically valid Clerk publishable key is required for `next build`
@@ -20,7 +18,7 @@ ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_Y2ktcGxhY2Vob2xkZXIta2V5LmNsZXJrLm
 ARG NEXT_PUBLIC_API_URL=http://localhost:3002/api/v1
 ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-RUN pnpm run build
+RUN npm run build
 
 # ── runtime ──────────────────────────────────────────────────────────────
 FROM node:22-slim AS runtime
@@ -30,7 +28,7 @@ RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 --gid nod
 
 # .next/standalone already contains a minimal node_modules subset + a
 # self-contained server.js (next.config.mjs: output: 'standalone') — no
-# separate pnpm install needed in the runtime stage.
+# separate npm install needed in the runtime stage.
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public

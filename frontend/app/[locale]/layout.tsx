@@ -6,6 +6,7 @@ import { routing } from "@/i18n/routing"
 import LanguagePrompt from "@/components/LanguagePrompt"
 import PageViewTracker from "@/components/PageViewTracker"
 import GlobalLoadingBar from "@/components/GlobalLoadingBar"
+import PageTransition from "@/components/PageTransition"
 import "../globals.css"
 
 export const metadata: Metadata = {
@@ -39,7 +40,7 @@ export default async function LocaleLayout({
           <NextIntlClientProvider>
             <GlobalLoadingBar />
             <PageViewTracker />
-            {children}
+            <PageTransition>{children}</PageTransition>
             {locale === routing.defaultLocale && <LanguagePrompt />}
           </NextIntlClientProvider>
         </ClerkProvider>
