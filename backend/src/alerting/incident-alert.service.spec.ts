@@ -12,7 +12,7 @@ describe('IncidentAlertService', () => {
   beforeEach(() => {
     process.env = { ...ORIGINAL_ENV };
     fetchMock = jest.fn().mockResolvedValue({ ok: true, text: async () => '' });
-    global.fetch = fetchMock as unknown as typeof fetch;
+    global.fetch = fetchMock;
   });
 
   afterAll(() => {
