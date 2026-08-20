@@ -25,9 +25,7 @@ import { Role, type User } from '../generated/prisma';
 import { matchesContentType } from '../common/utils/file-security';
 
 type CandidateUploadKind =
-  | 'candidate-id-photo'
-  | 'candidate-cv'
-  | 'candidate-other-document';
+  'candidate-id-photo' | 'candidate-cv' | 'candidate-other-document';
 
 // Mirrors the extension the server picked in UploadsController for each
 // upload kind — used both to enforce the key belongs to this user/kind and

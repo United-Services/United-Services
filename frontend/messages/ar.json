@@ -75,7 +75,10 @@
     "world": {
       "eyebrow": "01 — العالم",
       "title": "البنية التحتية الممتدة عبر الدول تتطلب حماية تدوم لعقود.",
-      "body": "من دلتا النيل إلى الخليج العربي، تتعرض خطوط الأنابيب والمنشآت التي تُشغّل الحضارة الحديثة لهجوم لا يتوقف. كل وصلة، وكل لحام، وكل سطح مكشوف هو خط دفاع أول."
+      "body": "من دلتا النيل إلى الخليج العربي، تتعرض خطوط الأنابيب والمنشآت التي تُشغّل الحضارة الحديثة لهجوم لا يتوقف. كل وصلة، وكل لحام، وكل سطح مكشوف هو خط دفاع أول.",
+      "operationsLabel": "عمليات",
+      "hqLabel": "المقر الرئيسي — القاهرة",
+      "hqFounded": "تأسست عام 2005"
     },
     "problem": {
       "eyebrow": "02 — المشكلة",
@@ -121,6 +124,17 @@
       "eyebrow": "USE · التعاون",
       "title": "هل أنت مستعد لحماية بنيتك التحتية؟",
       "body": "تحدث مع أحد مهندسي الشركة حول تطبيقك المحدد وظروف التشغيل الخاصة بك."
+    },
+    "layerDive": {
+      "eyebrow": "الهبوط",
+      "title": "خمس طبقات تفصل بين النفط الخام والأرض المحيطة به",
+      "structural": {
+        "steel": "الأنبوب الحامل نفسه — كل طبقة حوله موجودة لإبقائه سليماً لعقود، لا لسنوات.",
+        "flow": "ما يحميه النظام بأكمله: مسار متواصل وغير ملوث من رأس البئر إلى الوجهة.",
+        "wrap": "الحاجز الخارجي ضد تآكل التربة والأضرار الميكانيكية والتحلل الناتج عن الأشعة فوق البنفسجية.",
+        "coating": "طبقة إيبوكسي مرتبطة بالانصهار أو سائلة تُطبَّق قبل مغادرة الأنبوب للمصنع.",
+        "lining": "الحاجز الداخلي — GRE أو HDPE — الذي يمنع ما بداخل الأنبوب من ملامسة الفولاذ."
+      }
     }
   },
   "about": {
@@ -202,36 +216,36 @@
   },
   "servicesPage": {
     "eyebrow": "USE · SHEET 02 · SYS-INDEX",
-    "title": "Systems Index",
-    "subtitle": "Six integrated corrosion-control and pipeline-integrity systems, each engineered to international standards at our 6,000 m² Cairo facility.",
+    "title": "فهرس الأنظمة",
+    "subtitle": "ستة أنظمة متكاملة للتحكم في التآكل وسلامة خطوط الأنابيب، مصممة وفق المعايير الدولية في منشأتنا بالقاهرة التي تبلغ مساحتها 6,000 م².",
     "diagram": {
       "eyebrow": "USE · CROSS-SECTION DETAIL · REV.03",
-      "title": "Layered Pipeline Protection",
-      "body": "A complete USE-engineered pipeline assembly integrates all protection layers into one specification, designed as a system — not as separate products.",
+      "title": "الحماية الطبقية لخطوط الأنابيب",
+      "body": "تدمج منظومة الأنابيب المصممة بالكامل من USE جميع طبقات الحماية في مواصفة واحدة، مصممة كنظام متكامل — وليست منتجات منفصلة.",
       "layers": {
         "wrap": {
-          "label": "External Wrap / Mechanical Protection",
+          "label": "التغليف الخارجي / الحماية الميكانيكية",
           "short": "EXTERNAL"
         },
         "coating": {
-          "label": "Anti-Corrosion Coating (FBE / Epoxy)",
+          "label": "طلاء مقاوم للتآكل (FBE / إيبوكسي)",
           "short": "ANTI-CORROSION"
         },
         "steel": {
-          "label": "Steel Substrate",
+          "label": "الركيزة الفولاذية",
           "short": "STEEL"
         },
         "lining": {
-          "label": "GRE / HDPE Internal Lining",
+          "label": "التبطين الداخلي GRE / HDPE",
           "short": "GRE"
         },
         "flow": {
-          "label": "Protected Flow Zone",
+          "label": "منطقة التدفق المحمية",
           "short": "PROTECTED"
         }
       }
     },
-    "requestSpecFile": "Request Spec File",
+    "requestSpecFile": "طلب ملف المواصفات",
     "tags": {
       "gre": "API 15CLT · Internal Corrosion Barrier",
       "wrap": "ISO 21809 · Multi-Layer Tape Systems",
@@ -299,7 +313,8 @@
         "Operating 11 kV – 500 kV",
         "Brush / spray application"
       ]
-    }
+    },
+    "loading": "جارٍ تحميل الخدمات…"
   },
   "careers": {
     "eyebrow": "USE · الصفحة 05 · الوظائف",
@@ -796,7 +811,27 @@
       "noFile": "No spec file uploaded yet",
       "uploading": "Uploading…",
       "replaceFile": "Replace File",
-      "uploadFile": "Upload Spec File"
+      "uploadFile": "Upload Spec File",
+      "addService": "Add Service",
+      "createHeading": "Create a new service",
+      "createService": "Create Service",
+      "slug": "Slug",
+      "slugPlaceholder": "e.g. gre-tubular-lining",
+      "name": "Name",
+      "namePlaceholder": "e.g. GRE Tubular Lining",
+      "shortDescription": "Short description",
+      "shortDescriptionPlaceholder": "e.g. API 15CLT · Internal Corrosion Barrier",
+      "longDescription": "Long description",
+      "longDescriptionPlaceholder": "A few sentences describing what this service is, how it's applied, and which standards it meets.",
+      "specsLabel": "Specs (comma-separated)",
+      "specsPlaceholder": "e.g. API 15CLT Compliant, DN50 - DN600",
+      "edit": "Edit",
+      "delete": "Delete",
+      "confirmDelete": "Delete \"{name}\"? This cannot be undone.",
+      "save": "Save",
+      "cancel": "Cancel",
+      "uploadImage": "Upload Image",
+      "replaceImage": "Replace Image"
     },
     "requests": {
       "searchPlaceholder": "Search requests by client, company, or file",

@@ -5,12 +5,20 @@ import { RedisService } from '../redis/redis.service';
 import { LibreTranslateClient, chunkText } from './libretranslate.client';
 import type {
   OpenPosition,
+  Service,
   TranslatableContentType,
   TranslationStatus,
 } from '../generated/prisma';
 
-const TRANSLATABLE_FIELDS = ['title', 'description', 'department'] as const;
-type TranslatableField = (typeof TRANSLATABLE_FIELDS)[number];
+const POSITION_FIELDS = ['title', 'description', 'department'] as const;
+type PositionField = (typeof POSITION_FIELDS)[number];
+
+// name/shortDescription/longDescription only — never `specs`, which is
+// technical standard codes (e.g. "API 15CLT Compliant", "DN50 – DN600")
+// that must stay as-is (untranslated, in their original form) in every
+// locale, not run through machine translation like marketing copy is.
+const SERVICE_FIELDS = ['name', 'shortDescription', 'longDescription'] as const;
+type ServiceField = (typeof SERVICE_FIELDS)[number];
 
 export interface TranslatedPositionResult {
   status: TranslationStatus;
@@ -19,13 +27,36 @@ export interface TranslatedPositionResult {
   department: string;
 }
 
+export interface TranslatedServiceResult {
+  status: TranslationStatus;
+  name: string;
+  shortDescription: string;
+  longDescription: string;
+}
+
+interface TranslatableItem {
+  id: string;
+}
+
+// Everything translateAndStoreGeneric/getTranslatedContent/runTriggerGeneric
+// need to know about a content type — the field list to translate, how to
+// pull those fields off the actual entity, and the ContentTranslation row's
+// discriminator. Adding a new translatable content type means adding one
+// of these plus a thin public wrapper (see getTranslatedPositions /
+// getTranslatedServices below), not touching the shared logic.
+interface TranslationSpec<T extends TranslatableItem, F extends string> {
+  contentType: TranslatableContentType;
+  fields: readonly F[];
+  extractFields: (item: T) => Record<F, string>;
+}
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Cached machine translation for OpenPosition content, self-hosted via
-// LibreTranslate (see docker-compose.yml) — no per-character cost, so the
-// "budget" here guards this container's own throughput, not an external
-// bill. See docs/BUSINESS_RULES.md and the design writeup this module was
-// built from for the full rationale.
+// Cached machine translation for OpenPosition and Service content,
+// self-hosted via LibreTranslate (see docker-compose.yml) — no per-
+// character cost, so the "budget" here guards this container's own
+// throughput, not an external bill. See docs/BUSINESS_RULES.md and the
+// design writeup this module was built from for the full rationale.
 @Injectable()
 export class TranslationService {
   private readonly logger = new Logger(TranslationService.name);
@@ -49,27 +80,22 @@ export class TranslationService {
     return createHash('sha256').update(JSON.stringify(sorted)).digest('hex');
   }
 
-  private sourceFields(
-    position: OpenPosition,
-  ): Record<TranslatableField, string> {
-    return {
-      title: position.title,
-      description: position.description,
-      department: position.department,
-    };
-  }
-
-  private lockKey(contentId: string, locale: string): string {
-    return `lock:translation:open_position:${contentId}:${locale}`;
+  private lockKey(
+    contentType: TranslatableContentType,
+    contentId: string,
+    locale: string,
+  ): string {
+    return `lock:translation:${contentType}:${contentId}:${locale}`;
   }
 
   private async acquireLock(
+    contentType: TranslatableContentType,
     contentId: string,
     locale: string,
   ): Promise<boolean> {
     const ttl = Number(process.env.TRANSLATION_LOCK_TTL_MS ?? 30_000);
     const result = await this.redis.set(
-      this.lockKey(contentId, locale),
+      this.lockKey(contentType, contentId, locale),
       '1',
       'PX',
       ttl,
@@ -78,8 +104,12 @@ export class TranslationService {
     return result === 'OK';
   }
 
-  private async releaseLock(contentId: string, locale: string): Promise<void> {
-    await this.redis.del(this.lockKey(contentId, locale));
+  private async releaseLock(
+    contentType: TranslatableContentType,
+    contentId: string,
+    locale: string,
+  ): Promise<void> {
+    await this.redis.del(this.lockKey(contentType, contentId, locale));
   }
 
   private budgetKey(): string {
@@ -101,53 +131,50 @@ export class TranslationService {
     await this.redis.incrby(this.budgetKey(), chars);
   }
 
-  // Does the actual translation work for every position in `positions`
-  // (caller must already hold each one's lock) and always leaves every
-  // row in a terminal status (translated/failed) — never throws, so a
-  // translation failure can never break the request that triggered it.
-  private async translateAndStore(
-    positions: OpenPosition[],
-    locale: string,
-  ): Promise<void> {
-    if (positions.length === 0) return;
+  // Does the actual translation work for every item in `items` (caller
+  // must already hold each one's lock) and always leaves every row in a
+  // terminal status (translated/failed) — never throws, so a translation
+  // failure can never break the request that triggered it.
+  private async translateAndStoreGeneric<
+    T extends TranslatableItem,
+    F extends string,
+  >(items: T[], locale: string, spec: TranslationSpec<T, F>): Promise<void> {
+    if (items.length === 0) return;
+    const { contentType, fields, extractFields } = spec;
 
     await Promise.all(
-      positions.map((p) =>
+      items.map((item) =>
         this.prisma.contentTranslation.upsert({
           where: {
             contentType_contentId_locale: {
-              contentType: 'open_position',
-              contentId: p.id,
+              contentType,
+              contentId: item.id,
               locale,
             },
           },
           create: {
-            contentType: 'open_position',
-            contentId: p.id,
+            contentType,
+            contentId: item.id,
             locale,
             status: 'translating',
             fields: {},
-            sourceHash: this.computeSourceHash(this.sourceFields(p)),
+            sourceHash: this.computeSourceHash(extractFields(item)),
           },
           update: { status: 'translating' },
         }),
       ),
     );
 
-    type ChunkRef = {
-      positionId: string;
-      field: TranslatableField;
-      chunkIndex: number;
-    };
+    type ChunkRef = { itemId: string; field: F; chunkIndex: number };
     const refs: ChunkRef[] = [];
     const texts: string[] = [];
 
-    for (const p of positions) {
-      const fields = this.sourceFields(p);
-      for (const field of TRANSLATABLE_FIELDS) {
-        const chunks = chunkText(fields[field]);
+    for (const item of items) {
+      const itemFields = extractFields(item);
+      for (const field of fields) {
+        const chunks = chunkText(itemFields[field]);
         chunks.forEach((chunk, chunkIndex) => {
-          refs.push({ positionId: p.id, field, chunkIndex });
+          refs.push({ itemId: item.id, field, chunkIndex });
           texts.push(chunk);
         });
       }
@@ -156,12 +183,12 @@ export class TranslationService {
     const estimatedChars = texts.reduce((sum, t) => sum + t.length, 0);
     if (!(await this.withinBudget(estimatedChars))) {
       await Promise.all(
-        positions.map((p) =>
+        items.map((item) =>
           this.prisma.contentTranslation.update({
             where: {
               contentType_contentId_locale: {
-                contentType: 'open_position',
-                contentId: p.id,
+                contentType,
+                contentId: item.id,
                 locale,
               },
             },
@@ -172,7 +199,9 @@ export class TranslationService {
           }),
         ),
       );
-      await Promise.all(positions.map((p) => this.releaseLock(p.id, locale)));
+      await Promise.all(
+        items.map((item) => this.releaseLock(contentType, item.id, locale)),
+      );
       return;
     }
 
@@ -181,37 +210,36 @@ export class TranslationService {
         await this.libreTranslate.translateBatch(texts, locale);
       await this.recordUsage(charCount);
 
-      // Reassemble: group each position+field's chunk translations back
-      // in order, then join into the final translated field value.
+      // Reassemble: group each item+field's chunk translations back in
+      // order, then join into the final translated field value.
       const grouped = new Map<string, string[]>();
       refs.forEach((ref, i) => {
-        const key = `${ref.positionId}:${ref.field}`;
+        const key = `${ref.itemId}:${ref.field}`;
         const arr = grouped.get(key) ?? [];
         arr[ref.chunkIndex] = translations[i];
         grouped.set(key, arr);
       });
 
       await Promise.all(
-        positions.map((p) => {
-          const translatedFields: Record<TranslatableField, string> = {
-            title: (grouped.get(`${p.id}:title`) ?? []).join('\n\n'),
-            description: (grouped.get(`${p.id}:description`) ?? []).join(
-              '\n\n',
-            ),
-            department: (grouped.get(`${p.id}:department`) ?? []).join('\n\n'),
-          };
+        items.map((item) => {
+          const translatedFields = Object.fromEntries(
+            fields.map((field) => [
+              field,
+              (grouped.get(`${item.id}:${field}`) ?? []).join('\n\n'),
+            ]),
+          );
           return this.prisma.contentTranslation.update({
             where: {
               contentType_contentId_locale: {
-                contentType: 'open_position',
-                contentId: p.id,
+                contentType,
+                contentId: item.id,
                 locale,
               },
             },
             data: {
               status: 'translated',
               fields: translatedFields,
-              sourceHash: this.computeSourceHash(this.sourceFields(p)),
+              sourceHash: this.computeSourceHash(extractFields(item)),
               translatedAt: new Date(),
               errorMessage: null,
             },
@@ -221,15 +249,15 @@ export class TranslationService {
     } catch (error) {
       const message = (error as Error).message ?? 'Unknown translation error';
       this.logger.error(
-        `Translation failed for locale=${locale}, positions=${positions.map((p) => p.id).join(',')}: ${message}`,
+        `Translation failed for locale=${locale}, contentType=${contentType}, items=${items.map((i) => i.id).join(',')}: ${message}`,
       );
       await Promise.all(
-        positions.map((p) =>
+        items.map((item) =>
           this.prisma.contentTranslation.update({
             where: {
               contentType_contentId_locale: {
-                contentType: 'open_position',
-                contentId: p.id,
+                contentType,
+                contentId: item.id,
                 locale,
               },
             },
@@ -238,86 +266,89 @@ export class TranslationService {
         ),
       );
     } finally {
-      await Promise.all(positions.map((p) => this.releaseLock(p.id, locale)));
+      await Promise.all(
+        items.map((item) => this.releaseLock(contentType, item.id, locale)),
+      );
     }
   }
 
-  // The read path: for each position, returns cached content if the hash
-  // still matches, otherwise triggers (and, for positions this call wins
-  // the lock for, waits out) a fresh translation — bounded so a visitor
-  // is never blocked waiting on the translation service indefinitely.
-  async getTranslatedPositions(
-    positions: OpenPosition[],
+  // The read path: for each item, returns cached content if the hash
+  // still matches, otherwise triggers (and, for items this call wins the
+  // lock for, waits out) a fresh translation — bounded so a visitor is
+  // never blocked waiting on the translation service indefinitely.
+  private async getTranslatedContent<
+    T extends TranslatableItem,
+    F extends string,
+  >(
+    items: T[],
     locale: string,
-  ): Promise<Map<string, TranslatedPositionResult>> {
-    const result = new Map<string, TranslatedPositionResult>();
-    if (positions.length === 0) return result;
+    spec: TranslationSpec<T, F>,
+  ): Promise<Map<string, { status: TranslationStatus } & Record<F, string>>> {
+    const { contentType, extractFields } = spec;
+    const result = new Map<
+      string,
+      { status: TranslationStatus } & Record<F, string>
+    >();
+    if (items.length === 0) return result;
 
-    const ids = positions.map((p) => p.id);
-    const existingRows = await this.prisma.contentTranslation.findMany({
-      where: { contentType: 'open_position', contentId: { in: ids }, locale },
+    const asOriginal = (
+      item: T,
+    ): { status: TranslationStatus } & Record<F, string> => ({
+      status: 'missing',
+      ...extractFields(item),
     });
-    const existingByPositionId = new Map(
-      existingRows.map((r) => [r.contentId, r]),
-    );
 
-    const needsTranslation: OpenPosition[] = [];
-    for (const p of positions) {
-      const hash = this.computeSourceHash(this.sourceFields(p));
-      const row = existingByPositionId.get(p.id);
+    const ids = items.map((item) => item.id);
+    const existingRows = await this.prisma.contentTranslation.findMany({
+      where: { contentType, contentId: { in: ids }, locale },
+    });
+    const existingById = new Map(existingRows.map((r) => [r.contentId, r]));
+
+    const needsTranslation: T[] = [];
+    for (const item of items) {
+      const hash = this.computeSourceHash(extractFields(item));
+      const row = existingById.get(item.id);
       if (row && row.status === 'translated' && row.sourceHash === hash) {
-        const fields = row.fields as Record<TranslatableField, string>;
-        result.set(p.id, {
-          status: 'translated',
-          title: fields.title,
-          description: fields.description,
-          department: fields.department,
-        });
+        const fields = row.fields as Record<F, string>;
+        result.set(item.id, { status: 'translated', ...fields });
       } else {
-        needsTranslation.push(p);
+        needsTranslation.push(item);
       }
     }
     if (needsTranslation.length === 0) return result;
 
     const lockResults = await Promise.all(
-      needsTranslation.map(async (p) => ({
-        position: p,
-        acquired: await this.acquireLock(p.id, locale),
+      needsTranslation.map(async (item) => ({
+        item,
+        acquired: await this.acquireLock(contentType, item.id, locale),
       })),
     );
     const toTranslateNow = lockResults
       .filter((r) => r.acquired)
-      .map((r) => r.position);
+      .map((r) => r.item);
     const waitingForOthers = lockResults
       .filter((r) => !r.acquired)
-      .map((r) => r.position);
+      .map((r) => r.item);
 
     if (toTranslateNow.length > 0) {
-      await this.translateAndStore(toTranslateNow, locale);
+      await this.translateAndStoreGeneric(toTranslateNow, locale, spec);
       const finalRows = await this.prisma.contentTranslation.findMany({
         where: {
-          contentType: 'open_position',
-          contentId: { in: toTranslateNow.map((p) => p.id) },
+          contentType,
+          contentId: { in: toTranslateNow.map((item) => item.id) },
           locale,
         },
       });
-      const finalByPositionId = new Map(finalRows.map((r) => [r.contentId, r]));
-      for (const p of toTranslateNow) {
-        const row = finalByPositionId.get(p.id);
+      const finalById = new Map(finalRows.map((r) => [r.contentId, r]));
+      for (const item of toTranslateNow) {
+        const row = finalById.get(item.id);
         if (row?.status === 'translated') {
-          const fields = row.fields as Record<TranslatableField, string>;
-          result.set(p.id, {
-            status: 'translated',
-            title: fields.title,
-            description: fields.description,
-            department: fields.department,
-          });
+          const fields = row.fields as Record<F, string>;
+          result.set(item.id, { status: 'translated', ...fields });
         } else {
-          result.set(p.id, {
+          result.set(item.id, {
             status: row?.status ?? 'failed',
-            title: p.title,
-            description: p.description,
-            department: p.department,
+            ...extractFields(item),
           });
         }
       }
@@ -326,77 +357,62 @@ export class TranslationService {
     if (waitingForOthers.length > 0) {
       const waitMs = Number(process.env.TRANSLATION_SYNC_WAIT_MS ?? 2500);
       await Promise.all(
-        waitingForOthers.map(async (p) => {
-          const hash = this.computeSourceHash(this.sourceFields(p));
+        waitingForOthers.map(async (item) => {
+          const hash = this.computeSourceHash(extractFields(item));
           const deadline = Date.now() + waitMs;
           while (Date.now() < deadline) {
             const row = await this.prisma.contentTranslation.findUnique({
               where: {
                 contentType_contentId_locale: {
-                  contentType: 'open_position',
-                  contentId: p.id,
+                  contentType,
+                  contentId: item.id,
                   locale,
                 },
               },
             });
             if (row?.status === 'translated' && row.sourceHash === hash) {
-              const fields = row.fields as Record<TranslatableField, string>;
-              result.set(p.id, {
-                status: 'translated',
-                title: fields.title,
-                description: fields.description,
-                department: fields.department,
-              });
+              const fields = row.fields as Record<F, string>;
+              result.set(item.id, { status: 'translated', ...fields });
               return;
             }
             if (row?.status === 'failed') {
-              result.set(p.id, {
-                status: 'failed',
-                title: p.title,
-                description: p.description,
-                department: p.department,
-              });
+              result.set(item.id, { status: 'failed', ...extractFields(item) });
               return;
             }
             await sleep(300);
           }
           // Timed out — never block the caller indefinitely. The
           // translation is presumably still in flight elsewhere.
-          result.set(p.id, {
+          result.set(item.id, {
             status: 'translating',
-            title: p.title,
-            description: p.description,
-            department: p.department,
+            ...extractFields(item),
           });
         }),
       );
     }
 
+    // Anything not otherwise set (e.g. malformed cached rows this call
+    // never touched) falls back to the original content rather than being
+    // silently absent from the map.
+    for (const item of items) {
+      if (!result.has(item.id)) result.set(item.id, asOriginal(item));
+    }
+
     return result;
   }
 
-  // Fire-and-forget publish-time hook — NOT awaited by the caller.
-  // Wrapped so a failure here can never surface as an unhandled rejection.
-  triggerAsync(position: OpenPosition, locales: string[]): void {
-    for (const locale of locales) {
-      this.runTrigger(position, locale).catch((error: Error) => {
-        this.logger.error(
-          `triggerAsync failed for position=${position.id} locale=${locale}: ${error.message}`,
-        );
-      });
-    }
-  }
-
-  private async runTrigger(
-    position: OpenPosition,
+  private async runTriggerGeneric<T extends TranslatableItem, F extends string>(
+    item: T,
     locale: string,
+    spec: TranslationSpec<T, F>,
   ): Promise<void> {
-    const hash = this.computeSourceHash(this.sourceFields(position));
+    const { contentType, extractFields } = spec;
+    const hash = this.computeSourceHash(extractFields(item));
     const existing = await this.prisma.contentTranslation.findUnique({
       where: {
         contentType_contentId_locale: {
-          contentType: 'open_position',
-          contentId: position.id,
+          contentType,
+          contentId: item.id,
           locale,
         },
       },
@@ -404,10 +420,84 @@ export class TranslationService {
     if (existing?.status === 'translated' && existing.sourceHash === hash)
       return;
 
-    const acquired = await this.acquireLock(position.id, locale);
+    const acquired = await this.acquireLock(contentType, item.id, locale);
     if (!acquired) return; // another request (e.g. a concurrent GET) is already handling it
 
-    await this.translateAndStore([position], locale);
+    await this.translateAndStoreGeneric([item], locale, spec);
+  }
+
+  // Arrow-function class fields (not methods) — passed by reference into
+  // TranslationSpec.extractFields elsewhere in this file, and neither one
+  // touches `this`, so this form avoids a false-positive unbound-method
+  // lint warning a plain method would trigger there.
+  private positionFields = (
+    position: OpenPosition,
+  ): Record<PositionField, string> => ({
+    title: position.title,
+    description: position.description,
+    department: position.department,
+  });
+
+  private serviceFields = (service: Service): Record<ServiceField, string> => ({
+    name: service.name,
+    shortDescription: service.shortDescription,
+    longDescription: service.longDescription,
+  });
+
+  private positionSpec(): TranslationSpec<OpenPosition, PositionField> {
+    return {
+      contentType: 'open_position',
+      fields: POSITION_FIELDS,
+      extractFields: this.positionFields,
+    };
+  }
+
+  private serviceSpec(): TranslationSpec<Service, ServiceField> {
+    return {
+      contentType: 'service',
+      fields: SERVICE_FIELDS,
+      extractFields: this.serviceFields,
+    };
+  }
+
+  async getTranslatedPositions(
+    positions: OpenPosition[],
+    locale: string,
+  ): Promise<Map<string, TranslatedPositionResult>> {
+    return this.getTranslatedContent(positions, locale, this.positionSpec());
+  }
+
+  async getTranslatedServices(
+    services: Service[],
+    locale: string,
+  ): Promise<Map<string, TranslatedServiceResult>> {
+    return this.getTranslatedContent(services, locale, this.serviceSpec());
+  }
+
+  // Fire-and-forget publish-time hook — NOT awaited by the caller.
+  // Wrapped so a failure here can never surface as an unhandled rejection.
+  triggerAsync(position: OpenPosition, locales: string[]): void {
+    for (const locale of locales) {
+      this.runTriggerGeneric(position, locale, this.positionSpec()).catch(
+        (error: Error) => {
+          this.logger.error(
+            `triggerAsync failed for position=${position.id} locale=${locale}: ${error.message}`,
+          );
+        },
+      );
+    }
+  }
+
+  triggerServiceAsync(service: Service, locales: string[]): void {
+    for (const locale of locales) {
+      this.runTriggerGeneric(service, locale, this.serviceSpec()).catch(
+        (error: Error) => {
+          this.logger.error(
+            `triggerServiceAsync failed for service=${service.id} locale=${locale}: ${error.message}`,
+          );
+        },
+      );
+    }
   }
 
   async invalidate(

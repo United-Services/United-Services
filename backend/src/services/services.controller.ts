@@ -1,24 +1,32 @@
 import {
   BadRequestException,
   Body,
+  ConflictException,
   Controller,
+  Delete,
   Get,
   NotFoundException,
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { RedisService } from '../redis/redis.service';
+import { TranslationService } from '../translations/translation.service';
+import { TRANSLATABLE_LOCALES } from '../translations/translatable-locales';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
 import { PresignServiceFileDto } from './dto/presign-service-file.dto';
 import { ConfirmServiceFileDto } from './dto/confirm-service-file.dto';
+import { PresignServiceImageDto } from './dto/presign-service-image.dto';
+import { ConfirmServiceImageDto } from './dto/confirm-service-image.dto';
 import {
   Role,
   type User,
@@ -34,6 +42,14 @@ import {
 const SERVICES_LIST_CACHE_KEY = 'cache:services:list';
 const CACHE_TTL_SECONDS = 300;
 
+// How long a resolved image URL stays valid for the browser that receives
+// it — generous relative to CACHE_TTL_SECONDS because presigning is a
+// local, no-network-call operation (see resolveImageUrl below), so it's
+// cheap to redo on every request regardless of whether the underlying
+// service list came from cache. A short-tab-open visitor never sees this
+// expire mid-visit.
+const IMAGE_URL_TTL_SECONDS = 3600;
+
 // Admin-only, but still enforced server-side: a spec file must actually be
 // one of these document types. Never trust the client-reported
 // `contentType` beyond this lookup.
@@ -43,6 +59,12 @@ const ALLOWED_SERVICE_FILE_TYPES = new Set([
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]);
 
+const ALLOWED_SERVICE_IMAGE_TYPES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
+
 @Controller('services')
 export class ServicesController {
   constructor(
@@ -50,17 +72,61 @@ export class ServicesController {
     private readonly s3: S3Service,
     private readonly auditLog: AuditLogService,
     private readonly redis: RedisService,
+    private readonly translations: TranslationService,
   ) {}
+
+  // Resolves each service's private imageS3Key (see the schema comment on
+  // Service.imageS3Key) to a short-lived presigned GET URL — never a raw
+  // key or permanent URL leaves this server. Run on every response, cache
+  // hit or not, since presigning is local (HMAC over the request, no S3
+  // round trip) and a URL baked into the 5-minute service-list cache would
+  // otherwise go stale/expired well before the cache entry itself does.
+  private async withImageUrl<T extends Service>(
+    service: T,
+  ): Promise<T & { imageUrl: string | null }> {
+    if (!service.imageS3Key) return { ...service, imageUrl: null };
+    const imageUrl = await this.s3.createDownloadUrl(
+      service.imageS3Key,
+      IMAGE_URL_TTL_SECONDS,
+    );
+    return { ...service, imageUrl };
+  }
+
+  // Merges each service's machine translation (name/shortDescription/
+  // longDescription only — `specs` is technical standard codes and is
+  // deliberately never translated, see TranslationService's SERVICE_FIELDS)
+  // on top of the original record for 'ar'/'zh'. Omitted/'en'/anything
+  // else returns the services completely untouched.
+  private async withTranslations(
+    services: Service[],
+    locale?: string,
+  ): Promise<Service[]> {
+    if (!locale || !TRANSLATABLE_LOCALES.includes(locale)) return services;
+    const translated = await this.translations.getTranslatedServices(
+      services,
+      locale,
+    );
+    return services.map((s) => ({ ...s, ...translated.get(s.id) }));
+  }
 
   // Public marketing content — read-heavy, low-churn, so it's cached in
   // Redis with an explicit invalidation on admin edits (Phase 10). Never
   // cache anything containing per-user data — this endpoint never does.
+  // The cached payload is always the untranslated (English) record —
+  // translation is merged in afterward per-request, same reasoning as
+  // withImageUrl not being baked into the cache either.
   @Public()
   @Get()
-  async list() {
+  async list(@Query('locale') locale?: string) {
     const cached = await this.redis.get(SERVICES_LIST_CACHE_KEY);
-    if (cached) return JSON.parse(cached) as Service[];
+    const services = cached
+      ? (JSON.parse(cached) as Service[])
+      : await this.fetchAndCacheServices();
+    const withTranslations = await this.withTranslations(services, locale);
+    return Promise.all(withTranslations.map((s) => this.withImageUrl(s)));
+  }
 
+  private async fetchAndCacheServices(): Promise<Service[]> {
     const services = await this.prisma.service.findMany({
       orderBy: { order: 'asc' },
     });
@@ -75,10 +141,51 @@ export class ServicesController {
 
   @Public()
   @Get(':slug')
-  async bySlug(@Param('slug') slug: string) {
+  async bySlug(@Param('slug') slug: string, @Query('locale') locale?: string) {
     const service = await this.prisma.service.findUnique({ where: { slug } });
     if (!service) throw new NotFoundException('Service not found');
-    return service;
+    const [withTranslation] = await this.withTranslations([service], locale);
+    return this.withImageUrl(withTranslation);
+  }
+
+  @Roles(Role.admin)
+  @Post()
+  async create(@CurrentUser() admin: User, @Body() dto: CreateServiceDto) {
+    const existing = await this.prisma.service.findUnique({
+      where: { slug: dto.slug },
+    });
+    if (existing) {
+      throw new ConflictException('A service with this slug already exists');
+    }
+    const maxOrder = await this.prisma.service.aggregate({
+      _max: { order: true },
+    });
+    const created = await this.prisma.service.create({
+      data: {
+        slug: dto.slug,
+        name: dto.name,
+        shortDescription: dto.shortDescription,
+        longDescription: dto.longDescription,
+        specs: dto.specs ?? [],
+        order: dto.order ?? (maxOrder._max.order ?? 0) + 1,
+        // Vestigial structural field — nothing in the current frontend
+        // reads it, but the column is non-nullable; the slug is a safe,
+        // always-present default rather than exposing a redundant field
+        // in the create form.
+        iconKey: dto.slug,
+        updatedByAdminId: admin.id,
+      },
+    });
+    await this.redis.del(SERVICES_LIST_CACHE_KEY);
+    await this.auditLog.record({
+      actorUserId: admin.id,
+      action: 'service.created',
+      targetType: 'Service',
+      targetId: created.id,
+      metadata: { slug: dto.slug, name: dto.name },
+    });
+    this.translations.triggerServiceAsync(created, TRANSLATABLE_LOCALES); // fire-and-forget
+    return this.withImageUrl(created);
   }
 
   @Roles(Role.admin)
@@ -100,7 +207,156 @@ export class ServicesController {
       targetId: id,
       metadata: dto as unknown as Prisma.InputJsonValue,
     });
-    return updated;
+    // Triggered regardless of which fields changed — the hash check
+    // inside triggerServiceAsync/getTranslatedServices makes a no-op
+    // retrigger on an update that didn't touch name/shortDescription/
+    // longDescription cheap and correct, so there's no need to diff
+    // fields here (same reasoning as PositionsController.update).
+    this.translations.triggerServiceAsync(updated, TRANSLATABLE_LOCALES); // fire-and-forget
+    return this.withImageUrl(updated);
+  }
+
+  // Blocked (409, not a raw FK-constraint 500) whenever real business
+  // records still point at this service — an RFQ against it, or a
+  // file-access request on one of its spec files — rather than silently
+  // cascading those away. ServiceFile rows themselves do cascade-delete
+  // (see the schema's onDelete: Cascade on ServiceFile.service), but only
+  // once we've confirmed nothing else references them.
+  @Roles(Role.admin)
+  @Delete(':id')
+  async remove(@CurrentUser() admin: User, @Param('id') id: string) {
+    const service = await this.prisma.service.findUnique({
+      where: { id },
+      include: { files: true },
+    });
+    if (!service) throw new NotFoundException('Service not found');
+
+    const rfqCount = await this.prisma.serviceRequest.count({
+      where: { serviceId: id },
+    });
+    if (rfqCount > 0) {
+      throw new ConflictException(
+        'Cannot delete a service with existing RFQs against it',
+      );
+    }
+
+    if (service.files.length > 0) {
+      const accessRequestCount = await this.prisma.fileAccessRequest.count({
+        where: { serviceFileId: { in: service.files.map((f) => f.id) } },
+      });
+      if (accessRequestCount > 0) {
+        throw new ConflictException(
+          'Cannot delete a service whose spec files have file-access requests on record',
+        );
+      }
+    }
+
+    await this.prisma.service.delete({ where: { id } });
+
+    // Best-effort — the DB delete above is already committed, so a
+    // failure here leaves an orphaned S3 object, not an inconsistent
+    // record. Never undo the delete over this.
+    const keysToDelete = [
+      ...service.files.map((f) => f.s3Key),
+      ...(service.imageS3Key ? [service.imageS3Key] : []),
+    ];
+    await Promise.all(
+      keysToDelete.map((key) =>
+        this.s3.deleteObject(key).catch(() => undefined),
+      ),
+    );
+
+    await this.redis.del(SERVICES_LIST_CACHE_KEY);
+    await this.auditLog.record({
+      actorUserId: admin.id,
+      action: 'service.deleted',
+      targetType: 'Service',
+      targetId: id,
+      metadata: { slug: service.slug, name: service.name },
+    });
+    return { ok: true };
+  }
+
+  // The service's public hero image — a different object/prefix from the
+  // private spec files below, but the same presign -> confirm shape used
+  // everywhere else in this codebase (see me.controller.ts's candidate
+  // uploads): the file never transits this server, and content is only
+  // trusted once its magic bytes are checked at confirm time.
+  @Roles(Role.admin)
+  @Post(':id/image/presign')
+  async presignImage(
+    @Param('id') serviceId: string,
+    @Body() dto: PresignServiceImageDto,
+  ) {
+    const extension = ALLOWED_SERVICE_IMAGE_TYPES[dto.contentType];
+    if (!extension) {
+      throw new BadRequestException(
+        'Unsupported contentType for service images',
+      );
+    }
+    // pending/ prefix: a presigned PUT URL is reusable until it expires,
+    // not single-use, so this key must never be trusted/served until
+    // confirmImage validates and promotes it.
+    const key = `pending/service-images/${serviceId}/${Date.now()}-${randomUUID()}.${extension}`;
+    const url = await this.s3.createUploadUrl(key, dto.contentType);
+    return { url, key };
+  }
+
+  @Roles(Role.admin)
+  @Post(':id/image')
+  async confirmImage(
+    @CurrentUser() admin: User,
+    @Param('id') serviceId: string,
+    @Body() dto: ConfirmServiceImageDto,
+  ) {
+    const expectedPrefix = `pending/service-images/${serviceId}/`;
+    if (!dto.s3Key.startsWith(expectedPrefix)) {
+      throw new BadRequestException('s3Key does not belong to this service');
+    }
+    const existing = await this.prisma.service.findUnique({
+      where: { id: serviceId },
+      select: { imageS3Key: true },
+    });
+    if (!existing) throw new NotFoundException('Service not found');
+
+    const bytes = await this.s3.readLeadingBytes(dto.s3Key);
+    const matchesAny = Object.keys(ALLOWED_SERVICE_IMAGE_TYPES).some((type) =>
+      matchesContentType(bytes, type),
+    );
+    if (!matchesAny) {
+      await this.s3.deleteObject(dto.s3Key).catch(() => undefined);
+      throw new BadRequestException(
+        'Uploaded file content does not match an accepted image format',
+      );
+    }
+
+    // Promote off the presign-writable pending key before ever storing or
+    // serving it — closes the same TOCTOU window described in
+    // uploads.controller.ts.
+    const permanentKey = dto.s3Key.slice('pending/'.length);
+    await this.s3.promoteUpload(dto.s3Key, permanentKey);
+
+    const updated = await this.prisma.service.update({
+      where: { id: serviceId },
+      data: { imageS3Key: permanentKey, updatedByAdminId: admin.id },
+    });
+
+    // Only after the new key is safely committed — never delete the old
+    // object first, or a failure between the two would leave the service
+    // with no image at all instead of just a stale one.
+    if (existing.imageS3Key) {
+      await this.s3.deleteObject(existing.imageS3Key).catch(() => undefined);
+    }
+
+    await this.redis.del(SERVICES_LIST_CACHE_KEY);
+    await this.auditLog.record({
+      actorUserId: admin.id,
+      action: 'service.image_updated',
+      targetType: 'Service',
+      targetId: serviceId,
+      metadata: {},
+    });
+    return this.withImageUrl(updated);
   }
 
   // Spec files are always private (see ServiceFile model comment) — an

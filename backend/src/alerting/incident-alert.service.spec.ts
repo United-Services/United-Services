@@ -12,7 +12,7 @@ describe('IncidentAlertService', () => {
   beforeEach(() => {
     process.env = { ...ORIGINAL_ENV };
     fetchMock = jest.fn().mockResolvedValue({ ok: true, text: async () => '' });
-    global.fetch = fetchMock as unknown as typeof fetch;
+    global.fetch = fetchMock;
   });
 
   afterAll(() => {
@@ -111,7 +111,11 @@ describe('IncidentAlertService', () => {
   it('swallows a non-OK response from ntfy without throwing', async () => {
     process.env.ALERTING_ENABLED = 'true';
     process.env.NTFY_TOPIC_URL = 'https://ntfy.sh/real-secret-topic';
-    fetchMock.mockResolvedValue({ ok: false, status: 400, text: async () => 'bad request' });
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () => 'bad request',
+    });
     const service = new IncidentAlertService(makeRedis('OK'));
 
     await expect(service.trigger(params)).resolves.toBeUndefined();

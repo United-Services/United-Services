@@ -336,9 +336,9 @@ describe('AdminUsersController.disable', () => {
       const { controller, prisma } = makeController();
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
 
-      await expect(
-        controller.resetPassword(admin, 'missing'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(controller.resetPassword(admin, 'missing')).rejects.toThrow(
+        NotFoundException,
+      );
       expect(prisma.user.update).not.toHaveBeenCalled();
     });
   });

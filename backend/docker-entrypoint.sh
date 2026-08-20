@@ -7,7 +7,7 @@ node_modules/.bin/prisma migrate deploy
 # Idempotent — only bootstraps a KEK on a genuinely fresh database (no
 # KekRegistry rows at all). Re-running `kek:generate` on every container
 # start would rotate keys on every deploy, which is not what we want;
-# real rotation is a deliberate `pnpm run kek:generate` invocation, not
+# real rotation is a deliberate `npm run kek:generate` invocation, not
 # something that happens implicitly on restart.
 echo "[entrypoint] checking for an existing KEK..."
 KEK_COUNT=$(node -e "

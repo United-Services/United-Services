@@ -2,7 +2,7 @@ import { TranslationService } from './translation.service';
 import type { LibreTranslateClient } from './libretranslate.client';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { RedisService } from '../redis/redis.service';
-import type { OpenPosition } from '../generated/prisma';
+import type { OpenPosition, Service } from '../generated/prisma';
 
 function makePosition(overrides: Partial<OpenPosition> = {}): OpenPosition {
   return {
@@ -13,6 +13,23 @@ function makePosition(overrides: Partial<OpenPosition> = {}): OpenPosition {
     isOpen: true,
     createdByAdminId: 'admin-1',
     createdAt: new Date(),
+    ...overrides,
+  };
+}
+
+function makeService(overrides: Partial<Service> = {}): Service {
+  return {
+    id: 'svc-1',
+    slug: 'gre-lining',
+    name: 'GRE Tubular Lining',
+    shortDescription: 'API 15CLT · Internal Corrosion Barrier',
+    longDescription: 'A chemically inert internal barrier for steel pipelines.',
+    specs: ['API 15CLT Compliant', 'DN50 – DN600'],
+    imageS3Key: null,
+    iconKey: 'gre-lining',
+    order: 1,
+    updatedAt: new Date(),
+    updatedByAdminId: 'admin-1',
     ...overrides,
   };
 }
@@ -301,6 +318,147 @@ describe('TranslationService', () => {
       expect(stored.errorMessage).toContain('volume guard');
 
       delete process.env.TRANSLATION_MONTHLY_CHAR_BUDGET;
+    });
+  });
+
+  describe('getTranslatedServices', () => {
+    it('translates name/shortDescription/longDescription but never specs', async () => {
+      const service_ = makeService();
+      libreTranslate.translateBatch.mockResolvedValue({
+        translations: ['تبطين GRE الأنبوبي', 'وصف قصير', 'وصف طويل'],
+        charCount: 40,
+      });
+
+      const result = await service.getTranslatedServices([service_], 'ar');
+
+      expect(libreTranslate.translateBatch).toHaveBeenCalledWith(
+        [service_.name, service_.shortDescription, service_.longDescription],
+        'ar',
+      );
+      expect(result.get('svc-1')).toEqual({
+        status: 'translated',
+        name: 'تبطين GRE الأنبوبي',
+        shortDescription: 'وصف قصير',
+        longDescription: 'وصف طويل',
+      });
+      // specs never appears in the translated result at all — it isn't
+      // a translatable field for this content type.
+      expect(result.get('svc-1')).not.toHaveProperty('specs');
+    });
+
+    it('returns cached content with zero LibreTranslate calls when the stored hash matches', async () => {
+      const service_ = makeService();
+      const hash = service.computeSourceHash({
+        name: service_.name,
+        shortDescription: service_.shortDescription,
+        longDescription: service_.longDescription,
+      });
+      prisma._rows.set('service:svc-1:zh', {
+        contentType: 'service',
+        contentId: 'svc-1',
+        locale: 'zh',
+        status: 'translated',
+        sourceHash: hash,
+        fields: {
+          name: 'GRE 管道内衬',
+          shortDescription: '简短描述',
+          longDescription: '长描述',
+        },
+      });
+
+      const result = await service.getTranslatedServices([service_], 'zh');
+
+      expect(result.get('svc-1')).toEqual({
+        status: 'translated',
+        name: 'GRE 管道内衬',
+        shortDescription: '简短描述',
+        longDescription: '长描述',
+      });
+      expect(libreTranslate.translateBatch).not.toHaveBeenCalled();
+    });
+
+    it('a stale sourceHash (content edited since last translation) triggers retranslation', async () => {
+      const service_ = makeService({ name: 'Updated Name' });
+      prisma._rows.set('service:svc-1:ar', {
+        contentType: 'service',
+        contentId: 'svc-1',
+        locale: 'ar',
+        status: 'translated',
+        sourceHash: 'stale-hash',
+        fields: {
+          name: 'اسم قديم',
+          shortDescription: 'وصف',
+          longDescription: 'وصف طويل',
+        },
+      });
+      libreTranslate.translateBatch.mockResolvedValue({
+        translations: ['اسم محدث', 'وصف', 'وصف طويل'],
+        charCount: 20,
+      });
+
+      const result = await service.getTranslatedServices([service_], 'ar');
+
+      expect(libreTranslate.translateBatch).toHaveBeenCalled();
+      expect(result.get('svc-1')?.name).toBe('اسم محدث');
+    });
+
+    it('a LibreTranslate failure results in status: failed and an English fallback, never a thrown error', async () => {
+      const service_ = makeService();
+      libreTranslate.translateBatch.mockRejectedValue(
+        new Error('LibreTranslate container unreachable'),
+      );
+
+      const result = await service.getTranslatedServices([service_], 'ar');
+
+      expect(result.get('svc-1')).toEqual({
+        status: 'failed',
+        name: service_.name,
+        shortDescription: service_.shortDescription,
+        longDescription: service_.longDescription,
+      });
+    });
+  });
+
+  describe('triggerServiceAsync', () => {
+    it('translates and stores a service translation, keyed under contentType "service"', async () => {
+      const service_ = makeService();
+      libreTranslate.translateBatch.mockResolvedValue({
+        translations: ['اسم', 'وصف قصير', 'وصف طويل'],
+        charCount: 20,
+      });
+
+      service.triggerServiceAsync(service_, ['ar']);
+      await new Promise((r) => setTimeout(r, 20));
+
+      const stored = prisma._rows.get('service:svc-1:ar');
+      expect(stored.status).toBe('translated');
+      expect(stored.fields.name).toBe('اسم');
+    });
+
+    it('does not retranslate when the stored hash already matches the current content', async () => {
+      const service_ = makeService();
+      const hash = service.computeSourceHash({
+        name: service_.name,
+        shortDescription: service_.shortDescription,
+        longDescription: service_.longDescription,
+      });
+      prisma._rows.set('service:svc-1:ar', {
+        contentType: 'service',
+        contentId: 'svc-1',
+        locale: 'ar',
+        status: 'translated',
+        sourceHash: hash,
+        fields: {
+          name: 'اسم',
+          shortDescription: 'وصف قصير',
+          longDescription: 'وصف طويل',
+        },
+      });
+
+      service.triggerServiceAsync(service_, ['ar']);
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(libreTranslate.translateBatch).not.toHaveBeenCalled();
     });
   });
 

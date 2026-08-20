@@ -10,18 +10,13 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { TranslationService } from '../translations/translation.service';
+import { TRANSLATABLE_LOCALES } from '../translations/translatable-locales';
 import { RedisService } from '../redis/redis.service';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreatePositionDto, UpdatePositionDto } from './dto/position.dto';
 import { Role, type User } from '../generated/prisma';
-
-// Only these two carry a machine translation — 'en' (or anything else,
-// including an omitted param) is the existing untranslated path with zero
-// added logic, matching current behavior exactly. Kept in sync with
-// routing.locales minus "en" in the frontend's i18n/routing.ts.
-const TRANSLATABLE_LOCALES = ['ar', 'zh'];
 
 // Public, read-heavy, low-churn — same cache-aside pattern as
 // ServicesController's list cache (Phase 6 of the perf audit). Keyed per

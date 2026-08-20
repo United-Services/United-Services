@@ -75,7 +75,10 @@
     "world": {
       "eyebrow": "01 — 世界",
       "title": "跨越国界的基础设施，需要经久数十年的防护。",
-      "body": "从尼罗河三角洲到阿拉伯湾，支撑现代文明运转的管道与设施正面临持续不断的侵蚀。每一处接口、每一道焊缝、每一寸外露表面都是防线的最前沿。"
+      "body": "从尼罗河三角洲到阿拉伯湾，支撑现代文明运转的管道与设施正面临持续不断的侵蚀。每一处接口、每一道焊缝、每一寸外露表面都是防线的最前沿。",
+      "operationsLabel": "运营",
+      "hqLabel": "总部 — 开罗",
+      "hqFounded": "成立于 2005 年"
     },
     "problem": {
       "eyebrow": "02 — 问题",
@@ -121,6 +124,17 @@
       "eyebrow": "USE · 合作洽谈",
       "title": "准备好保护您的基础设施了吗？",
       "body": "与 USE 工程师沟通您的具体应用场景与运行工况。"
+    },
+    "layerDive": {
+      "eyebrow": "深入地下",
+      "title": "五层结构将原油与周围地层隔开",
+      "structural": {
+        "steel": "承重管道本身——周围的每一层都是为了让它保持数十年的完好，而不仅仅是几年。",
+        "flow": "整个系统所保护的对象：从井口到目的地一条不中断、不受污染的通道。",
+        "wrap": "抵御土壤腐蚀、机械损伤和紫外线老化的最外层屏障。",
+        "coating": "在管道离开工厂之前施加的熔结环氧树脂或液态环氧涂层。",
+        "lining": "内衬屏障——GRE 或 HDPE——防止管道内的介质接触钢管本身。"
+      }
     }
   },
   "about": {
@@ -202,36 +216,36 @@
   },
   "servicesPage": {
     "eyebrow": "USE · SHEET 02 · SYS-INDEX",
-    "title": "Systems Index",
-    "subtitle": "Six integrated corrosion-control and pipeline-integrity systems, each engineered to international standards at our 6,000 m² Cairo facility.",
+    "title": "系统索引",
+    "subtitle": "六套集成的防腐与管道完整性系统，均按照国际标准在我们占地6,000平方米的开罗工厂制造。",
     "diagram": {
       "eyebrow": "USE · CROSS-SECTION DETAIL · REV.03",
-      "title": "Layered Pipeline Protection",
-      "body": "A complete USE-engineered pipeline assembly integrates all protection layers into one specification, designed as a system — not as separate products.",
+      "title": "分层管道保护",
+      "body": "USE 设计的完整管道组件将所有保护层整合为一个统一规格，作为一个系统而非独立产品来设计。",
       "layers": {
         "wrap": {
-          "label": "External Wrap / Mechanical Protection",
+          "label": "外部缠绕 / 机械保护",
           "short": "EXTERNAL"
         },
         "coating": {
-          "label": "Anti-Corrosion Coating (FBE / Epoxy)",
+          "label": "防腐涂层 (FBE / 环氧树脂)",
           "short": "ANTI-CORROSION"
         },
         "steel": {
-          "label": "Steel Substrate",
+          "label": "钢基材",
           "short": "STEEL"
         },
         "lining": {
-          "label": "GRE / HDPE Internal Lining",
+          "label": "GRE / HDPE 内衬",
           "short": "GRE"
         },
         "flow": {
-          "label": "Protected Flow Zone",
+          "label": "受保护流通区",
           "short": "PROTECTED"
         }
       }
     },
-    "requestSpecFile": "Request Spec File",
+    "requestSpecFile": "申请规格文件",
     "tags": {
       "gre": "API 15CLT · Internal Corrosion Barrier",
       "wrap": "ISO 21809 · Multi-Layer Tape Systems",
@@ -299,7 +313,8 @@
         "Operating 11 kV – 500 kV",
         "Brush / spray application"
       ]
-    }
+    },
+    "loading": "正在加载服务…"
   },
   "careers": {
     "eyebrow": "USE · 表 05 · 招聘",
@@ -796,7 +811,27 @@
       "noFile": "No spec file uploaded yet",
       "uploading": "Uploading…",
       "replaceFile": "Replace File",
-      "uploadFile": "Upload Spec File"
+      "uploadFile": "Upload Spec File",
+      "addService": "Add Service",
+      "createHeading": "Create a new service",
+      "createService": "Create Service",
+      "slug": "Slug",
+      "slugPlaceholder": "e.g. gre-tubular-lining",
+      "name": "Name",
+      "namePlaceholder": "e.g. GRE Tubular Lining",
+      "shortDescription": "Short description",
+      "shortDescriptionPlaceholder": "e.g. API 15CLT · Internal Corrosion Barrier",
+      "longDescription": "Long description",
+      "longDescriptionPlaceholder": "A few sentences describing what this service is, how it's applied, and which standards it meets.",
+      "specsLabel": "Specs (comma-separated)",
+      "specsPlaceholder": "e.g. API 15CLT Compliant, DN50 - DN600",
+      "edit": "Edit",
+      "delete": "Delete",
+      "confirmDelete": "Delete \"{name}\"? This cannot be undone.",
+      "save": "Save",
+      "cancel": "Cancel",
+      "uploadImage": "Upload Image",
+      "replaceImage": "Replace Image"
     },
     "requests": {
       "searchPlaceholder": "Search requests by client, company, or file",

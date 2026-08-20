@@ -71,6 +71,11 @@ interface Service {
   id: string
   slug: string
   name: string
+  shortDescription: string
+  longDescription: string
+  specs: string[]
+  order: number
+  imageUrl: string | null
 }
 interface ServiceFile {
   id: string
@@ -228,6 +233,25 @@ function StatusBadge({ status }: { status: string }) {
       {label}
     </span>
   )
+}
+
+// Shared field styling for the services create/edit forms — plain style
+// objects, not components, so module scope (no remount concerns) is just
+// to avoid re-allocating the same object every render.
+const fieldLabelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: 12,
+  fontWeight: 600,
+  color: palette.navy,
+  marginBottom: 6,
+}
+const fieldInputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "9px 12px",
+  borderRadius: 10,
+  border: "1.5px solid #E2E8F0",
+  fontSize: 13,
+  fontFamily: "Poppins, sans-serif",
 }
 
 // Hoisted to module scope (was defined inline in AdminDashboard's render
@@ -402,6 +426,32 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
     useState<Record<string, ServiceFile[]>>({})
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const [uploadingImageId, setUploadingImageId] = useState<string | null>(
+    null,
+  )
+  const imageInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(
+    null,
+  )
+  const [serviceEditForm, setServiceEditForm] = useState({
+    name: "",
+    shortDescription: "",
+    longDescription: "",
+    specs: "",
+  })
+  const [savingService, setSavingService] = useState(false)
+  const [deletingServiceId, setDeletingServiceId] = useState<string | null>(
+    null,
+  )
+  const [showCreateServiceForm, setShowCreateServiceForm] = useState(false)
+  const [newServiceForm, setNewServiceForm] = useState({
+    slug: "",
+    name: "",
+    shortDescription: "",
+    longDescription: "",
+    specs: "",
+  })
+  const [creatingService, setCreatingService] = useState(false)
   const [requestQuery, setRequestQuery] = useState("")
   const [positions, setPositions] = useState<PositionRow[]>([])
   const [positionForm, setPositionForm] = useState({
@@ -701,6 +751,145 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
       setError(getErrorMessage(err, tCommon("errors.actionFailed")))
     } finally {
       setUploadingId(null)
+    }
+  }
+
+  const uploadServiceImage = (serviceId: string) =>
+    imageInputRefs.current[serviceId]?.click()
+
+  const handleServiceImageSelected = async (
+    serviceId: string,
+    file: File,
+  ) => {
+    setUploadingImageId(serviceId)
+    try {
+      const headers = await authed()
+      const { data: presign } = await axios.post(
+        `/services/${serviceId}/image/presign`,
+        { contentType: file.type },
+        { headers },
+      )
+      await fetch(presign.url, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      })
+      const { data: updated } = await axios.post(
+        `/services/${serviceId}/image`,
+        { s3Key: presign.key },
+        { headers },
+      )
+      setServices((prev) =>
+        prev.map((s) => (s.id === serviceId ? { ...s, ...updated } : s)),
+      )
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    } finally {
+      setUploadingImageId(null)
+    }
+  }
+
+  const startEditService = (svc: Service) => {
+    setEditingServiceId(svc.id)
+    setServiceEditForm({
+      name: svc.name,
+      shortDescription: svc.shortDescription,
+      longDescription: svc.longDescription,
+      specs: svc.specs.join(", "),
+    })
+  }
+
+  const cancelEditService = () => setEditingServiceId(null)
+
+  const saveServiceEdit = async (serviceId: string) => {
+    setSavingService(true)
+    try {
+      const headers = await authed()
+      const { data: updated } = await axios.patch(
+        `/services/${serviceId}`,
+        {
+          name: serviceEditForm.name,
+          shortDescription: serviceEditForm.shortDescription,
+          longDescription: serviceEditForm.longDescription,
+          specs: serviceEditForm.specs
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+        },
+        { headers },
+      )
+      setServices((prev) =>
+        prev.map((s) => (s.id === serviceId ? { ...s, ...updated } : s)),
+      )
+      setEditingServiceId(null)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    } finally {
+      setSavingService(false)
+    }
+  }
+
+  const deleteService = async (svc: Service) => {
+    if (!window.confirm(t("specs.confirmDelete", { name: svc.name }))) return
+    setDeletingServiceId(svc.id)
+    try {
+      const headers = await authed()
+      await axios.delete(`/services/${svc.id}`, { headers })
+      setServices((prev) => prev.filter((s) => s.id !== svc.id))
+      setServiceFiles((prev) => {
+        const next = { ...prev }
+        delete next[svc.id]
+        return next
+      })
+    } catch (err) {
+      // The backend's message is specific and actionable here (e.g. "has
+      // existing RFQs against it") — worth showing over the generic
+      // fallback, which getErrorMessage already does when present.
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    } finally {
+      setDeletingServiceId(null)
+    }
+  }
+
+  const createService = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (
+      !newServiceForm.slug ||
+      !newServiceForm.name ||
+      !newServiceForm.shortDescription ||
+      !newServiceForm.longDescription
+    )
+      return
+    setCreatingService(true)
+    try {
+      const headers = await authed()
+      const { data: created } = await axios.post(
+        "/services",
+        {
+          slug: newServiceForm.slug,
+          name: newServiceForm.name,
+          shortDescription: newServiceForm.shortDescription,
+          longDescription: newServiceForm.longDescription,
+          specs: newServiceForm.specs
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+        },
+        { headers },
+      )
+      setServices((prev) => [...prev, created])
+      setNewServiceForm({
+        slug: "",
+        name: "",
+        shortDescription: "",
+        longDescription: "",
+        specs: "",
+      })
+      setShowCreateServiceForm(false)
+    } catch (err) {
+      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+    } finally {
+      setCreatingService(false)
     }
   }
 
@@ -1994,102 +2183,475 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
 
           {}
           {section === "specs" && (
-            <div
-              className="responsive-card-grid"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
-                gap: 16,
-              }}
-            >
-              {services.map((svc) => {
-                const files = serviceFiles[svc.id] ?? []
-                const latest = files[0]
-                return (
+            <>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+                <button
+                  onClick={() => setShowCreateServiceForm((v) => !v)}
+                  style={{
+                    padding: "10px 22px",
+                    borderRadius: 9999,
+                    border: "none",
+                    background: palette.accent,
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    cursor: "pointer",
+                    fontFamily: "Poppins, sans-serif",
+                  }}
+                >
+                  {showCreateServiceForm
+                    ? t("specs.cancel")
+                    : t("specs.addService")}
+                </button>
+              </div>
+
+              {showCreateServiceForm && (
+                <form
+                  onSubmit={createService}
+                  style={{
+                    background: "#fff",
+                    borderRadius: 16,
+                    border: "1px solid #E2E8F0",
+                    padding: 20,
+                    marginBottom: 20,
+                  }}
+                >
                   <div
-                    key={svc.id}
                     style={{
-                      background: "#fff",
-                      borderRadius: 16,
-                      padding: "22px",
-                      border: `1px solid ${
-                        latest ? palette.accent : "#E2E8F0"
-                      }`,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: palette.navy,
+                      marginBottom: 14,
                     }}
                   >
-                    <div
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: palette.navy,
-                        marginBottom: 14,
-                      }}
-                    >
-                      {svc.name}
-                    </div>
-                    {latest ? (
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: "#059669",
-                          fontWeight: 600,
-                          marginBottom: 14,
-                        }}
-                      >
-                        ✅ {latest.originalFilename} (v{latest.version})
-                      </div>
-                    ) : (
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: palette.muted,
-                          marginBottom: 14,
-                        }}
-                      >
-                        {t("specs.noFile")}
-                      </div>
-                    )}
-                    <input
-                      ref={(el) => {
-                        fileInputRefs.current[svc.id] = el
-                      }}
-                      type="file"
-                      style={{ display: "none" }}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0]
-                        if (f) handleFileSelected(svc.id, f)
-                      }}
-                    />
-                    <button
-                      onClick={() => uploadSpec(svc.id)}
-                      disabled={uploadingId === svc.id}
-                      style={{
-                        width: "100%",
-                        padding: "9px",
-                        background: latest ? "#F1F5F9" : palette.accent,
-                        color: latest ? palette.slate : "#fff",
-                        border: "none",
-                        borderRadius: 9999,
-                        fontWeight: 600,
-                        fontSize: 13,
-                        cursor: "pointer",
-                        fontFamily: "Poppins, sans-serif",
-                      }}
-                    >
-                      {uploadingId === svc.id ? (
-                        <>
-                          <InlineSpinner size={13} /> {t("specs.uploading")}
-                        </>
-                      ) : latest ? (
-                        t("specs.replaceFile")
-                      ) : (
-                        t("specs.uploadFile")
-                      )}
-                    </button>
+                    {t("specs.createHeading")}
                   </div>
-                )
-              })}
-            </div>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 12,
+                      marginBottom: 12,
+                    }}
+                  >
+                    <div>
+                      <label style={fieldLabelStyle}>{t("specs.slug")}</label>
+                      <input
+                        value={newServiceForm.slug}
+                        onChange={(e) =>
+                          setNewServiceForm((f) => ({
+                            ...f,
+                            slug: e.target.value,
+                          }))
+                        }
+                        placeholder={t("specs.slugPlaceholder")}
+                        required
+                        style={fieldInputStyle}
+                      />
+                    </div>
+                    <div>
+                      <label style={fieldLabelStyle}>{t("specs.name")}</label>
+                      <input
+                        value={newServiceForm.name}
+                        onChange={(e) =>
+                          setNewServiceForm((f) => ({
+                            ...f,
+                            name: e.target.value,
+                          }))
+                        }
+                        placeholder={t("specs.namePlaceholder")}
+                        required
+                        style={fieldInputStyle}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={fieldLabelStyle}>
+                      {t("specs.shortDescription")}
+                    </label>
+                    <input
+                      value={newServiceForm.shortDescription}
+                      onChange={(e) =>
+                        setNewServiceForm((f) => ({
+                          ...f,
+                          shortDescription: e.target.value,
+                        }))
+                      }
+                      placeholder={t("specs.shortDescriptionPlaceholder")}
+                      required
+                      style={fieldInputStyle}
+                    />
+                  </div>
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={fieldLabelStyle}>
+                      {t("specs.longDescription")}
+                    </label>
+                    <textarea
+                      value={newServiceForm.longDescription}
+                      onChange={(e) =>
+                        setNewServiceForm((f) => ({
+                          ...f,
+                          longDescription: e.target.value,
+                        }))
+                      }
+                      placeholder={t("specs.longDescriptionPlaceholder")}
+                      required
+                      rows={3}
+                      style={{ ...fieldInputStyle, resize: "vertical" }}
+                    />
+                  </div>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={fieldLabelStyle}>
+                      {t("specs.specsLabel")}
+                    </label>
+                    <input
+                      value={newServiceForm.specs}
+                      onChange={(e) =>
+                        setNewServiceForm((f) => ({
+                          ...f,
+                          specs: e.target.value,
+                        }))
+                      }
+                      placeholder={t("specs.specsPlaceholder")}
+                      style={fieldInputStyle}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={creatingService}
+                    style={{
+                      padding: "10px 22px",
+                      borderRadius: 9999,
+                      border: "none",
+                      background: palette.accent,
+                      color: "#fff",
+                      fontWeight: 700,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      fontFamily: "Poppins, sans-serif",
+                    }}
+                  >
+                    {creatingService && <InlineSpinner size={13} />}{" "}
+                    {t("specs.createService")}
+                  </button>
+                </form>
+              )}
+
+              <div
+                className="responsive-card-grid"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: 16,
+                }}
+              >
+                {services.map((svc) => {
+                  const files = serviceFiles[svc.id] ?? []
+                  const latest = files[0]
+                  const editing = editingServiceId === svc.id
+                  return (
+                    <div
+                      key={svc.id}
+                      style={{
+                        background: "#fff",
+                        borderRadius: 16,
+                        padding: "22px",
+                        border: `1px solid ${
+                          latest ? palette.accent : "#E2E8F0"
+                        }`,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "100%",
+                          aspectRatio: "16/9",
+                          borderRadius: 10,
+                          overflow: "hidden",
+                          background: "#F1F5F9",
+                          marginBottom: 14,
+                        }}
+                      >
+                        {svc.imageUrl && (
+                          // eslint-disable-next-line @next/next/no-img-element -- admin-only tool, S3 presigned URL not known to next/image at build time
+                          <img
+                            src={svc.imageUrl}
+                            alt={svc.name}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
+                          />
+                        )}
+                      </div>
+                      <input
+                        ref={(el) => {
+                          imageInputRefs.current[svc.id] = el
+                        }}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0]
+                          if (f) handleServiceImageSelected(svc.id, f)
+                        }}
+                      />
+                      <button
+                        onClick={() => uploadServiceImage(svc.id)}
+                        disabled={uploadingImageId === svc.id}
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          marginBottom: 14,
+                          background: "#F1F5F9",
+                          color: palette.slate,
+                          border: "none",
+                          borderRadius: 9999,
+                          fontWeight: 600,
+                          fontSize: 12,
+                          cursor: "pointer",
+                          fontFamily: "Poppins, sans-serif",
+                        }}
+                      >
+                        {uploadingImageId === svc.id ? (
+                          <>
+                            <InlineSpinner size={12} /> {t("specs.uploading")}
+                          </>
+                        ) : svc.imageUrl ? (
+                          t("specs.replaceImage")
+                        ) : (
+                          t("specs.uploadImage")
+                        )}
+                      </button>
+
+                      {editing ? (
+                        <div style={{ marginBottom: 14 }}>
+                          <input
+                            value={serviceEditForm.name}
+                            onChange={(e) =>
+                              setServiceEditForm((f) => ({
+                                ...f,
+                                name: e.target.value,
+                              }))
+                            }
+                            placeholder={t("specs.name")}
+                            style={{ ...fieldInputStyle, marginBottom: 8 }}
+                          />
+                          <input
+                            value={serviceEditForm.shortDescription}
+                            onChange={(e) =>
+                              setServiceEditForm((f) => ({
+                                ...f,
+                                shortDescription: e.target.value,
+                              }))
+                            }
+                            placeholder={t("specs.shortDescription")}
+                            style={{ ...fieldInputStyle, marginBottom: 8 }}
+                          />
+                          <textarea
+                            value={serviceEditForm.longDescription}
+                            onChange={(e) =>
+                              setServiceEditForm((f) => ({
+                                ...f,
+                                longDescription: e.target.value,
+                              }))
+                            }
+                            placeholder={t("specs.longDescription")}
+                            rows={3}
+                            style={{
+                              ...fieldInputStyle,
+                              resize: "vertical",
+                              marginBottom: 8,
+                            }}
+                          />
+                          <input
+                            value={serviceEditForm.specs}
+                            onChange={(e) =>
+                              setServiceEditForm((f) => ({
+                                ...f,
+                                specs: e.target.value,
+                              }))
+                            }
+                            placeholder={t("specs.specsPlaceholder")}
+                            style={fieldInputStyle}
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          <div
+                            style={{
+                              fontSize: 14,
+                              fontWeight: 700,
+                              color: palette.navy,
+                              marginBottom: 4,
+                            }}
+                          >
+                            {svc.name}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: palette.muted,
+                              marginBottom: 14,
+                            }}
+                          >
+                            {svc.shortDescription}
+                          </div>
+                        </>
+                      )}
+
+                      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                        {editing ? (
+                          <>
+                            <button
+                              onClick={() => saveServiceEdit(svc.id)}
+                              disabled={savingService}
+                              style={{
+                                flex: 1,
+                                padding: "8px",
+                                background: palette.accent,
+                                color: "#fff",
+                                border: "none",
+                                borderRadius: 9999,
+                                fontWeight: 600,
+                                fontSize: 12,
+                                cursor: "pointer",
+                                fontFamily: "Poppins, sans-serif",
+                              }}
+                            >
+                              {savingService ? (
+                                <InlineSpinner size={12} />
+                              ) : (
+                                t("specs.save")
+                              )}
+                            </button>
+                            <button
+                              onClick={cancelEditService}
+                              style={{
+                                flex: 1,
+                                padding: "8px",
+                                background: "#fff",
+                                color: palette.navy,
+                                border: "1.5px solid #E2E8F0",
+                                borderRadius: 9999,
+                                fontWeight: 600,
+                                fontSize: 12,
+                                cursor: "pointer",
+                                fontFamily: "Poppins, sans-serif",
+                              }}
+                            >
+                              {t("specs.cancel")}
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => startEditService(svc)}
+                              style={{
+                                flex: 1,
+                                padding: "8px",
+                                background: "#fff",
+                                color: palette.navy,
+                                border: "1.5px solid #E2E8F0",
+                                borderRadius: 9999,
+                                fontWeight: 600,
+                                fontSize: 12,
+                                cursor: "pointer",
+                                fontFamily: "Poppins, sans-serif",
+                              }}
+                            >
+                              {t("specs.edit")}
+                            </button>
+                            <button
+                              onClick={() => deleteService(svc)}
+                              disabled={deletingServiceId === svc.id}
+                              style={{
+                                flex: 1,
+                                padding: "8px",
+                                background: "#fff",
+                                color: "#DC2626",
+                                border: "1.5px solid #FCA5A5",
+                                borderRadius: 9999,
+                                fontWeight: 600,
+                                fontSize: 12,
+                                cursor: "pointer",
+                                fontFamily: "Poppins, sans-serif",
+                              }}
+                            >
+                              {deletingServiceId === svc.id ? (
+                                <InlineSpinner size={12} />
+                              ) : (
+                                t("specs.delete")
+                              )}
+                            </button>
+                          </>
+                        )}
+                      </div>
+
+                      {latest ? (
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "#059669",
+                            fontWeight: 600,
+                            marginBottom: 14,
+                          }}
+                        >
+                          ✅ {latest.originalFilename} (v{latest.version})
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: palette.muted,
+                            marginBottom: 14,
+                          }}
+                        >
+                          {t("specs.noFile")}
+                        </div>
+                      )}
+                      <input
+                        ref={(el) => {
+                          fileInputRefs.current[svc.id] = el
+                        }}
+                        type="file"
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0]
+                          if (f) handleFileSelected(svc.id, f)
+                        }}
+                      />
+                      <button
+                        onClick={() => uploadSpec(svc.id)}
+                        disabled={uploadingId === svc.id}
+                        style={{
+                          width: "100%",
+                          padding: "9px",
+                          background: latest ? "#F1F5F9" : palette.accent,
+                          color: latest ? palette.slate : "#fff",
+                          border: "none",
+                          borderRadius: 9999,
+                          fontWeight: 600,
+                          fontSize: 13,
+                          cursor: "pointer",
+                          fontFamily: "Poppins, sans-serif",
+                        }}
+                      >
+                        {uploadingId === svc.id ? (
+                          <>
+                            <InlineSpinner size={13} /> {t("specs.uploading")}
+                          </>
+                        ) : latest ? (
+                          t("specs.replaceFile")
+                        ) : (
+                          t("specs.uploadFile")
+                        )}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
           )}
 
           {}

@@ -1,9 +1,10 @@
 "use client"
 import { useTranslations } from "next-intl"
-import { palette } from "../theme"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { useReveal } from "../hooks/useReveal"
+import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY, PublicTag } from "../lib/publicTheme"
+import ParticleField from "../components/three/ParticleField"
 const heroImg = "/images/lux-hero-petroleum.jpg"
 
 interface Props {
@@ -22,7 +23,7 @@ export default function Vision({ onNavigate }: Props) {
   const t = useTranslations("vision")
 
   return (
-    <div style={{ fontFamily: "Poppins, sans-serif", background: "#fff" }}>
+    <div style={{ fontFamily: BODY, background: PAPER, color: TEXT }}>
       <PublicNav current="vision" onNavigate={onNavigate} />
 
       <section
@@ -31,6 +32,7 @@ export default function Vision({ onNavigate }: Props) {
           height: "60vh",
           minHeight: 420,
           overflow: "hidden",
+          background: INK,
         }}
       >
         <img
@@ -48,9 +50,10 @@ export default function Vision({ onNavigate }: Props) {
           style={{
             position: "absolute",
             inset: 0,
-            background: "rgba(15,23,42,0.78)",
+            background: "linear-gradient(to top, rgba(10,10,12,0.88) 0%, rgba(10,10,12,0.35) 60%)",
           }}
         />
+        <ParticleField color={LIME} count={140} style={{ zIndex: 1 }} />
         <div
           style={{
             position: "relative",
@@ -67,10 +70,11 @@ export default function Vision({ onNavigate }: Props) {
         >
           <h1
             style={{
+              fontFamily: HEAD,
               fontSize: "clamp(36px, 5vw, 64px)",
-              fontWeight: 800,
+              fontWeight: 700,
               color: "#fff",
-              letterSpacing: "-0.03em",
+              letterSpacing: "-0.02em",
               maxWidth: 680,
             }}
           >
@@ -79,109 +83,75 @@ export default function Vision({ onNavigate }: Props) {
         </div>
       </section>
 
-      <section style={{ padding: "80px 28px" }}>
+      <section style={{ padding: "90px 28px" }}>
         <div style={{ maxWidth: 1260, margin: "0 auto" }}>
           <div
             className="responsive-card-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
-              gap: 48,
+              gap: 24,
               marginBottom: 72,
             }}
           >
             <div
               className="reveal-left"
               style={{
-                background: palette.accentLight,
-                border: `1px solid #FED7AA`,
+                background: LIME,
                 borderRadius: 20,
                 padding: "48px 40px",
               }}
             >
-              <div
-                style={{
-                  fontSize: 11,
-                  color: palette.accent,
-                  letterSpacing: "0.2em",
-                  textTransform: "uppercase",
-                  fontWeight: 700,
-                  marginBottom: 20,
-                }}
-              >
-                {t("visionLabel")}
-              </div>
+              <PublicTag>{t("visionLabel")}</PublicTag>
               <h2
                 style={{
+                  fontFamily: HEAD,
                   fontSize: 28,
-                  fontWeight: 800,
-                  color: palette.navy,
-                  letterSpacing: "-0.02em",
-                  marginBottom: 20,
+                  fontWeight: 600,
+                  color: TEXT,
+                  letterSpacing: "-0.01em",
+                  margin: "20px 0",
                   lineHeight: 1.2,
                 }}
               >
                 {t("visionTitle")}
               </h2>
-              <p
-                style={{ fontSize: 15, color: palette.slate, lineHeight: 1.8 }}
-              >
+              <p style={{ fontSize: 15, color: "#2c2e18", lineHeight: 1.8 }}>
                 {t("visionBody")}
               </p>
             </div>
             <div
               className="reveal-right"
               style={{
-                background: "#F8FAFC",
-                border: "1px solid #E2E8F0",
+                background: "#fff",
+                border: "1px solid #E6E5E0",
                 borderRadius: 20,
                 padding: "48px 40px",
               }}
             >
-              <div
-                style={{
-                  fontSize: 11,
-                  color: palette.accent,
-                  letterSpacing: "0.2em",
-                  textTransform: "uppercase",
-                  fontWeight: 700,
-                  marginBottom: 20,
-                }}
-              >
-                {t("missionLabel")}
-              </div>
+              <PublicTag>{t("missionLabel")}</PublicTag>
               <h2
                 style={{
+                  fontFamily: HEAD,
                   fontSize: 28,
-                  fontWeight: 800,
-                  color: palette.navy,
-                  letterSpacing: "-0.02em",
-                  marginBottom: 20,
+                  fontWeight: 600,
+                  color: TEXT,
+                  letterSpacing: "-0.01em",
+                  margin: "20px 0",
                   lineHeight: 1.2,
                 }}
               >
                 {t("missionTitle")}
               </h2>
-              <p
-                style={{ fontSize: 15, color: palette.slate, lineHeight: 1.8 }}
-              >
+              <p style={{ fontSize: 15, color: MUTED, lineHeight: 1.8 }}>
                 {t("missionBody")}
               </p>
             </div>
           </div>
 
           <div className="reveal">
-            <div
-              style={{
-                fontSize: 11,
-                color: palette.accent,
-                letterSpacing: "0.2em",
-                textTransform: "uppercase",
-                marginBottom: 40,
-                textAlign: "center",
-              }}
-            >
-              {t("pillarsLabel")}
+            <div style={{ textAlign: "center", marginBottom: 40 }}>
+              <PublicTag>{t("pillarsLabel")}</PublicTag>
             </div>
             <div
               className="responsive-card-grid"
@@ -197,7 +167,7 @@ export default function Vision({ onNavigate }: Props) {
                   className="reveal"
                   style={{
                     background: "#fff",
-                    border: "1px solid #E2E8F0",
+                    border: "1px solid #E6E5E0",
                     borderRadius: 16,
                     padding: "28px 24px",
                     transitionDelay: `${i * 0.08}s`,
@@ -205,9 +175,10 @@ export default function Vision({ onNavigate }: Props) {
                 >
                   <div
                     style={{
+                      fontFamily: HEAD,
                       fontSize: 36,
-                      fontWeight: 900,
-                      color: "#F1F5F9",
+                      fontWeight: 700,
+                      color: "#E6E5E0",
                       lineHeight: 1,
                       marginBottom: 16,
                     }}
@@ -216,9 +187,10 @@ export default function Vision({ onNavigate }: Props) {
                   </div>
                   <div
                     style={{
+                      fontFamily: HEAD,
                       fontSize: 16,
-                      fontWeight: 700,
-                      color: palette.navy,
+                      fontWeight: 600,
+                      color: TEXT,
                       marginBottom: 10,
                     }}
                   >
@@ -227,7 +199,7 @@ export default function Vision({ onNavigate }: Props) {
                   <div
                     style={{
                       fontSize: 13,
-                      color: palette.muted,
+                      color: MUTED,
                       lineHeight: 1.7,
                     }}
                   >

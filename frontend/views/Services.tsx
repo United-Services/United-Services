@@ -1,67 +1,71 @@
 "use client" /* Page header */ /* Cross-section diagram */ /* Services list */ /* Collapsed header */ /* Expanded content */
-import { useState } from "react"
-import { useTranslations } from "next-intl"
-import { palette } from "../theme"
+import { useEffect, useState } from "react"
+import { useLocale, useTranslations } from "next-intl"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { useReveal } from "../hooks/useReveal"
-
-const greApplicationImg = "/images/bp-valves.jpg"
-const insulatorImg = "/images/lux-power.jpg"
-
-const SVC_IMGS: Record<string, string> = {
-  gre: greApplicationImg,
-  wrap: "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=900&q=80",
-  coating:
-    "https://images.unsplash.com/photo-1678984239420-43cdc183bce6?w=900&q=80",
-  hdpe: "https://images.unsplash.com/photo-1684667273934-e5d39307eeae?w=900&q=80",
-  rtp: "https://images.unsplash.com/photo-1758965364875-e090e5423d2d?w=900&q=80",
-  rtv: insulatorImg,
-}
+import { axios } from "../lib/api"
+import { LAYER_KEYS, LAYER_STYLE } from "../lib/pipelineLayers"
+import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY } from "../lib/publicTheme"
+import PipeCrossSection3D from "../components/three/PipeCrossSection3D"
 
 interface Props {
   onNavigate: (page: string) => void
 }
 
-const SERVICE_KEYS = ["gre", "wrap", "coating", "hdpe", "rtp", "rtv"] as const
-const LAYER_KEYS = ["wrap", "coating", "steel", "lining", "flow"] as const
-const LAYER_STYLE: Record<typeof LAYER_KEYS[number], {
-  color: string
-  width: string
-}> = {
-  wrap: { color: "#EA580C", width: "100%" },
-  coating: { color: "#FB923C", width: "88%" },
-  steel: { color: "#475569", width: "76%" },
-  lining: { color: "#0EA5E9", width: "62%" },
-  flow: { color: "#BAE6FD", width: "46%" },
+interface Service {
+  id: string
+  slug: string
+  name: string
+  shortDescription: string
+  longDescription: string
+  specs: string[]
+  imageUrl: string | null
 }
 
 export default function Services({ onNavigate }: Props) {
   useReveal()
   const t = useTranslations("servicesPage")
-  const tSvc = useTranslations("services.names")
   const tNav = useTranslations("nav")
+  const locale = useLocale()
   const [active, setActive] = useState<number | null>(null)
+  const [services, setServices] = useState<Service[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Re-fetch on locale change too, same reasoning as Careers.tsx's
+    // identical effect — a switched-language visitor should see
+    // translated content without needing a full page reload.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true)
+    axios
+      .get("/services", {
+        params: locale !== "en" ? { locale } : undefined,
+      })
+      .then(({ data }) => setServices(data))
+      .finally(() => setLoading(false))
+  }, [locale])
 
   return (
-    <div style={{ fontFamily: "Poppins, sans-serif", background: "#fff" }}>
+    <div style={{ fontFamily: BODY, background: PAPER, color: TEXT }}>
       <PublicNav current="services" onNavigate={onNavigate} />
 
       {}
       <section
         style={{
           paddingTop: 68,
-          background: palette.navy,
+          background: INK,
           padding: "120px 28px 80px",
         }}
       >
         <div style={{ maxWidth: 1260, margin: "0 auto" }}>
           <h1
             style={{
+              fontFamily: HEAD,
               fontSize: "clamp(36px, 5vw, 64px)",
-              fontWeight: 800,
+              fontWeight: 700,
               color: "#fff",
-              letterSpacing: "-0.03em",
+              letterSpacing: "-0.02em",
               marginBottom: 20,
               maxWidth: 700,
             }}
@@ -71,7 +75,7 @@ export default function Services({ onNavigate }: Props) {
           <p
             style={{
               fontSize: 17,
-              color: "#94A3B8",
+              color: "#A9A9A9",
               maxWidth: 540,
               lineHeight: 1.7,
             }}
@@ -84,9 +88,9 @@ export default function Services({ onNavigate }: Props) {
       {}
       <section
         style={{
-          background: "#F8FAFC",
+          background: "#fff",
           padding: "72px 28px",
-          borderBottom: "1px solid #E2E8F0",
+          borderBottom: "1px solid #E6E5E0",
         }}
       >
         <div
@@ -103,11 +107,12 @@ export default function Services({ onNavigate }: Props) {
           <div className="reveal-left">
             <h2
               style={{
+                fontFamily: HEAD,
                 fontSize: 32,
-                fontWeight: 800,
-                color: palette.navy,
+                fontWeight: 600,
+                color: TEXT,
                 marginBottom: 12,
-                letterSpacing: "-0.02em",
+                letterSpacing: "-0.01em",
               }}
             >
               {t("diagram.title")}
@@ -115,7 +120,7 @@ export default function Services({ onNavigate }: Props) {
             <p
               style={{
                 fontSize: 14,
-                color: palette.muted,
+                color: MUTED,
                 lineHeight: 1.7,
                 marginBottom: 32,
               }}
@@ -145,7 +150,7 @@ export default function Services({ onNavigate }: Props) {
                   <span
                     style={{
                       fontSize: 13,
-                      color: palette.slate,
+                      color: TEXT,
                       fontWeight: 500,
                     }}
                   >
@@ -164,6 +169,9 @@ export default function Services({ onNavigate }: Props) {
               justifyContent: "center",
             }}
           >
+            <div style={{ position: "relative", height: 220, marginBottom: 12 }}>
+              <PipeCrossSection3D />
+            </div>
             {LAYER_KEYS.map((key) => (
               <div
                 key={key}
@@ -175,7 +183,6 @@ export default function Services({ onNavigate }: Props) {
                     background: LAYER_STYLE[key].color,
                     borderRadius: 6,
                     width: LAYER_STYLE[key].width,
-                    transition: "width 1s ease",
                     display: "flex",
                     alignItems: "center",
                     paddingLeft: 12,
@@ -210,121 +217,130 @@ export default function Services({ onNavigate }: Props) {
             gap: 2,
           }}
         >
-          {SERVICE_KEYS.map((key, i) => {
-            const specs = t.raw(`specs.${key}`) as string[]
-            return (
-              <div
-                key={key}
-                className="reveal"
+          {loading && (
+            <div
+              style={{ padding: 40, textAlign: "center", color: MUTED }}
+            >
+              {t("loading")}
+            </div>
+          )}
+          {services.map((svc, i) => (
+            <div
+              key={svc.id}
+              className="reveal"
+              style={{
+                border: "1px solid #E6E5E0",
+                borderRadius: 20,
+                overflow: "hidden",
+                transitionDelay: `${i * 0.06}s`,
+              }}
+            >
+              {}
+              <button
+                onClick={() => setActive(active === i ? null : i)}
                 style={{
-                  border: "1px solid #E2E8F0",
-                  borderRadius: 20,
-                  overflow: "hidden",
-                  transitionDelay: `${i * 0.06}s`,
+                  width: "100%",
+                  background: active === i ? "rgba(216,255,62,0.18)" : "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "28px 32px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 24,
+                  fontFamily: BODY,
+                  transition: "background 0.2s",
                 }}
               >
-                {}
-                <button
-                  onClick={() => setActive(active === i ? null : i)}
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: 20 }}
+                >
+                  <div
+                    style={{
+                      fontFamily: "ui-monospace,monospace",
+                      fontSize: 11,
+                      color: active === i ? TEXT : MUTED,
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      flexShrink: 0,
+                    }}
+                  >
+                    SVC-0{i + 1}
+                  </div>
+                  <div style={{ textAlign: "start" }}>
+                    <div
+                      style={{
+                        fontFamily: HEAD,
+                        fontSize: 18,
+                        fontWeight: 600,
+                        color: TEXT,
+                      }}
+                    >
+                      {svc.name}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: MUTED,
+                        marginTop: 2,
+                      }}
+                    >
+                      {svc.shortDescription}
+                    </div>
+                  </div>
+                </div>
+                <div
                   style={{
-                    width: "100%",
-                    background: active === i ? "#FFF7ED" : "#fff",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: "28px 32px",
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    background: active === i ? LIME : PAPER,
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 24,
-                    fontFamily: "Poppins, sans-serif",
+                    justifyContent: "center",
+                    flexShrink: 0,
                     transition: "background 0.2s",
                   }}
                 >
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 20 }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: active === i ? palette.accent : "#94A3B8",
-                        fontWeight: 700,
-                        letterSpacing: "0.12em",
-                        flexShrink: 0,
-                      }}
-                    >
-                      SVC-0{i + 1}
-                    </div>
-                    <div style={{ textAlign: "start" }}>
-                      <div
-                        style={{
-                          fontSize: 18,
-                          fontWeight: 700,
-                          color: palette.navy,
-                        }}
-                      >
-                        {tSvc(key)}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: palette.muted,
-                          marginTop: 2,
-                        }}
-                      >
-                        {t(`tags.${key}` as any)}
-                      </div>
-                    </div>
-                  </div>
-                  <div
+                  <span
                     style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: "50%",
-                      background: active === i ? palette.accent : "#F1F5F9",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                      transition: "background 0.2s",
+                      fontSize: 18,
+                      color: TEXT,
+                      lineHeight: 1,
+                      transform: active === i ? "rotate(45deg)" : "none",
+                      display: "inline-block",
+                      transition: "transform 0.2s",
                     }}
                   >
-                    <span
-                      style={{
-                        fontSize: 18,
-                        color: active === i ? "#fff" : "#64748B",
-                        lineHeight: 1,
-                        transform: active === i ? "rotate(45deg)" : "none",
-                        display: "inline-block",
-                        transition: "transform 0.2s",
-                      }}
-                    >
-                      +
-                    </span>
-                  </div>
-                </button>
+                    +
+                  </span>
+                </div>
+              </button>
 
-                {}
-                {active === i && (
+              {}
+              {active === i && (
+                <div
+                  style={{
+                    background: PAPER,
+                    borderTop: "1px solid #E6E5E0",
+                    padding: "36px 32px",
+                  }}
+                >
                   <div
+                    className="responsive-card-grid"
                     style={{
-                      background: "#FFFAF7",
-                      borderTop: "1px solid #FDE8D0",
-                      padding: "36px 32px",
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 48,
+                      alignItems: "start",
                     }}
                   >
-                    <div
-                      className="responsive-card-grid"
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 48,
-                        alignItems: "start",
-                      }}
-                    >
-                      <div>
+                    <div>
+                      {svc.imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element -- admin-uploaded S3 presigned URL, not a static build-time asset next/image can optimize
                         <img
-                          src={SVC_IMGS[key]}
-                          alt={t(`imgAlt.${key}` as any)}
+                          src={svc.imageUrl}
+                          alt={svc.name}
                           style={{
                             width: "100%",
                             aspectRatio: "16/9",
@@ -333,81 +349,81 @@ export default function Services({ onNavigate }: Props) {
                             marginBottom: 24,
                           }}
                         />
-                        <div
-                          style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
-                        >
-                          {specs.map((sp) => (
-                            <span
-                              key={sp}
-                              style={{
-                                fontSize: 12,
-                                fontWeight: 600,
-                                color: palette.accent,
-                                background: palette.accentLight,
-                                borderRadius: 6,
-                                padding: "4px 10px",
-                                border: "1px solid #FED7AA",
-                              }}
-                            >
-                              {sp}
-                            </span>
-                          ))}
-                        </div>
+                      )}
+                      <div
+                        style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
+                      >
+                        {svc.specs.map((sp) => (
+                          <span
+                            key={sp}
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: TEXT,
+                              background: "#fff",
+                              borderRadius: 6,
+                              padding: "4px 10px",
+                              border: "1px solid #E6E5E0",
+                            }}
+                          >
+                            {sp}
+                          </span>
+                        ))}
                       </div>
-                      <div>
-                        <p
+                    </div>
+                    <div>
+                      <p
+                        style={{
+                          fontSize: 15,
+                          color: MUTED,
+                          lineHeight: 1.8,
+                          marginBottom: 32,
+                        }}
+                      >
+                        {svc.longDescription}
+                      </p>
+                      <div
+                        style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
+                      >
+                        <button
+                          onClick={() => onNavigate("client-login")}
                           style={{
-                            fontSize: 15,
-                            color: palette.slate,
-                            lineHeight: 1.8,
-                            marginBottom: 32,
+                            background: LIME,
+                            color: TEXT,
+                            border: "none",
+                            borderRadius: 9999,
+                            padding: "11px 28px",
+                            fontWeight: 600,
+                            fontSize: 14,
+                            cursor: "pointer",
+                            fontFamily: BODY,
                           }}
                         >
-                          {t(`desc.${key}` as any)}
-                        </p>
-                        <div
-                          style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
+                          {t("requestSpecFile")}
+                        </button>
+                        <button
+                          onClick={() => onNavigate("contact")}
+                          style={{
+                            background: TEXT,
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: 9999,
+                            padding: "11px 28px",
+                            fontWeight: 500,
+                            fontSize: 14,
+                            cursor: "pointer",
+                            fontFamily: HEAD,
+                          }}
                         >
-                          <button
-                            onClick={() => onNavigate("client-login")}
-                            style={{
-                              background: palette.accent,
-                              color: "#fff",
-                              border: "none",
-                              borderRadius: 9999,
-                              padding: "11px 28px",
-                              fontWeight: 700,
-                              fontSize: 14,
-                              cursor: "pointer",
-                              fontFamily: "Poppins, sans-serif",
-                            }}
-                          >
-                            {t("requestSpecFile")}
-                          </button>
-                          <button
-                            onClick={() => onNavigate("contact")}
-                            style={{
-                              background: "#4B5563",
-                              color: "#fff",
-                              border: "none",
-                              borderRadius: 9999,
-                              padding: "11px 28px",
-                              fontWeight: 600,
-                              fontSize: 14,
-                              cursor: "pointer",
-                              fontFamily: "Poppins, sans-serif",
-                            }}
-                          >
-                            {tNav("requestConsultation")}
-                          </button>
-                        </div>
+                          {tNav("requestConsultation")}
+                        </button>
                       </div>
                     </div>
                   </div>
-                )}
-              </div>
-            )
-          })}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </section>
 

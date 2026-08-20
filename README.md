@@ -33,7 +33,7 @@ app follows internally.
 
 ## Getting started (local development)
 
-Prerequisites: Node 22+, pnpm, a PostgreSQL instance, a Redis instance, and
+Prerequisites: Node 22+, npm, a PostgreSQL instance, a Redis instance, and
 a Clerk application (dev instance keys are fine locally).
 
 ```bash
@@ -42,10 +42,10 @@ cd backend
 # Create .env with real values — see docs/CREDENTIALS_CHECKLIST.md's
 # "`.env.example` shape" section for the full list (DATABASE_URL, Clerk
 # keys, AWS S3, etc.)
-pnpm install
-pnpm prisma:migrate
-pnpm seed                   # optional: seed fixture data
-pnpm start:dev               # http://localhost:3002/api/v1
+npm install
+npm run prisma:migrate
+npm run seed                 # optional: seed fixture data
+npm run start:dev            # http://localhost:3002/api/v1
 
 # Frontend (separate terminal)
 cd frontend
@@ -53,8 +53,8 @@ cd frontend
 #   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 #   CLERK_SECRET_KEY=
 #   NEXT_PUBLIC_API_URL=http://localhost:3002/api/v1
-pnpm install
-pnpm dev                     # http://localhost:3000
+npm install
+npm run dev                  # http://localhost:3000
 ```
 
 ## Running with Docker
@@ -78,16 +78,16 @@ full list of what changes between dev and production.
 ```bash
 # Backend
 cd backend
-pnpm lint
-pnpm test
+npm run lint
+npm test
 npx tsc --noEmit
 
 # Frontend
 cd frontend
-pnpm lint
+npm run lint
 npx vitest run
 npx tsc --noEmit
-pnpm build
+npm run build
 ```
 
 CI runs the same checks — see `.github/workflows/`.

@@ -21,8 +21,8 @@ disposable stack the `backend-integration` CI job uses works — see
 `.github/workflows/ci.yml`):
 
 ```sh
-pnpm run build
-pnpm run kek:generate  # needs DATABASE_URL + KEK_KEYS_DIR set — see below
+npm run build
+npm run kek:generate  # needs DATABASE_URL + KEK_KEYS_DIR set — see below
 DATABASE_URL=... DIRECT_URL=... REDIS_URL=... TOTP_KEK_PROVIDER=local KEK_KEYS_DIR=./secrets/kek \
   CLERK_SECRET_KEY=... AWS_REGION=... AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=... \
   S3_BUCKET_NAME=... WEBAUTHN_RP_ID=... WEBAUTHN_RP_ORIGIN=... CORS_ORIGINS=... \

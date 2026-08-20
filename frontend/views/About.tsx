@@ -1,9 +1,10 @@
 "use client" /* Header */ /* Story */ /* Certifications */ /* Facility */
 import { useTranslations } from "next-intl"
-import { palette } from "../theme"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { useReveal } from "../hooks/useReveal"
+import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY, PublicTag } from "../lib/publicTheme"
+import ParticleField from "../components/three/ParticleField"
 const worldImg = "/images/LD-02.png"
 const weldImg = "/images/bp-plant.jpg"
 
@@ -30,18 +31,20 @@ export default function About({ onNavigate }: Props) {
   }))
 
   return (
-    <div style={{ fontFamily: "Poppins, sans-serif", background: "#fff" }}>
+    <div style={{ fontFamily: BODY, background: PAPER, color: TEXT }}>
       <PublicNav current="about" onNavigate={onNavigate} />
 
       {}
-      <section style={{ background: palette.navy, padding: "120px 28px 80px" }}>
-        <div style={{ maxWidth: 1260, margin: "0 auto" }}>
+      <section style={{ position: "relative", background: INK, padding: "120px 28px 80px", overflow: "hidden" }}>
+        <ParticleField color={LIME} count={160} />
+        <div style={{ position: "relative", maxWidth: 1260, margin: "0 auto" }}>
           <h1
             style={{
+              fontFamily: HEAD,
               fontSize: "clamp(36px, 5vw, 64px)",
-              fontWeight: 800,
+              fontWeight: 700,
               color: "#fff",
-              letterSpacing: "-0.03em",
+              letterSpacing: "-0.02em",
               maxWidth: 640,
               lineHeight: 1.05,
             }}
@@ -52,7 +55,7 @@ export default function About({ onNavigate }: Props) {
       </section>
 
       {}
-      <section style={{ padding: "80px 28px" }}>
+      <section style={{ padding: "90px 28px" }}>
         <div
           className="responsive-card-grid"
           style={{
@@ -78,24 +81,15 @@ export default function About({ onNavigate }: Props) {
             />
           </div>
           <div className="reveal-right">
-            <div
-              style={{
-                fontSize: 11,
-                color: palette.accent,
-                letterSpacing: "0.2em",
-                textTransform: "uppercase",
-                marginBottom: 16,
-              }}
-            >
-              {t("story.eyebrow")}
-            </div>
+            <PublicTag>{t("story.eyebrow")}</PublicTag>
             <h2
               style={{
+                fontFamily: HEAD,
                 fontSize: 36,
-                fontWeight: 800,
-                color: palette.navy,
-                letterSpacing: "-0.02em",
-                marginBottom: 20,
+                fontWeight: 600,
+                color: TEXT,
+                letterSpacing: "-0.01em",
+                margin: "20px 0",
               }}
             >
               {t("story.title")}
@@ -103,7 +97,7 @@ export default function About({ onNavigate }: Props) {
             <p
               style={{
                 fontSize: 15,
-                color: palette.slate,
+                color: MUTED,
                 lineHeight: 1.8,
                 marginBottom: 16,
               }}
@@ -113,14 +107,14 @@ export default function About({ onNavigate }: Props) {
             <p
               style={{
                 fontSize: 15,
-                color: palette.slate,
+                color: MUTED,
                 lineHeight: 1.8,
                 marginBottom: 16,
               }}
             >
               {t("story.p2")}
             </p>
-            <p style={{ fontSize: 15, color: palette.slate, lineHeight: 1.8 }}>
+            <p style={{ fontSize: 15, color: MUTED, lineHeight: 1.8 }}>
               {t("story.p3")}
             </p>
           </div>
@@ -128,29 +122,21 @@ export default function About({ onNavigate }: Props) {
       </section>
 
       {}
-      <section style={{ background: "#F8FAFC", padding: "72px 28px" }}>
+      <section style={{ background: "#fff", padding: "80px 28px", borderTop: "1px solid #E6E5E0", borderBottom: "1px solid #E6E5E0" }}>
         <div style={{ maxWidth: 1260, margin: "0 auto" }}>
           <div
             className="reveal"
             style={{ textAlign: "center", marginBottom: 56 }}
           >
-            <div
-              style={{
-                fontSize: 11,
-                color: palette.accent,
-                letterSpacing: "0.2em",
-                textTransform: "uppercase",
-                marginBottom: 16,
-              }}
-            >
-              {t("certs.eyebrow")}
-            </div>
+            <PublicTag>{t("certs.eyebrow")}</PublicTag>
             <h2
               style={{
+                fontFamily: HEAD,
                 fontSize: 36,
-                fontWeight: 800,
-                color: palette.navy,
-                letterSpacing: "-0.02em",
+                fontWeight: 600,
+                color: TEXT,
+                letterSpacing: "-0.01em",
+                marginTop: 20,
               }}
             >
               {t("certs.title")}
@@ -169,8 +155,8 @@ export default function About({ onNavigate }: Props) {
                 key={key}
                 className="reveal"
                 style={{
-                  background: "#fff",
-                  border: "1px solid #E2E8F0",
+                  background: PAPER,
+                  border: "1px solid #E6E5E0",
                   borderRadius: 16,
                   padding: "28px 20px",
                   textAlign: "center",
@@ -179,9 +165,10 @@ export default function About({ onNavigate }: Props) {
               >
                 <div
                   style={{
+                    fontFamily: HEAD,
                     fontSize: 22,
-                    fontWeight: 800,
-                    color: palette.accent,
+                    fontWeight: 700,
+                    color: TEXT,
                     marginBottom: 8,
                     letterSpacing: "-0.01em",
                   }}
@@ -192,7 +179,7 @@ export default function About({ onNavigate }: Props) {
                   style={{
                     fontSize: 12,
                     fontWeight: 700,
-                    color: palette.navy,
+                    color: TEXT,
                     marginBottom: 8,
                   }}
                 >
@@ -201,7 +188,7 @@ export default function About({ onNavigate }: Props) {
                 <div
                   style={{
                     fontSize: 11,
-                    color: palette.muted,
+                    color: MUTED,
                     lineHeight: 1.6,
                   }}
                 >
@@ -214,7 +201,7 @@ export default function About({ onNavigate }: Props) {
       </section>
 
       {}
-      <section style={{ padding: "72px 28px" }}>
+      <section style={{ padding: "90px 28px" }}>
         <div
           className="responsive-card-grid"
           style={{
@@ -227,24 +214,15 @@ export default function About({ onNavigate }: Props) {
           }}
         >
           <div className="reveal-left">
-            <div
-              style={{
-                fontSize: 11,
-                color: palette.accent,
-                letterSpacing: "0.2em",
-                textTransform: "uppercase",
-                marginBottom: 16,
-              }}
-            >
-              {t("facility.eyebrow")}
-            </div>
+            <PublicTag>{t("facility.eyebrow")}</PublicTag>
             <h2
               style={{
+                fontFamily: HEAD,
                 fontSize: 36,
-                fontWeight: 800,
-                color: palette.navy,
-                letterSpacing: "-0.02em",
-                marginBottom: 20,
+                fontWeight: 600,
+                color: TEXT,
+                letterSpacing: "-0.01em",
+                margin: "20px 0",
               }}
             >
               {t("facility.title")}
@@ -252,7 +230,7 @@ export default function About({ onNavigate }: Props) {
             <p
               style={{
                 fontSize: 15,
-                color: palette.slate,
+                color: MUTED,
                 lineHeight: 1.8,
                 marginBottom: 20,
               }}
@@ -272,23 +250,24 @@ export default function About({ onNavigate }: Props) {
                 <div
                   key={s.label}
                   style={{
-                    background: "#F8FAFC",
+                    background: "#fff",
                     borderRadius: 14,
                     padding: "20px 20px",
-                    border: "1px solid #E2E8F0",
+                    border: "1px solid #E6E5E0",
                   }}
                 >
                   <div
                     style={{
+                      fontFamily: HEAD,
                       fontSize: 18,
-                      fontWeight: 800,
-                      color: palette.accent,
+                      fontWeight: 700,
+                      color: TEXT,
                     }}
                   >
                     {s.value}
                   </div>
                   <div
-                    style={{ fontSize: 12, color: palette.muted, marginTop: 4 }}
+                    style={{ fontSize: 12, color: MUTED, marginTop: 4 }}
                   >
                     {s.label}
                   </div>

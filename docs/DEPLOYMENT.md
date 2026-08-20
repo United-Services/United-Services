@@ -104,7 +104,7 @@ owning OS patching / process supervision:
 - **Frontend**: Vercel (native Next.js App Router support, zero config
   beyond env vars) or the same host as the backend if you want one bill.
 - **Backend**: Railway, Render, or Fly.io — all run a Dockerfile or
-  buildpack-detected Node app, support the `pnpm run build && node
+  buildpack-detected Node app, support the `npm run build && node
   dist/main.js` flow unchanged, and give you a stable `api.<domain>`
   hostname to add a CNAME for.
 - Cloudflare still goes in front of both as DNS-only or proxied, same as
@@ -277,7 +277,7 @@ alternative to a paid Betterstack On-Call escalation policy):
 ## Release process
 
 1. Merge to `main` — the CI gate (`.github/workflows/ci.yml`) runs
-   typecheck, build, `pnpm audit --audit-level=high`, and both unit-test
+   typecheck, build, `npm audit --audit-level=high`, and both unit-test
    jobs, plus the `backend-integration` job against real disposable
    Postgres+Redis containers. This is enforced by GitHub branch protection
    on `main` (all three jobs — `Backend — typecheck & build`,
@@ -291,9 +291,9 @@ alternative to a paid Betterstack On-Call escalation policy):
 2. Deploy — **not currently automated**. Whatever host is chosen from the
    two options above, wire its own deploy trigger (Vercel/Railway/Render
    all auto-deploy on push to `main` once connected to the repo; a
-   physical server needs a manual `git pull && pnpm run build && restart`
+   physical server needs a manual `git pull && npm run build && restart`
    or a small deploy script/webhook).
-3. Run `pnpm exec prisma migrate deploy` against production before or as
+3. Run `npx prisma migrate deploy` against production before or as
    part of the backend deploy step whenever `backend/prisma/migrations/`
    has new migrations — never `migrate dev` against production.
 4. Smoke-check `GET /api/v1/health` and the homepage after deploy.

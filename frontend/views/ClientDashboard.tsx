@@ -3,7 +3,7 @@
 /* Sidebar */ /* Main */ /* ── SERVICES ── */ /* ── RFQ ── */ /* ── APPOINTMENTS ── */ /* ── PROFILE ── */
 import { useEffect, useState } from "react"
 import { useAuth } from "@clerk/nextjs"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { palette, inputStyle } from "../theme"
 import { InlineSpinner } from "../components/Spinner"
 import {
@@ -19,20 +19,6 @@ import ErrorBanner from "../components/ErrorBanner"
 import { getErrorMessage } from "../lib/errors"
 import PublicNav from "../components/PublicNav"
 
-const FALLBACK_IMG = "/images/bp-valves.jpg"
-const SVC_IMG_BY_SLUG: Record<string, string> = {
-  "gre-tubular-lining": "/images/bp-valves.jpg",
-  "external-wrapping":
-    "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&q=80",
-  "industrial-coating":
-    "https://images.unsplash.com/photo-1678984239420-43cdc183bce6?w=600&q=80",
-  "hdpe-lining":
-    "https://images.unsplash.com/photo-1684667273934-e5d39307eeae?w=600&q=80",
-  "rtp-systems":
-    "https://images.unsplash.com/photo-1758965364875-e090e5423d2d?w=600&q=80",
-  "rtv-insulator-coating": "/images/lux-power.jpg",
-}
-
 interface Props {
   onLogout: () => void
   onNavigate: (page: string) => void
@@ -43,6 +29,7 @@ interface Service {
   slug: string
   name: string
   shortDescription: string
+  imageUrl: string | null
 }
 type LatestFile = { id: string; originalFilename: string } | null
 interface FileAccessRequest {
@@ -72,6 +59,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
   const { getToken } = useAuth()
   const t = useTranslations("clientDashboard")
   const tCommon = useTranslations("common")
+  const locale = useLocale()
   const [section, setSection] = useState("services")
   const [error, setError] = useState<string | null>(null)
 
@@ -116,7 +104,10 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
       const [meRes, servicesRes, requestsRes, slotsRes, myApptsRes] =
         await Promise.all([
           axios.get("/me", { headers }),
-          axios.get("/services", { headers }),
+          axios.get("/services", {
+            headers,
+            params: locale !== "en" ? { locale } : undefined,
+          }),
           axios.get("/file-access-requests/mine", { headers }),
           axios.get("/appointments/slots", { headers }),
           axios.get("/appointments/mine", { headers }),
@@ -145,10 +136,11 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
     // Standard fetch-on-mount (react.dev/learn/you-might-not-need-an-effect
     // explicitly endorses this shape) — loadAll only touches state after
     // its own await, so nothing here sets state synchronously during this
-    // effect's own execution.
+    // effect's own execution. Re-runs on locale change too, so switching
+    // language re-fetches services with their machine-translated content.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadAll()
-  }, [])
+  }, [locale])
 
   const statusForService = (
     serviceId: string,
@@ -481,16 +473,21 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                           "none"
                       }}
                     >
-                      <img
-                        src={SVC_IMG_BY_SLUG[s.slug] ?? FALLBACK_IMG}
-                        alt={s.name}
-                        style={{
-                          width: "100%",
-                          height: 140,
-                          objectFit: "cover",
-                          display: "block",
-                        }}
-                      />
+                      {s.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- admin-uploaded S3 presigned URL, not a static build-time asset next/image can optimize
+                        <img
+                          src={s.imageUrl}
+                          alt={s.name}
+                          style={{
+                            width: "100%",
+                            height: 140,
+                            objectFit: "cover",
+                            display: "block",
+                          }}
+                        />
+                      ) : (
+                        <div style={{ width: "100%", height: 140, background: "#F1F5F9" }} />
+                      )}
                       <div style={{ padding: "18px 18px" }}>
                         <div
                           style={{
