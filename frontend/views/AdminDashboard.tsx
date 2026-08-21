@@ -27,6 +27,7 @@ import { palette } from "../theme"
 import { InlineSpinner } from "../components/Spinner"
 import {
   IconChart,
+  IconHome,
   IconUsers,
   IconFolder,
   IconClipboard,
@@ -388,7 +389,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   const auditLogList = usePaginatedList<AuditLogRow>(onListError)
 
   const NAV = [
-    { id: "overview", label: t("nav.overview"), icon: <IconChart /> },
+    { id: "overview", label: t("nav.overview"), icon: <IconHome /> },
     { id: "analytics", label: t("nav.analytics"), icon: <IconChart /> },
     { id: "clients", label: t("nav.clients"), icon: <IconUsers /> },
     { id: "specs", label: t("nav.specs"), icon: <IconFolder /> },
