@@ -159,7 +159,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "#F8FAFC",
+            background: "#F3F2EE",
             padding: 24,
           }}
         >
@@ -171,7 +171,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
             background: "#fff",
             borderRadius: 24,
             padding: "64px 48px",
-            border: "1px solid #E2E8F0",
+            border: "1px solid #E6E5E0",
             textAlign: "center",
           }}
         >
@@ -355,7 +355,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
             paddingBottom: 12 + FORM_BOX_PADDING_BOTTOM,
             paddingLeft: 36,
             paddingRight: 36,
-            border: "1px solid #E2E8F0",
+            border: "1px solid #E6E5E0",
             borderRadius: 24,
             background: "#fff",
           }}
@@ -408,8 +408,8 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                           ? "#16A34A"
                           : current
                             ? palette.accent
-                            : "#E2E8F0",
-                        color: done || current ? "#fff" : "#94A3B8",
+                            : "#E6E5E0",
+                        color: done || current ? "#fff" : "#A9A9A9",
                         transition: "background 0.3s",
                       }}
                     >
@@ -420,7 +420,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                         style={{
                           flex: 1,
                           height: 3,
-                          background: "#E2E8F0",
+                          background: "#E6E5E0",
                           margin: "0 4px",
                           borderRadius: 9999,
                           overflow: "hidden",
@@ -472,7 +472,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                       e.target.style.borderColor = palette.accent
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = "#E2E8F0"
+                      e.target.style.borderColor = "#E6E5E0"
                     }}
                   />
                 </div>
@@ -500,7 +500,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                       e.target.style.borderColor = palette.accent
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = "#E2E8F0"
+                      e.target.style.borderColor = "#E6E5E0"
                     }}
                   />
                 </div>
@@ -554,7 +554,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                     e.target.style.borderColor = palette.accent
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = "#E2E8F0"
+                    e.target.style.borderColor = "#E6E5E0"
                   }}
                 />
               </div>
@@ -586,7 +586,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                     e.target.style.borderColor = palette.accent
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = "#E2E8F0"
+                    e.target.style.borderColor = "#E6E5E0"
                   }}
                 />
               </div>
@@ -619,7 +619,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                     e.target.style.borderColor = palette.accent
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = "#E2E8F0"
+                    e.target.style.borderColor = "#E6E5E0"
                   }}
                 />
                 <ul style={{ listStyle: "none", padding: 0, marginTop: 14 }}>
@@ -627,7 +627,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                     <li
                       key={rule.label}
                       style={{
-                        color: rule.valid ? "#16A34A" : "#94A3B8",
+                        color: rule.valid ? "#16A34A" : "#A9A9A9",
                         display: "flex",
                         alignItems: "center",
                         gap: 8,
@@ -642,7 +642,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                           width: 8,
                           height: 8,
                           borderRadius: "50%",
-                          background: rule.valid ? "#16A34A" : "#CBD5E1",
+                          background: rule.valid ? "#16A34A" : "#C9C8C0",
                           flexShrink: 0,
                         }}
                       />
@@ -680,7 +680,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                     e.target.style.borderColor = palette.accent
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = "#E2E8F0"
+                    e.target.style.borderColor = "#E6E5E0"
                   }}
                 />
               </div>
@@ -720,7 +720,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                     e.target.style.borderColor = palette.accent
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = "#E2E8F0"
+                    e.target.style.borderColor = "#E6E5E0"
                   }}
                 />
               </div>
@@ -742,7 +742,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                     flex: "0 0 auto",
                     padding: "10px 22px",
                     borderRadius: 9999,
-                    border: "1.5px solid #E2E8F0",
+                    border: "1.5px solid #E6E5E0",
                     background: "#fff",
                     color: palette.navy,
                     fontWeight: 600,

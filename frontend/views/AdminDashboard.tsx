@@ -17,7 +17,7 @@
 // Bookings
 
 // Audit log
-// eslint-disable-next-line react-hooks/exhaustive-deps
+ 
 /* Sidebar */ /* Main */ /* OVERVIEW */ /* CLIENTS */ /* SPEC FILES */ /* FILE REQUESTS */ /* POSITIONS */ /* CANDIDATES */ /* RFQs */ /* BOOKINGS */ /* AUDIT LOG */ /* SECURITY */
 
 import { useEffect, useRef, useState } from "react"
@@ -210,13 +210,13 @@ function StatusBadge({ status }: { status: string }) {
     denied: { bg: "#FEE2E2", color: "#991B1B" },
     in_review: { bg: "#DBEAFE", color: "#1E40AF" },
     quoted: { bg: "#F3F4F6", color: "#374151" },
-    closed: { bg: "#F1F5F9", color: "#475569" },
+    closed: { bg: "#F3F2EE", color: "#475569" },
     booked: { bg: "#DBEAFE", color: "#1E40AF" },
     done: { bg: "#DCFCE7", color: "#166534" },
     cancelled: { bg: "#FEE2E2", color: "#991B1B" },
     contacted: { bg: "#DCFCE7", color: "#166534" },
   }
-  const s = map[status] ?? { bg: "#F1F5F9", color: "#475569" }
+  const s = map[status] ?? { bg: "#F3F2EE", color: "#475569" }
   const label = t.has(`status.${status}`) ? t(`status.${status}` as any) : status
   return (
     <span
@@ -249,7 +249,7 @@ const fieldInputStyle: React.CSSProperties = {
   width: "100%",
   padding: "9px 12px",
   borderRadius: 10,
-  border: "1.5px solid #E2E8F0",
+  border: "1.5px solid #E6E5E0",
   fontSize: 13,
   fontFamily: "Poppins, sans-serif",
 }
@@ -305,7 +305,7 @@ function SearchBox({
           maxWidth: 320,
           padding: "9px 14px",
           borderRadius: 9999,
-          border: "1.5px solid #E2E8F0",
+          border: "1.5px solid #E6E5E0",
           fontSize: 13,
           fontFamily: "Poppins, sans-serif",
           outline: "none",
@@ -332,9 +332,9 @@ function LoadMoreButton({
         onClick={onClick}
         disabled={loading}
         style={{
-          background: "#F8FAFC",
+          background: "#F3F2EE",
           color: palette.navy,
-          border: "1.5px solid #E2E8F0",
+          border: "1.5px solid #E6E5E0",
           borderRadius: 9999,
           padding: "9px 22px",
           fontWeight: 600,
@@ -1189,8 +1189,8 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
               textTransform: "uppercase",
               letterSpacing: "0.08em",
               textAlign: "left",
-              borderBottom: "1px solid #E2E8F0",
-              background: "#F8FAFC",
+              borderBottom: "1px solid #E6E5E0",
+              background: "#F3F2EE",
             }}
           >
             {c}
@@ -1209,7 +1209,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
           marginTop: 68,
           height: "calc(100vh - 68px)",
           overflow: "hidden",
-          background: "#F8FAFC",
+          background: "#F3F2EE",
         }}
       >
       {}
@@ -1282,7 +1282,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 border: "none",
                 background:
                   section === n.id ? "rgba(234,88,12,0.15)" : "transparent",
-                color: section === n.id ? palette.accent : "#64748B",
+                color: section === n.id ? palette.accent : "#8C8C88",
                 fontWeight: section === n.id ? 600 : 400,
                 fontSize: 13,
                 cursor: "pointer",
@@ -1335,7 +1335,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
           style={{
             height: 64,
             background: "#fff",
-            borderBottom: "1px solid #E2E8F0",
+            borderBottom: "1px solid #E6E5E0",
             display: "flex",
             alignItems: "center",
             padding: "0 32px",
@@ -1395,7 +1395,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                       background: "#fff",
                       borderRadius: 16,
                       padding: "20px 22px",
-                      border: "1px solid #E2E8F0",
+                      border: "1px solid #E6E5E0",
                     }}
                   >
                     <div
@@ -1432,7 +1432,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                   background: "#fff",
                   borderRadius: 16,
                   padding: "24px",
-                  border: "1px solid #E2E8F0",
+                  border: "1px solid #E6E5E0",
                   marginBottom: 24,
                 }}
               >
@@ -1482,7 +1482,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                           display: "flex",
                           justifyContent: "space-between",
                           padding: "8px 0",
-                          borderBottom: "1px solid #F1F5F9",
+                          borderBottom: "1px solid #F3F2EE",
                           fontSize: 13,
                         }}
                       >
@@ -1504,7 +1504,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                   background: "#fff",
                   borderRadius: 16,
                   padding: "24px",
-                  border: "1px solid #E2E8F0",
+                  border: "1px solid #E6E5E0",
                 }}
               >
                 <div
@@ -1525,7 +1525,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                       alignItems: "center",
                       gap: 14,
                       padding: "12px 0",
-                      borderBottom: "1px solid #F1F5F9",
+                      borderBottom: "1px solid #F3F2EE",
                     }}
                   >
                     <div
@@ -1613,7 +1613,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                     background: "#fff",
                     borderRadius: 16,
                     padding: 24,
-                    border: "1px solid #E2E8F0",
+                    border: "1px solid #E6E5E0",
                   }}
                 >
                   <div
@@ -1644,7 +1644,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                       <BarChart data={chart.data}>
                         <CartesianGrid
                           strokeDasharray="3 3"
-                          stroke="#F1F5F9"
+                          stroke="#F3F2EE"
                         />
                         <XAxis
                           dataKey="label"
@@ -1682,7 +1682,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
               {tempPasswordResult && (
                 <div
                   style={{
-                    background: "#FFF7ED",
+                    background: palette.accentLight,
                     border: `1.5px solid ${palette.accent}`,
                     borderRadius: 16,
                     padding: 20,
@@ -1714,7 +1714,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                     <code
                       style={{
                         background: "#fff",
-                        border: "1px solid #E2E8F0",
+                        border: "1px solid #E6E5E0",
                         borderRadius: 8,
                         padding: "8px 14px",
                         fontSize: 14,
@@ -1732,7 +1732,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                         )
                       }
                       style={{
-                        background: "#F1F5F9",
+                        background: "#F3F2EE",
                         color: palette.slate,
                         border: "none",
                         borderRadius: 9999,
@@ -1790,7 +1790,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                     style={{
                       padding: "9px 14px",
                       borderRadius: 9999,
-                      border: "1.5px solid #E2E8F0",
+                      border: "1.5px solid #E6E5E0",
                       fontSize: 13,
                       fontFamily: "Poppins, sans-serif",
                       color: palette.slate,
@@ -1828,7 +1828,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                   style={{
                     background: "#fff",
                     borderRadius: 16,
-                    border: "1px solid #E2E8F0",
+                    border: "1px solid #E6E5E0",
                     padding: 20,
                     marginBottom: 20,
                     display: "flex",
@@ -1861,7 +1861,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                       style={{
                         padding: "9px 12px",
                         borderRadius: 10,
-                        border: "1.5px solid #E2E8F0",
+                        border: "1.5px solid #E6E5E0",
                         fontSize: 13,
                         fontFamily: "Poppins, sans-serif",
                       }}
@@ -1891,7 +1891,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                       style={{
                         padding: "9px 12px",
                         borderRadius: 10,
-                        border: "1.5px solid #E2E8F0",
+                        border: "1.5px solid #E6E5E0",
                         fontSize: 13,
                         fontFamily: "Poppins, sans-serif",
                       }}
@@ -1919,7 +1919,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                       style={{
                         padding: "9px 12px",
                         borderRadius: 10,
-                        border: "1.5px solid #E2E8F0",
+                        border: "1.5px solid #E6E5E0",
                         fontSize: 13,
                         fontFamily: "Poppins, sans-serif",
                       }}
@@ -1948,7 +1948,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                       style={{
                         padding: "9px 12px",
                         borderRadius: 10,
-                        border: "1.5px solid #E2E8F0",
+                        border: "1.5px solid #E6E5E0",
                         fontSize: 13,
                         fontFamily: "Poppins, sans-serif",
                       }}
@@ -1974,7 +1974,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                       style={{
                         padding: "9px 12px",
                         borderRadius: 10,
-                        border: "1.5px solid #E2E8F0",
+                        border: "1.5px solid #E6E5E0",
                         fontSize: 13,
                         fontFamily: "Poppins, sans-serif",
                       }}
@@ -2014,7 +2014,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 style={{
                   background: "#fff",
                   borderRadius: 16,
-                  border: "1px solid #E2E8F0",
+                  border: "1px solid #E6E5E0",
                   overflow: "hidden",
                 }}
               >
@@ -2073,7 +2073,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                             style={{
                               padding: "6px 10px",
                               borderRadius: 8,
-                              border: "1.5px solid #E2E8F0",
+                              border: "1.5px solid #E6E5E0",
                               fontSize: 12,
                               fontFamily: "Poppins, sans-serif",
                               color: palette.slate,
@@ -2118,7 +2118,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                             <button
                               onClick={() => resetUserPassword(c)}
                               style={{
-                                background: "#F1F5F9",
+                                background: "#F3F2EE",
                                 color: palette.slate,
                                 border: "none",
                                 borderRadius: 9999,
@@ -2211,7 +2211,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                   style={{
                     background: "#fff",
                     borderRadius: 16,
-                    border: "1px solid #E2E8F0",
+                    border: "1px solid #E6E5E0",
                     padding: 20,
                     marginBottom: 20,
                   }}
@@ -2357,7 +2357,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                         borderRadius: 16,
                         padding: "22px",
                         border: `1px solid ${
-                          latest ? palette.accent : "#E2E8F0"
+                          latest ? palette.accent : "#E6E5E0"
                         }`,
                       }}
                     >
@@ -2367,7 +2367,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                           aspectRatio: "16/9",
                           borderRadius: 10,
                           overflow: "hidden",
-                          background: "#F1F5F9",
+                          background: "#F3F2EE",
                           marginBottom: 14,
                         }}
                       >
@@ -2403,7 +2403,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                           width: "100%",
                           padding: "8px",
                           marginBottom: 14,
-                          background: "#F1F5F9",
+                          background: "#F3F2EE",
                           color: palette.slate,
                           border: "none",
                           borderRadius: 9999,
@@ -2532,7 +2532,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                                 padding: "8px",
                                 background: "#fff",
                                 color: palette.navy,
-                                border: "1.5px solid #E2E8F0",
+                                border: "1.5px solid #E6E5E0",
                                 borderRadius: 9999,
                                 fontWeight: 600,
                                 fontSize: 12,
@@ -2552,7 +2552,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                                 padding: "8px",
                                 background: "#fff",
                                 color: palette.navy,
-                                border: "1.5px solid #E2E8F0",
+                                border: "1.5px solid #E6E5E0",
                                 borderRadius: 9999,
                                 fontWeight: 600,
                                 fontSize: 12,
@@ -2627,7 +2627,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                         style={{
                           width: "100%",
                           padding: "9px",
-                          background: latest ? "#F1F5F9" : palette.accent,
+                          background: latest ? "#F3F2EE" : palette.accent,
                           color: latest ? palette.slate : "#fff",
                           border: "none",
                           borderRadius: 9999,
@@ -2667,7 +2667,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 style={{
                   background: "#fff",
                   borderRadius: 16,
-                  border: "1px solid #E2E8F0",
+                  border: "1px solid #E6E5E0",
                   overflow: "hidden",
                 }}
               >
@@ -2761,7 +2761,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 style={{
                   background: "#fff",
                   borderRadius: 16,
-                  border: "1px solid #E2E8F0",
+                  border: "1px solid #E6E5E0",
                   padding: 20,
                   marginBottom: 20,
                 }}
@@ -2811,7 +2811,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                         width: "100%",
                         padding: "9px 12px",
                         borderRadius: 10,
-                        border: "1.5px solid #E2E8F0",
+                        border: "1.5px solid #E6E5E0",
                         fontSize: 13,
                         fontFamily: "Poppins, sans-serif",
                       }}
@@ -2842,7 +2842,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                         width: "100%",
                         padding: "9px 12px",
                         borderRadius: 10,
-                        border: "1.5px solid #E2E8F0",
+                        border: "1.5px solid #E6E5E0",
                         fontSize: 13,
                         fontFamily: "Poppins, sans-serif",
                       }}
@@ -2875,7 +2875,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                       width: "100%",
                       padding: "9px 12px",
                       borderRadius: 10,
-                      border: "1.5px solid #E2E8F0",
+                      border: "1.5px solid #E6E5E0",
                       fontSize: 13,
                       fontFamily: "Poppins, sans-serif",
                       resize: "vertical",
@@ -2915,7 +2915,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                       style={{
                         padding: "10px 22px",
                         borderRadius: 9999,
-                        border: "1.5px solid #E2E8F0",
+                        border: "1.5px solid #E6E5E0",
                         background: "#fff",
                         color: palette.navy,
                         fontWeight: 600,
@@ -2934,7 +2934,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 style={{
                   background: "#fff",
                   borderRadius: 16,
-                  border: "1px solid #E2E8F0",
+                  border: "1px solid #E6E5E0",
                   overflow: "hidden",
                 }}
               >
@@ -2982,7 +2982,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                             <button
                               onClick={() => startEditPosition(p)}
                               style={{
-                                background: "#F1F5F9",
+                                background: "#F3F2EE",
                                 color: palette.slate,
                                 border: "none",
                                 borderRadius: 9999,
@@ -3051,7 +3051,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 style={{
                   background: "#fff",
                   borderRadius: 16,
-                  border: "1px solid #E2E8F0",
+                  border: "1px solid #E6E5E0",
                   overflow: "hidden",
                 }}
               >
@@ -3131,7 +3131,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                                 fontSize: 11,
                                 background: c.documentsRequested
                                   ? "#FFFBEB"
-                                  : "#F1F5F9",
+                                  : "#F3F2EE",
                                 color: c.documentsRequested
                                   ? "#92400E"
                                   : palette.slate,
@@ -3197,7 +3197,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 style={{
                   background: "#fff",
                   borderRadius: 16,
-                  border: "1px solid #E2E8F0",
+                  border: "1px solid #E6E5E0",
                   overflow: "hidden",
                 }}
               >
@@ -3290,7 +3290,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                                     setRfqStatus(r.id, "pending")
                                   }}
                                   style={{
-                                    background: "#F1F5F9",
+                                    background: "#F3F2EE",
                                     color: "#475569",
                                     border: "none",
                                     borderRadius: 9999,
@@ -3519,8 +3519,8 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                           color: palette.slate,
                           lineHeight: 1.7,
                           whiteSpace: "pre-wrap",
-                          background: "#F8FAFC",
-                          border: "1px solid #E2E8F0",
+                          background: "#F3F2EE",
+                          border: "1px solid #E6E5E0",
                           borderRadius: 12,
                           padding: 16,
                         }}
@@ -3542,7 +3542,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 style={{
                   background: "#fff",
                   borderRadius: 16,
-                  border: "1px solid #E2E8F0",
+                  border: "1px solid #E6E5E0",
                   padding: 20,
                   marginBottom: 20,
                   display: "flex",
@@ -3573,7 +3573,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                     style={{
                       padding: "9px 12px",
                       borderRadius: 10,
-                      border: "1.5px solid #E2E8F0",
+                      border: "1.5px solid #E6E5E0",
                       fontSize: 13,
                       fontFamily: "Poppins, sans-serif",
                     }}
@@ -3601,7 +3601,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                     style={{
                       padding: "9px 12px",
                       borderRadius: 10,
-                      border: "1.5px solid #E2E8F0",
+                      border: "1.5px solid #E6E5E0",
                       fontSize: 13,
                       fontFamily: "Poppins, sans-serif",
                     }}
@@ -3629,7 +3629,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                     style={{
                       padding: "9px 12px",
                       borderRadius: 10,
-                      border: "1.5px solid #E2E8F0",
+                      border: "1.5px solid #E6E5E0",
                       fontSize: 13,
                       fontFamily: "Poppins, sans-serif",
                     }}
@@ -3667,7 +3667,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 style={{
                   background: "#fff",
                   borderRadius: 16,
-                  border: "1px solid #E2E8F0",
+                  border: "1px solid #E6E5E0",
                   overflow: "hidden",
                   marginBottom: 32,
                 }}
@@ -3677,7 +3677,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                   <tbody>
                     {slots.map((s, i) =>
                       editingSlotId === s.id ? (
-                        <tr key={s.id} style={{ background: "#FFF7ED" }}>
+                        <tr key={s.id} style={{ background: palette.accentLight }}>
                           <td colSpan={5} style={{ padding: "14px 16px" }}>
                             <form
                               onSubmit={saveSlotEdit}
@@ -3701,7 +3701,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                                 style={{
                                   padding: "7px 10px",
                                   borderRadius: 8,
-                                  border: "1.5px solid #E2E8F0",
+                                  border: "1.5px solid #E6E5E0",
                                   fontSize: 13,
                                   fontFamily: "Poppins, sans-serif",
                                 }}
@@ -3719,7 +3719,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                                 style={{
                                   padding: "7px 10px",
                                   borderRadius: 8,
-                                  border: "1.5px solid #E2E8F0",
+                                  border: "1.5px solid #E6E5E0",
                                   fontSize: 13,
                                   fontFamily: "Poppins, sans-serif",
                                 }}
@@ -3737,7 +3737,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                                 style={{
                                   padding: "7px 10px",
                                   borderRadius: 8,
-                                  border: "1.5px solid #E2E8F0",
+                                  border: "1.5px solid #E6E5E0",
                                   fontSize: 13,
                                   fontFamily: "Poppins, sans-serif",
                                 }}
@@ -3764,7 +3764,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                                 style={{
                                   padding: "7px 16px",
                                   borderRadius: 9999,
-                                  border: "1.5px solid #E2E8F0",
+                                  border: "1.5px solid #E6E5E0",
                                   background: "#fff",
                                   color: palette.slate,
                                   fontWeight: 600,
@@ -3831,7 +3831,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                               <button
                                 onClick={() => startEditSlot(s)}
                                 style={{
-                                  background: "#F1F5F9",
+                                  background: "#F3F2EE",
                                   color: palette.slate,
                                   border: "none",
                                   borderRadius: 9999,
@@ -3898,7 +3898,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 style={{
                   background: "#fff",
                   borderRadius: 16,
-                  border: "1px solid #E2E8F0",
+                  border: "1px solid #E6E5E0",
                   overflow: "hidden",
                 }}
               >
@@ -4035,7 +4035,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
                 style={{
                   background: "#fff",
                   borderRadius: 16,
-                  border: "1px solid #E2E8F0",
+                  border: "1px solid #E6E5E0",
                   overflow: "hidden",
                 }}
               >

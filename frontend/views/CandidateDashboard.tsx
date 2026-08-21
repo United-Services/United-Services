@@ -206,7 +206,7 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
         style={{
           marginTop: 68,
           minHeight: "calc(100vh - 68px)",
-          background: "#F8FAFC",
+          background: "#F3F2EE",
           padding: "40px 24px",
         }}
       >
@@ -255,7 +255,7 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
         <div
           style={{
             background: "#fff",
-            border: "1px solid #E2E8F0",
+            border: "1px solid #E6E5E0",
             borderRadius: 16,
             padding: 24,
             marginBottom: 20,
@@ -332,7 +332,7 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
         <div
           style={{
             background: "#fff",
-            border: "1px solid #E2E8F0",
+            border: "1px solid #E6E5E0",
             borderRadius: 16,
             padding: 24,
           }}
@@ -383,7 +383,7 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
         <div
           style={{
             background: "#fff",
-            border: "1px solid #E2E8F0",
+            border: "1px solid #E6E5E0",
             borderRadius: 16,
             padding: 24,
             marginTop: 20,
@@ -414,7 +414,7 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
                     fontSize: 13,
                     color: palette.slate,
                     padding: "8px 0",
-                    borderBottom: "1px solid #F1F5F9",
+                    borderBottom: "1px solid #F3F2EE",
                   }}
                 >
                   <span>📄</span>
@@ -436,12 +436,12 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
               otherRef.current?.click()
             }
             style={{
-              border: "2px dashed #E2E8F0",
+              border: "2px dashed #E6E5E0",
               borderRadius: 14,
               padding: "16px",
               cursor: uploadingKind === "candidate-other-document" ? "wait" : "pointer",
               textAlign: "center",
-              background: "#F8FAFC",
+              background: "#F3F2EE",
             }}
           >
             <input
@@ -500,12 +500,12 @@ function DocumentSlot({
       <div
         onClick={() => !uploading && inputRef.current?.click()}
         style={{
-          border: `2px dashed ${hasFile ? palette.accent : "#E2E8F0"}`,
+          border: `2px dashed ${hasFile ? palette.accent : palette.border}`,
           borderRadius: 14,
           padding: "20px",
           cursor: uploading ? "wait" : "pointer",
           textAlign: "center",
-          background: hasFile ? "#FFF7ED" : "#F8FAFC",
+          background: hasFile ? palette.accentLight : palette.bgAlt,
         }}
       >
         <input

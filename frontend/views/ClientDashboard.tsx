@@ -1,5 +1,5 @@
 "use client"
-// eslint-disable-next-line react-hooks/exhaustive-deps
+ 
 /* Sidebar */ /* Main */ /* ── SERVICES ── */ /* ── RFQ ── */ /* ── APPOINTMENTS ── */ /* ── PROFILE ── */
 import { useEffect, useState } from "react"
 import { useAuth } from "@clerk/nextjs"
@@ -241,7 +241,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
           marginTop: 68,
           height: "calc(100vh - 68px)",
           overflow: "hidden",
-          background: "#F8FAFC",
+          background: "#F3F2EE",
         }}
       >
       {}
@@ -313,7 +313,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                 border: "none",
                 background:
                   section === n.id ? "rgba(234,88,12,0.15)" : "transparent",
-                color: section === n.id ? palette.accent : "#64748B",
+                color: section === n.id ? palette.accent : "#8C8C88",
                 fontWeight: section === n.id ? 600 : 400,
                 fontSize: 14,
                 cursor: "pointer",
@@ -417,7 +417,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
           style={{
             height: 68,
             background: "#fff",
-            borderBottom: "1px solid #E2E8F0",
+            borderBottom: "1px solid #E6E5E0",
             display: "flex",
             alignItems: "center",
             padding: "0 32px",
@@ -460,7 +460,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                       style={{
                         background: "#fff",
                         borderRadius: 18,
-                        border: "1px solid #E2E8F0",
+                        border: "1px solid #E6E5E0",
                         overflow: "hidden",
                         transition: "box-shadow 0.2s",
                       }}
@@ -486,7 +486,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                           }}
                         />
                       ) : (
-                        <div style={{ width: "100%", height: 140, background: "#F1F5F9" }} />
+                        <div style={{ width: "100%", height: 140, background: "#F3F2EE" }} />
                       )}
                       <div style={{ padding: "18px 18px" }}>
                         <div
@@ -516,7 +516,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                               color: palette.muted,
                               fontWeight: 600,
                               padding: "9px",
-                              background: "#F8FAFC",
+                              background: "#F3F2EE",
                               borderRadius: 9999,
                             }}
                           >
@@ -646,7 +646,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                     background: "#fff",
                     borderRadius: 20,
                     padding: "36px",
-                    border: "1px solid #E2E8F0",
+                    border: "1px solid #E6E5E0",
                   }}
                 >
                   <div style={{ marginBottom: 18 }}>
@@ -674,7 +674,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                       }}
                       onBlur={(e) => {
                         ;(e.target as HTMLSelectElement).style.borderColor =
-                          "#E2E8F0"
+                          "#E6E5E0"
                       }}
                     >
                       <option value="">{t("rfq.selectService")}</option>
@@ -712,7 +712,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                       }}
                       onBlur={(e) => {
                         ;(e.target as HTMLTextAreaElement).style.borderColor =
-                          "#E2E8F0"
+                          "#E6E5E0"
                       }}
                     />
                   </div>
@@ -739,7 +739,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                         e.target.style.borderColor = palette.accent
                       }}
                       onBlur={(e) => {
-                        e.target.style.borderColor = "#E2E8F0"
+                        e.target.style.borderColor = "#E6E5E0"
                       }}
                     />
                   </div>
@@ -769,7 +769,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                       }}
                       onBlur={(e) => {
                         ;(e.target as HTMLTextAreaElement).style.borderColor =
-                          "#E2E8F0"
+                          "#E6E5E0"
                       }}
                     />
                   </div>
@@ -839,7 +839,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                     background: "#fff",
                     borderRadius: 20,
                     padding: "36px",
-                    border: "1px solid #E2E8F0",
+                    border: "1px solid #E6E5E0",
                   }}
                 >
                   <p
@@ -857,7 +857,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                       style={{
                         marginBottom: 24,
                         padding: "14px 16px",
-                        background: "#F8FAFC",
+                        background: "#F3F2EE",
                         borderRadius: 12,
                       }}
                     >
@@ -921,7 +921,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                         }}
                         onBlur={(e) => {
                           ;(e.target as HTMLSelectElement).style.borderColor =
-                            "#E2E8F0"
+                            "#E6E5E0"
                         }}
                       >
                         <option value="">{t("appointments.selectSlot")}</option>
@@ -994,7 +994,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                   background: "#fff",
                   borderRadius: 20,
                   padding: "32px",
-                  border: "1px solid #E2E8F0",
+                  border: "1px solid #E6E5E0",
                 }}
               >
                 <div
@@ -1052,7 +1052,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                         display: "flex",
                         justifyContent: "space-between",
                         padding: "14px 0",
-                        borderBottom: "1px solid #F1F5F9",
+                        borderBottom: "1px solid #F3F2EE",
                       }}
                     >
                       <span
