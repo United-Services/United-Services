@@ -99,7 +99,7 @@ export default function LanguagePrompt() {
           onClick={switchLocale}
           style={{
             background: palette.accent,
-            color: "#fff",
+            color: palette.navy,
             border: "none",
             borderRadius: 9999,
             padding: "9px 18px",

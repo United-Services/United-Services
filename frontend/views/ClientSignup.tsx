@@ -763,7 +763,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                   borderRadius: 9999,
                   border: "none",
                   background: loading ? "#9CA3AF" : palette.accent,
-                  color: "#fff",
+                  color: loading ? "#fff" : palette.navy,
                   fontWeight: 700,
                   fontSize: 14,
                   cursor: "pointer",

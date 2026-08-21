@@ -1,21 +1,23 @@
 import type React from "react"
 
-// Lime accent, matching the public site's theme (lib/publicTheme.tsx) —
-// this file is now imported exclusively by private/authenticated surfaces
-// (dashboards, auth flows) after the public pages moved to publicTheme.tsx,
-// so updating the values here retints every private page in one place.
+// Lime accent, matching the public site's theme (lib/publicTheme.tsx)
+// exactly (#D8FF3E) — this file is now imported exclusively by private/
+// authenticated surfaces (dashboards, auth flows) after the public pages
+// moved to publicTheme.tsx, so updating the values here retints every
+// private page in one place.
 //
-// `accent` doubles as plain text color (labels, links, numbers) in dozens
-// of call sites, not just button backgrounds — the public theme's bright
-// lime (#D8FF3E) fails contrast as text-on-white, so this is a darker,
-// legible olive-lime at the same hue instead. `accentSolid` carries the
-// actual bright lime for places that only ever use it as a filled
-// background (buttons, badges) and set their own text color on top.
+// Known tradeoff: `accent` is also used as plain text color (labels,
+// small links) at ~10 call sites across AdminDashboard.tsx,
+// ClientSignup.tsx, and CandidateDashboard.tsx — bright lime text on a
+// white background reads as very low-contrast/hard to read at those
+// sizes. Left as-is per explicit instruction to match the exact color;
+// flag if those specific spots should get a readable treatment (e.g. a
+// dark chip/pill background behind the lime text, same pattern already
+// used for badges) rather than lime text directly on white.
 export const palette = {
-  accent: "#586B0A",
-  accentDark: "#3F4F06",
+  accent: "#D8FF3E",
+  accentDark: "#C2E82E",
   accentLight: "#F4FBD9",
-  accentSolid: "#D8FF3E",
   navy: "#0E0E10",
   slate: "#3C3C38",
   muted: "#8C8C88",
@@ -25,8 +27,11 @@ export const palette = {
 }
 
 export const btnPrimary: React.CSSProperties = {
-  background: "#586B0A",
-  color: "#fff",
+  background: "#D8FF3E",
+  // Dark text, not white — same pattern as every lime-filled button on the
+  // public site (lib/publicTheme.tsx's publicBtnLime): white-on-#D8FF3E is
+  // nearly unreadable, this pale a lime needs dark text on top of it.
+  color: "#0E0E10",
   border: "none",
   borderRadius: 9999,
   padding: "13px 32px",

@@ -137,6 +137,11 @@ export default function SignInPage() {
               },
               elements: {
                 card: { boxShadow: "0 8px 32px rgba(15,23,42,0.08)" },
+                // Clerk defaults every colorPrimary-filled button to white
+                // text — invisible against this pale a lime. Same fix as
+                // every other lime-filled button on the site (dark text,
+                // not white).
+                formButtonPrimary: { color: palette.navy },
               },
             }}
           />

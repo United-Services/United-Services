@@ -71,7 +71,7 @@ export default function LocaleError({
           onClick={() => reset()}
           style={{
             background: palette.accent,
-            color: "#fff",
+            color: palette.navy,
             border: "none",
             borderRadius: 9999,
             padding: "11px 26px",

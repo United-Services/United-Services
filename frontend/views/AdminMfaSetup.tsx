@@ -165,7 +165,7 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
             onClick={() => onNavigate("admin-dashboard")}
             style={{
               background: palette.accent,
-              color: "#fff",
+              color: palette.navy,
               border: "none",
               borderRadius: 9999,
               padding: "12px 32px",
@@ -454,7 +454,7 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
                       borderRadius: 9999,
                       border: "none",
                       background: loading ? "#9CA3AF" : palette.accent,
-                      color: "#fff",
+                      color: loading ? "#fff" : palette.navy,
                       fontWeight: 700,
                       fontSize: 14,
                       cursor: "pointer",
