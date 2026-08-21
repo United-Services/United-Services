@@ -106,7 +106,7 @@ export default function AdminMfaChallenge({ onNavigate }: Props) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "#F8FAFC",
+            background: "#F3F2EE",
             padding: 24,
           }}
         >
@@ -128,7 +128,7 @@ export default function AdminMfaChallenge({ onNavigate }: Props) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#F8FAFC",
+          background: "#F3F2EE",
           padding: 24,
         }}
       >
@@ -139,7 +139,7 @@ export default function AdminMfaChallenge({ onNavigate }: Props) {
           background: "#fff",
           borderRadius: 24,
           padding: "48px",
-          border: "1px solid #E2E8F0",
+          border: "1px solid #E6E5E0",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
@@ -172,9 +172,9 @@ export default function AdminMfaChallenge({ onNavigate }: Props) {
                   gridTemplateColumns: "1fr 1fr",
                   gap: 4,
                   padding: 4,
-                  background: "#F8FAFC",
+                  background: "#F3F2EE",
                   borderRadius: 12,
-                  border: "1px solid #E2E8F0",
+                  border: "1px solid #E6E5E0",
                   marginBottom: 24,
                 }}
               >
@@ -287,7 +287,7 @@ export default function AdminMfaChallenge({ onNavigate }: Props) {
                     e.target.style.borderColor = palette.accent
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = "#E2E8F0"
+                    e.target.style.borderColor = "#E6E5E0"
                   }}
                 />
                 {error && (

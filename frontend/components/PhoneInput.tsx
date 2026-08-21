@@ -62,7 +62,7 @@ export default function PhoneInput({
           e.target.style.borderColor = palette.accent
         }}
         onBlur={(e) => {
-          e.target.style.borderColor = "#E2E8F0"
+          e.target.style.borderColor = "#E6E5E0"
         }}
       >
         {COUNTRIES.map((c) => (
@@ -84,7 +84,7 @@ export default function PhoneInput({
           e.target.style.borderColor = palette.accent
         }}
         onBlur={(e) => {
-          e.target.style.borderColor = "#E2E8F0"
+          e.target.style.borderColor = "#E6E5E0"
         }}
       />
     </div>

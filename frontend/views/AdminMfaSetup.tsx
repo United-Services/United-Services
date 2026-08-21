@@ -110,7 +110,7 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "#F8FAFC",
+            background: "#F3F2EE",
             padding: 24,
           }}
         >
@@ -121,7 +121,7 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
             background: "#fff",
             borderRadius: 24,
             padding: "56px 48px",
-            border: "1px solid #E2E8F0",
+            border: "1px solid #E6E5E0",
             textAlign: "center",
           }}
         >
@@ -193,7 +193,7 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#F8FAFC",
+          background: "#F3F2EE",
           padding: 24,
         }}
       >
@@ -204,7 +204,7 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
           background: "#fff",
           borderRadius: 24,
           padding: "48px",
-          border: "1px solid #E2E8F0",
+          border: "1px solid #E6E5E0",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
@@ -237,9 +237,9 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
             gridTemplateColumns: "1fr 1fr",
             gap: 4,
             padding: 4,
-            background: "#F8FAFC",
+            background: "#F3F2EE",
             borderRadius: 12,
-            border: "1px solid #E2E8F0",
+            border: "1px solid #E6E5E0",
             marginBottom: method === "choose" ? 0 : 24,
           }}
         >
@@ -339,7 +339,7 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
                         width: 180,
                         height: 180,
                         margin: "0 auto",
-                        border: "1px solid #E2E8F0",
+                        border: "1px solid #E6E5E0",
                         borderRadius: 12,
                       }}
                     />
@@ -363,8 +363,8 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
                           gap: 8,
                           padding: "10px 12px",
                           borderRadius: 12,
-                          border: "1px solid #E2E8F0",
-                          background: "#F8FAFC",
+                          border: "1px solid #E6E5E0",
+                          background: "#F3F2EE",
                           marginBottom: 20,
                         }}
                       >
@@ -436,7 +436,7 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
                       e.target.style.borderColor = palette.accent
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = "#E2E8F0"
+                      e.target.style.borderColor = "#E6E5E0"
                     }}
                   />
                   {error && (

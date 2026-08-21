@@ -45,9 +45,9 @@ export default function WorldMap({ data, noDataLabel, requestsLabel }: Props) {
   )
 
   const colorFor = (count: number) => {
-    if (count <= 0) return "#F1F5F9"
+    if (count <= 0) return "#F3F2EE"
     const intensity = 0.25 + 0.75 * (count / maxCount)
-    return `color-mix(in srgb, ${palette.accent} ${Math.round(intensity * 100)}%, #FFF7ED)`
+    return `color-mix(in srgb, ${palette.accent} ${Math.round(intensity * 100)}%, ${palette.accentLight})`
   }
 
   return (

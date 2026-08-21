@@ -61,7 +61,7 @@ export default function ChangePassword({ onNavigate }: Props) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#F8FAFC",
+          background: "#F3F2EE",
           padding: 24,
         }}
       >
@@ -72,7 +72,7 @@ export default function ChangePassword({ onNavigate }: Props) {
             background: "#fff",
             borderRadius: 24,
             padding: "48px",
-            border: "1px solid #E2E8F0",
+            border: "1px solid #E6E5E0",
           }}
         >
           <div

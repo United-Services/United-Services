@@ -4,7 +4,7 @@
 // replace a password. Password reset here never uses an email link — it
 // requires a fresh MFA proof in the same request. See
 // docs/BUSINESS_RULES.md rule 7.
-// eslint-disable-next-line react-hooks/exhaustive-deps
+ 
 /* Authenticator app */ /* WebAuthn credentials */ /* Password reset — MFA-gated, not email-link based */
 
 import { useEffect, useState } from "react"
@@ -255,7 +255,7 @@ export default function AdminSecuritySection() {
       <div
         style={{
           background: "#fff",
-          border: "1px solid #E2E8F0",
+          border: "1px solid #E6E5E0",
           borderRadius: 16,
           padding: 24,
         }}
@@ -287,7 +287,7 @@ export default function AdminSecuritySection() {
               style={{
                 width: 160,
                 height: 160,
-                border: "1px solid #E2E8F0",
+                border: "1px solid #E6E5E0",
                 borderRadius: 12,
                 marginBottom: 10,
               }}
@@ -338,7 +338,7 @@ export default function AdminSecuritySection() {
             style={{
               padding: "10px 20px",
               borderRadius: 9999,
-              border: "1.5px solid #E2E8F0",
+              border: "1.5px solid #E6E5E0",
               background: "#fff",
               color: palette.navy,
               fontWeight: 600,
@@ -358,7 +358,7 @@ export default function AdminSecuritySection() {
       <div
         style={{
           background: "#fff",
-          border: "1px solid #E2E8F0",
+          border: "1px solid #E6E5E0",
           borderRadius: 16,
           padding: 24,
         }}
@@ -389,7 +389,7 @@ export default function AdminSecuritySection() {
                   fontSize: 13,
                   color: palette.slate,
                   padding: "8px 0",
-                  borderTop: "1px solid #F1F5F9",
+                  borderTop: "1px solid #F3F2EE",
                 }}
               >
                 {c.label || c.deviceType} —{" "}
@@ -406,7 +406,7 @@ export default function AdminSecuritySection() {
           style={{
             padding: "10px 20px",
             borderRadius: 9999,
-            border: "1.5px solid #E2E8F0",
+            border: "1.5px solid #E6E5E0",
             background: "#fff",
             color: palette.navy,
             fontWeight: 600,
@@ -423,7 +423,7 @@ export default function AdminSecuritySection() {
       <div
         style={{
           background: "#fff",
-          border: "1px solid #E2E8F0",
+          border: "1px solid #E6E5E0",
           borderRadius: 16,
           padding: 24,
         }}
@@ -451,7 +451,7 @@ export default function AdminSecuritySection() {
                 padding: "9px",
                 borderRadius: 9999,
                 border: `1.5px solid ${
-                  resetMethod === "totp" ? palette.accent : "#E2E8F0"
+                  resetMethod === "totp" ? palette.accent : "#E6E5E0"
                 }`,
                 background:
                   resetMethod === "totp" ? palette.accentLight : "#fff",
@@ -472,7 +472,7 @@ export default function AdminSecuritySection() {
                 padding: "9px",
                 borderRadius: 9999,
                 border: `1.5px solid ${
-                  resetMethod === "webauthn" ? palette.accent : "#E2E8F0"
+                  resetMethod === "webauthn" ? palette.accent : "#E6E5E0"
                 }`,
                 background:
                   resetMethod === "webauthn" ? palette.accentLight : "#fff",
