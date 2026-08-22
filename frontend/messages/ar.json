@@ -30,7 +30,8 @@
     "operatingRegions": "العراق · السعودية · الإمارات",
     "copyright": "© 2026 يونايتد سيرفيسز مصر. جميع الحقوق محفوظة. · مسجلة لدى الهيئة المصرية العامة للبترول",
     "privacyPolicy": "سياسة الخصوصية",
-    "termsOfService": "شروط الخدمة"
+    "termsOfService": "شروط الخدمة",
+    "reportProblem": "الإبلاغ عن مشكلة"
   },
   "services": {
     "names": {
@@ -135,6 +136,12 @@
         "coating": "طبقة إيبوكسي مرتبطة بالانصهار أو سائلة تُطبَّق قبل مغادرة الأنبوب للمصنع.",
         "lining": "الحاجز الداخلي — GRE أو HDPE — الذي يمنع ما بداخل الأنبوب من ملامسة الفولاذ."
       }
+    },
+    "aria": {
+      "clientLogin": "تسجيل الدخول إلى بوابة العميل",
+      "seeMoreServices": "عرض المزيد من الخدمات",
+      "previousService": "الخدمة السابقة",
+      "nextService": "الخدمة التالية"
     }
   },
   "about": {
@@ -736,7 +743,8 @@
       "audit": "Audit Log",
       "security": "Security",
       "positions": "Open Positions",
-      "analytics": "Analytics"
+      "analytics": "Analytics",
+      "tickets": "التذاكر"
     },
     "status": {
       "pending": "Pending",
@@ -805,7 +813,8 @@
       "tempPasswordHeading": "Temporary password for {email}",
       "tempPasswordSub": "Share this with the user through a secure channel — it will not be shown again. They must set a new password on first sign-in.",
       "copy": "Copy",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "copied": "تم النسخ!"
     },
     "specs": {
       "noFile": "No spec file uploaded yet",
@@ -959,6 +968,26 @@
       "serviceViewsSub": "Views per service page, all-time",
       "noCandidates": "No candidate applications yet.",
       "noEvents": "No events recorded yet."
+    },
+    "tickets": {
+      "cols": [
+        "الاسم",
+        "البريد الإلكتروني",
+        "النوع",
+        "التفاصيل",
+        "تاريخ الإرسال",
+        "الحالة",
+        "الإجراءات"
+      ],
+      "none": "لم يتم إرسال أي تذاكر بعد.",
+      "resolveConfirm": "هل تريد وضع علامة على هذه التذكرة كمحلولة؟ سيؤدي هذا إلى حذفها نهائيًا ولا يمكن التراجع عنه.",
+      "clickToExpand": "انقر للتوسيع",
+      "viewScreenshot": "عرض لقطة الشاشة",
+      "contacted": "تم التواصل",
+      "uncontacted": "لم يتم التواصل",
+      "markContacted": "وضع علامة تم التواصل",
+      "markUncontacted": "وضع علامة لم يتم التواصل",
+      "resolve": "حل"
     }
   },
   "adminMfaSetup": {
@@ -1218,5 +1247,9 @@
       "mismatch": "كلمتا المرور غير متطابقتين.",
       "failed": "تعذر تعيين كلمة المرور الجديدة. يرجى المحاولة مرة أخرى."
     }
+  },
+  "phoneInput": {
+    "searchPlaceholder": "ابحث عن الدولة أو الرمز...",
+    "noResults": "لا توجد دول مطابقة لـ \"{query}\""
   }
 }

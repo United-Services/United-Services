@@ -3,12 +3,51 @@ import { useEffect, useRef, useState } from "react"
 import { useAuth } from "@clerk/nextjs"
 import { useTranslations } from "next-intl"
 import { palette } from "../theme"
-import { InlineSpinner } from "../components/Spinner"
+import { Skeleton, SkeletonCards } from "../components/Skeleton"
 import { IconLogout } from "../components/NavIcons"
+import UploadProgress from "../components/UploadProgress"
 import { axios, authHeader } from "../lib/api"
+import {
+  runResumableUpload,
+  validateFile,
+  ResumableUploadError,
+  type ResumableUploadEndpoints,
+  type ResumableUploadState,
+} from "../lib/resumableUpload"
 import { ApplicationStatus } from "../enums/status.enums"
 import { useRequestGuard } from "../lib/useRequestGuard"
 import PublicNav from "../components/PublicNav"
+
+type UploadKind = "candidate-id-photo" | "candidate-cv" | "candidate-other-document"
+
+const UPLOAD_ENDPOINTS: ResumableUploadEndpoints = {
+  create: "/uploads/multipart/create",
+  presignPart: "/uploads/multipart/presign-part",
+  complete: "/uploads/multipart/complete",
+  abort: "/uploads/multipart/abort",
+}
+
+const MAX_UPLOAD_BYTES: Record<UploadKind, number> = {
+  "candidate-id-photo": 8 * 1024 * 1024,
+  "candidate-cv": 15 * 1024 * 1024,
+  "candidate-other-document": 20 * 1024 * 1024,
+}
+
+const ALLOWED_UPLOAD_TYPES: Record<UploadKind, string[]> = {
+  "candidate-id-photo": ["image/jpeg", "image/png"],
+  "candidate-cv": [
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ],
+  "candidate-other-document": [
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "image/jpeg",
+    "image/png",
+  ],
+}
 
 interface Props {
   onLogout: () => void
@@ -52,6 +91,11 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
   const idRef = useRef<HTMLInputElement>(null)
   const cvRef = useRef<HTMLInputElement>(null)
   const otherRef = useRef<HTMLInputElement>(null)
+  const [uploadProgress, setUploadProgress] = useState<Partial<Record<UploadKind, number>>>({})
+  const [uploadError, setUploadError] = useState<Partial<Record<UploadKind, string>>>({})
+  const pendingUploads = useRef<
+    Map<UploadKind, { file: File; state?: ResumableUploadState }>
+  >(new Map())
 
   const loadGuard = useRequestGuard()
   const load = async () => {
@@ -83,69 +127,77 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
     load()
   }, [])
 
-  const uploadDocument = async (
-    file: File,
-    kind: "candidate-id-photo" | "candidate-cv",
-  ) => {
+  // Shared by all three document kinds — uploads in chunks via
+  // lib/resumableUpload so a dropped connection only loses the parts still
+  // in flight, and stashes the returned state in pendingUploads so
+  // retryUpload() below can resume instead of restarting the whole file.
+  const performUpload = async (kind: UploadKind, file: File, resume = false) => {
     setUploadingKind(kind)
+    setUploadError((prev) => ({ ...prev, [kind]: undefined }))
+    setUploadProgress((prev) => ({ ...prev, [kind]: 0 }))
     setMessage(null)
+    const existing = resume ? pendingUploads.current.get(kind) : undefined
     try {
       const token = await getToken()
       const headers = authHeader(token)
-      const { data: presign } = await axios.post(
-        "/uploads/presign",
-        { kind, contentType: file.type },
-        { headers },
-      )
-      await fetch(presign.url, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
+      const result = await runResumableUpload({
+        file,
+        endpoints: UPLOAD_ENDPOINTS,
+        createFields: { kind },
+        token,
+        state: existing?.state,
+        onProgress: (fraction) => setUploadProgress((prev) => ({ ...prev, [kind]: fraction })),
       })
-      const field = kind === "candidate-id-photo" ? "idPhotoS3Key" : "cvS3Key"
-      await axios.post(
-        "/me/candidate-documents",
-        { [field]: presign.key },
-        { headers },
-      )
+      pendingUploads.current.delete(kind)
+
+      if (kind === "candidate-other-document") {
+        await axios.post(
+          "/me/candidate-documents/other",
+          { s3Key: result.key, originalFilename: file.name },
+          { headers },
+        )
+      } else {
+        const field = kind === "candidate-id-photo" ? "idPhotoS3Key" : "cvS3Key"
+        await axios.post("/me/candidate-documents", { [field]: result.key }, { headers })
+      }
+
+      setUploadProgress((prev) => ({ ...prev, [kind]: 1 }))
       setMessage({ type: "ok", text: t("uploadSuccess") })
       await load()
-    } catch {
-      setMessage({ type: "error", text: t("uploadError") })
+    } catch (err) {
+      const uploadErr = err instanceof ResumableUploadError ? err : undefined
+      pendingUploads.current.set(kind, { file, state: uploadErr?.uploadState })
+      setUploadError((prev) => ({
+        ...prev,
+        [kind]: uploadErr?.message ?? t("uploadError"),
+      }))
     } finally {
       setUploadingKind(null)
     }
   }
 
-  const uploadOtherDocument = async (file: File) => {
-    setUploadingKind("candidate-other-document")
-    setMessage(null)
-    try {
-      const token = await getToken()
-      const headers = authHeader(token)
-      const { data: presign } = await axios.post(
-        "/uploads/presign",
-        { kind: "candidate-other-document", contentType: file.type },
-        { headers },
-      )
-      await fetch(presign.url, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
-      })
-      await axios.post(
-        "/me/candidate-documents/other",
-        { s3Key: presign.key, originalFilename: file.name },
-        { headers },
-      )
-      setMessage({ type: "ok", text: t("uploadSuccess") })
-      await load()
-    } catch {
-      setMessage({ type: "error", text: t("uploadError") })
-    } finally {
-      setUploadingKind(null)
+  const startUpload = (kind: UploadKind, file: File) => {
+    const validationError = validateFile(file, {
+      maxBytes: MAX_UPLOAD_BYTES[kind],
+      allowedTypes: ALLOWED_UPLOAD_TYPES[kind],
+    })
+    if (validationError) {
+      setUploadError((prev) => ({ ...prev, [kind]: validationError }))
+      return
     }
+    pendingUploads.current.set(kind, { file })
+    performUpload(kind, file)
   }
+
+  const retryUpload = (kind: UploadKind) => {
+    const pending = pendingUploads.current.get(kind)
+    if (pending) performUpload(kind, pending.file, true)
+  }
+
+  const uploadDocument = (file: File, kind: "candidate-id-photo" | "candidate-cv") =>
+    startUpload(kind, file)
+
+  const uploadOtherDocument = (file: File) => startUpload("candidate-other-document", file)
 
   if (loading || !app) {
     return (
@@ -155,17 +207,19 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
           style={{
             marginTop: 68,
             minHeight: "calc(100vh - 68px)",
-            display: "flex",
+            display: loading ? "block" : "flex",
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
             gap: 16,
+            padding: loading ? "32px 24px" : undefined,
           }}
         >
         {loading ? (
-          <>
-            <InlineSpinner size={18} /> {t("loading")}
-          </>
+          <div style={{ maxWidth: 720, margin: "0 auto", width: "100%" }}>
+            <Skeleton height={28} width="35%" style={{ marginBottom: 24 }} />
+            <SkeletonCards count={3} />
+          </div>
         ) : (
           <>
             <div style={{ fontSize: 13, color: "#DC2626", fontWeight: 600 }}>
@@ -181,7 +235,7 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
                 borderRadius: 9999,
                 border: "none",
                 background: palette.accent,
-                color: "#fff",
+                color: palette.navy,
                 fontWeight: 700,
                 fontSize: 13,
                 cursor: "pointer",
@@ -363,6 +417,9 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
               accept="image/jpeg,image/png"
               inputRef={idRef}
               onFile={(f) => uploadDocument(f, "candidate-id-photo")}
+              progress={uploadProgress["candidate-id-photo"] ?? null}
+              error={uploadError["candidate-id-photo"] ?? null}
+              onRetry={() => retryUpload("candidate-id-photo")}
             />
             <DocumentSlot
               label={t("cvLabel")}
@@ -375,6 +432,9 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
               uploadingLabel={t("uploading")}
               accept=".pdf,.doc,.docx"
               inputRef={cvRef}
+              progress={uploadProgress["candidate-cv"] ?? null}
+              error={uploadError["candidate-cv"] ?? null}
+              onRetry={() => retryUpload("candidate-cv")}
               onFile={(f) => uploadDocument(f, "candidate-cv")}
             />
           </div>
@@ -431,10 +491,18 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
           )}
 
           <div
+            role="button"
+            tabIndex={0}
+            aria-label={t("addOtherDocument")}
             onClick={() =>
               uploadingKind !== "candidate-other-document" &&
               otherRef.current?.click()
             }
+            onKeyDown={(e) => {
+              if (e.key !== "Enter" && e.key !== " ") return
+              e.preventDefault()
+              if (uploadingKind !== "candidate-other-document") otherRef.current?.click()
+            }}
             style={{
               border: "2px dashed #E6E5E0",
               borderRadius: 14,
@@ -454,12 +522,21 @@ export default function CandidateDashboard({ onLogout, onNavigate }: Props) {
                 e.target.value = ""
               }}
             />
-            <div style={{ fontSize: 12, fontWeight: 700, color: palette.accent }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: palette.navy }}>
               {uploadingKind === "candidate-other-document"
                 ? t("uploading")
                 : t("addOtherDocument")}
             </div>
           </div>
+          <UploadProgress
+            fraction={
+              uploadingKind === "candidate-other-document"
+                ? uploadProgress["candidate-other-document"] ?? 0
+                : null
+            }
+            error={uploadError["candidate-other-document"] ?? null}
+            onRetry={() => retryUpload("candidate-other-document")}
+          />
         </div>
       </div>
       </div>
@@ -479,6 +556,9 @@ function DocumentSlot({
   accept,
   inputRef,
   onFile,
+  progress = null,
+  error = null,
+  onRetry,
 }: {
   label: string
   hasFile: boolean
@@ -491,6 +571,9 @@ function DocumentSlot({
   accept: string
   inputRef: React.RefObject<HTMLInputElement | null>
   onFile: (f: File) => void
+  progress?: number | null
+  error?: string | null
+  onRetry?: () => void
 }) {
   return (
     <div>
@@ -498,7 +581,15 @@ function DocumentSlot({
         {label}
       </div>
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={hasFile ? replaceLabel : uploadLabel}
         onClick={() => !uploading && inputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" && e.key !== " ") return
+          e.preventDefault()
+          if (!uploading) inputRef.current?.click()
+        }}
         style={{
           border: `2px dashed ${hasFile ? palette.accent : palette.border}`,
           borderRadius: 14,
@@ -522,10 +613,15 @@ function DocumentSlot({
         <div style={{ fontSize: 12, fontWeight: 700, color: palette.navy, marginBottom: 4 }}>
           {hasFile ? uploadedLabel : notUploadedLabel}
         </div>
-        <div style={{ fontSize: 11, color: palette.accent, fontWeight: 600 }}>
+        <div style={{ fontSize: 11, color: palette.navy, fontWeight: 600 }}>
           {uploading ? uploadingLabel : hasFile ? replaceLabel : uploadLabel}
         </div>
       </div>
+      <UploadProgress
+        fraction={uploading ? (progress ?? 0) : null}
+        error={error}
+        onRetry={onRetry}
+      />
     </div>
   )
 }

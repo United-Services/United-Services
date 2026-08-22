@@ -7,6 +7,7 @@ import { useReveal } from "../hooks/useReveal"
 import { axios } from "../lib/api"
 import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY } from "../lib/publicTheme"
 import ParticleField from "../components/three/ParticleField"
+import { Skeleton } from "../components/Skeleton"
 
 interface Props {
   onNavigate: (page: string, param?: string) => void
@@ -126,6 +127,27 @@ export default function Careers({ onNavigate }: Props) {
           )}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {loading &&
+              Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    border: "1px solid #E6E5E0",
+                    borderRadius: 16,
+                    padding: 24,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 16,
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <Skeleton height={16} width="35%" style={{ marginBottom: 10 }} />
+                    <Skeleton height={12} width="20%" />
+                  </div>
+                  <Skeleton height={36} width={100} radius={9999} />
+                </div>
+              ))}
             {!loading && positions.length === 0 && (
               <p
                 style={{
@@ -150,6 +172,7 @@ export default function Careers({ onNavigate }: Props) {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
+                  flexWrap: "wrap",
                   gap: 24,
                   transitionDelay: `${i * 0.05}s`,
                   transition: "box-shadow 0.2s, transform 0.2s",
@@ -165,7 +188,7 @@ export default function Careers({ onNavigate }: Props) {
                   ;(e.currentTarget as HTMLDivElement).style.transform = "none"
                 }}
               >
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <div
                     style={{
                       fontSize: 12,

@@ -1,4 +1,4 @@
-import Spinner from "@/components/Spinner"
+import { SkeletonPage } from "@/components/Skeleton"
 
 // Without this, the dashboard's async server component (auth() + a /me
 // call to resolve which role-specific dashboard to redirect to) renders
@@ -6,5 +6,5 @@ import Spinner from "@/components/Spinner"
 // mistaken for the app being stuck even though it's just waiting on a
 // slow request (e.g. a cold database connection pool).
 export default function DashboardLoading() {
-  return <Spinner fullScreen size="lg" />
+  return <SkeletonPage />
 }

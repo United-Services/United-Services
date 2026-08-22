@@ -12,7 +12,7 @@ import { useAuth } from "@clerk/nextjs"
 import { useTranslations } from "next-intl"
 import { startAuthentication, startRegistration } from "@simplewebauthn/browser"
 import { palette, inputStyle } from "../theme"
-import Spinner from "../components/Spinner"
+import { SkeletonPanel } from "../components/Skeleton"
 import { axios, authHeader } from "../lib/api"
 import { getErrorMessage } from "../lib/errors"
 import { useRequestGuard } from "../lib/useRequestGuard"
@@ -208,7 +208,7 @@ export default function AdminSecuritySection() {
               borderRadius: 9999,
               border: "none",
               background: palette.accent,
-              color: "#fff",
+              color: palette.navy,
               fontWeight: 700,
               fontSize: 13,
               cursor: "pointer",
@@ -220,7 +220,7 @@ export default function AdminSecuritySection() {
         </div>
       )
     }
-    return <Spinner message={t("loading")} />
+    return <SkeletonPanel lines={3} />
   }
 
   return (
@@ -321,7 +321,7 @@ export default function AdminSecuritySection() {
                 borderRadius: 9999,
                 border: "none",
                 background: palette.accent,
-                color: "#fff",
+                color: palette.navy,
                 fontWeight: 700,
                 fontSize: 13,
                 cursor: "pointer",
@@ -543,7 +543,7 @@ export default function AdminSecuritySection() {
               borderRadius: 9999,
               border: "none",
               background: palette.accent,
-              color: "#fff",
+              color: palette.navy,
               fontWeight: 700,
               fontSize: 13,
               cursor: "pointer",

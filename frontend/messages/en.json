@@ -30,7 +30,8 @@
     "operatingRegions": "Iraq · Saudi Arabia · UAE",
     "copyright": "© 2026 United Services Egypt. All rights reserved. · EGPC Registered",
     "privacyPolicy": "Privacy Policy",
-    "termsOfService": "Terms of Service"
+    "termsOfService": "Terms of Service",
+    "reportProblem": "Report a Problem"
   },
   "services": {
     "names": {
@@ -135,6 +136,12 @@
         "coating": "A fusion-bonded or liquid epoxy layer applied before the pipe ever leaves the factory.",
         "lining": "The internal barrier — GRE or HDPE — that keeps what's inside the pipe from ever touching the steel."
       }
+    },
+    "aria": {
+      "clientLogin": "Log in to client portal",
+      "seeMoreServices": "See more services",
+      "previousService": "Previous service",
+      "nextService": "Next service"
     }
   },
   "about": {
@@ -736,7 +743,8 @@
       "audit": "Audit Log",
       "security": "Security",
       "positions": "Open Positions",
-      "analytics": "Analytics"
+      "analytics": "Analytics",
+      "tickets": "Tickets"
     },
     "status": {
       "pending": "Pending",
@@ -805,7 +813,8 @@
       "tempPasswordHeading": "Temporary password for {email}",
       "tempPasswordSub": "Share this with the user through a secure channel — it will not be shown again. They must set a new password on first sign-in.",
       "copy": "Copy",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "copied": "Copied!"
     },
     "specs": {
       "noFile": "No spec file uploaded yet",
@@ -959,6 +968,26 @@
       "serviceViewsSub": "Views per service page, all-time",
       "noCandidates": "No candidate applications yet.",
       "noEvents": "No events recorded yet."
+    },
+    "tickets": {
+      "cols": [
+        "Name",
+        "Email",
+        "Type",
+        "Details",
+        "Submitted",
+        "Status",
+        "Actions"
+      ],
+      "none": "No tickets submitted yet.",
+      "resolveConfirm": "Mark this ticket resolved? This deletes it permanently and cannot be undone.",
+      "clickToExpand": "Click to expand",
+      "viewScreenshot": "View screenshot",
+      "contacted": "Contacted",
+      "uncontacted": "Not contacted",
+      "markContacted": "Mark contacted",
+      "markUncontacted": "Mark uncontacted",
+      "resolve": "Resolve"
     }
   },
   "adminMfaSetup": {
@@ -1218,5 +1247,9 @@
       "mismatch": "Passwords do not match.",
       "failed": "Could not set your new password. Please try again."
     }
+  },
+  "phoneInput": {
+    "searchPlaceholder": "Search country or code...",
+    "noResults": "No countries match \"{query}\""
   }
 }

@@ -16,6 +16,27 @@
 
 html { scroll-behavior: smooth; }
 
+.us-focus-ring:focus-visible {
+  outline: none;
+  border-color: #D8FF3E !important;
+  box-shadow: 0 0 0 3px rgba(216, 255, 62, 0.45);
+}
+
+.us-skeleton {
+  background: linear-gradient(90deg, #F3F2EE 25%, #E6E5E0 37%, #F3F2EE 63%);
+  background-size: 400% 100%;
+  animation: us-skeleton-shimmer 1.4s ease infinite;
+}
+
+@keyframes us-skeleton-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .us-skeleton { animation: none; background: #F3F2EE; }
+}
+
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 9999px; }

@@ -27,6 +27,13 @@ import { PresignServiceFileDto } from './dto/presign-service-file.dto';
 import { ConfirmServiceFileDto } from './dto/confirm-service-file.dto';
 import { PresignServiceImageDto } from './dto/presign-service-image.dto';
 import { ConfirmServiceImageDto } from './dto/confirm-service-image.dto';
+import { MultipartCreateServiceFileDto } from './dto/multipart-create-service-file.dto';
+import { MultipartCreateServiceImageDto } from './dto/multipart-create-service-image.dto';
+import {
+  MultipartAbortDto,
+  MultipartCompleteDto,
+  MultipartPresignPartDto,
+} from '../uploads/dto/multipart-part.dto';
 import {
   Role,
   type User,
@@ -302,6 +309,73 @@ export class ServicesController {
     return { url, key };
   }
 
+  // Chunked counterpart to presignImage() — same key scheme, same
+  // allowlist, but split into parts so a dropped connection only loses
+  // the parts still in flight, not the whole image.
+  @Roles(Role.admin)
+  @Post(':id/image/multipart/create')
+  async multipartCreateImage(
+    @Param('id') serviceId: string,
+    @Body() dto: MultipartCreateServiceImageDto,
+  ) {
+    const extension = ALLOWED_SERVICE_IMAGE_TYPES[dto.contentType];
+    if (!extension) {
+      throw new BadRequestException(
+        'Unsupported contentType for service images',
+      );
+    }
+    const key = `pending/service-images/${serviceId}/${Date.now()}-${randomUUID()}.${extension}`;
+    const uploadId = await this.s3.createMultipartUpload(key, dto.contentType);
+    return { key, uploadId };
+  }
+
+  @Roles(Role.admin)
+  @Post(':id/image/multipart/presign-part')
+  async multipartPresignImagePart(
+    @Param('id') serviceId: string,
+    @Body() dto: MultipartPresignPartDto,
+  ) {
+    if (!dto.key.startsWith(`pending/service-images/${serviceId}/`)) {
+      throw new BadRequestException('s3Key does not belong to this service');
+    }
+    const url = await this.s3.presignUploadPart(
+      dto.key,
+      dto.uploadId,
+      dto.partNumber,
+    );
+    return { url };
+  }
+
+  @Roles(Role.admin)
+  @Post(':id/image/multipart/complete')
+  async multipartCompleteImage(
+    @Param('id') serviceId: string,
+    @Body() dto: MultipartCompleteDto,
+  ) {
+    if (!dto.key.startsWith(`pending/service-images/${serviceId}/`)) {
+      throw new BadRequestException('s3Key does not belong to this service');
+    }
+    await this.s3.completeMultipartUpload(
+      dto.key,
+      dto.uploadId,
+      dto.parts.map((p) => ({ partNumber: p.partNumber, eTag: p.eTag })),
+    );
+    return { key: dto.key };
+  }
+
+  @Roles(Role.admin)
+  @Post(':id/image/multipart/abort')
+  async multipartAbortImage(
+    @Param('id') serviceId: string,
+    @Body() dto: MultipartAbortDto,
+  ) {
+    if (!dto.key.startsWith(`pending/service-images/${serviceId}/`)) {
+      throw new BadRequestException('s3Key does not belong to this service');
+    }
+    await this.s3.abortMultipartUpload(dto.key, dto.uploadId);
+    return { ok: true };
+  }
+
   @Roles(Role.admin)
   @Post(':id/image')
   async confirmImage(
@@ -380,6 +454,71 @@ export class ServicesController {
     const key = `pending/service-specs/${serviceId}/${Date.now()}-${randomUUID()}-${safeName}`;
     const url = await this.s3.createUploadUrl(key, dto.contentType);
     return { url, key };
+  }
+
+  // Chunked counterpart to presignFile() — see multipartCreateImage() above
+  // for why this exists alongside the single-PUT path.
+  @Roles(Role.admin)
+  @Post(':id/files/multipart/create')
+  async multipartCreateFile(
+    @Param('id') serviceId: string,
+    @Body() dto: MultipartCreateServiceFileDto,
+  ) {
+    if (!ALLOWED_SERVICE_FILE_TYPES.has(dto.contentType)) {
+      throw new BadRequestException('Unsupported contentType for spec files');
+    }
+    const safeName = dto.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    assertNoDisguisedExtension(safeName);
+    const key = `pending/service-specs/${serviceId}/${Date.now()}-${randomUUID()}-${safeName}`;
+    const uploadId = await this.s3.createMultipartUpload(key, dto.contentType);
+    return { key, uploadId };
+  }
+
+  @Roles(Role.admin)
+  @Post(':id/files/multipart/presign-part')
+  async multipartPresignFilePart(
+    @Param('id') serviceId: string,
+    @Body() dto: MultipartPresignPartDto,
+  ) {
+    if (!dto.key.startsWith(`pending/service-specs/${serviceId}/`)) {
+      throw new BadRequestException('s3Key does not belong to this service');
+    }
+    const url = await this.s3.presignUploadPart(
+      dto.key,
+      dto.uploadId,
+      dto.partNumber,
+    );
+    return { url };
+  }
+
+  @Roles(Role.admin)
+  @Post(':id/files/multipart/complete')
+  async multipartCompleteFile(
+    @Param('id') serviceId: string,
+    @Body() dto: MultipartCompleteDto,
+  ) {
+    if (!dto.key.startsWith(`pending/service-specs/${serviceId}/`)) {
+      throw new BadRequestException('s3Key does not belong to this service');
+    }
+    await this.s3.completeMultipartUpload(
+      dto.key,
+      dto.uploadId,
+      dto.parts.map((p) => ({ partNumber: p.partNumber, eTag: p.eTag })),
+    );
+    return { key: dto.key };
+  }
+
+  @Roles(Role.admin)
+  @Post(':id/files/multipart/abort')
+  async multipartAbortFile(
+    @Param('id') serviceId: string,
+    @Body() dto: MultipartAbortDto,
+  ) {
+    if (!dto.key.startsWith(`pending/service-specs/${serviceId}/`)) {
+      throw new BadRequestException('s3Key does not belong to this service');
+    }
+    await this.s3.abortMultipartUpload(dto.key, dto.uploadId);
+    return { ok: true };
   }
 
   @Roles(Role.admin)

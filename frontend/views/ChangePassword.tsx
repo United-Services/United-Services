@@ -163,7 +163,7 @@ export default function ChangePassword({ onNavigate }: Props) {
               style={{
                 width: "100%",
                 background: palette.accent,
-                color: "#fff",
+                color: palette.navy,
                 border: "none",
                 borderRadius: 9999,
                 padding: "12px 32px",

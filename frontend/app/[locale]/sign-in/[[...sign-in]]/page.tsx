@@ -133,10 +133,22 @@ export default function SignInPage() {
             appearance={{
               variables: {
                 colorPrimary: palette.accent,
+                colorDanger: "#DC2626",
                 fontFamily: "Poppins, sans-serif",
               },
               elements: {
                 card: { boxShadow: "0 8px 32px rgba(15,23,42,0.08)" },
+                // Clerk defaults every colorPrimary-filled button to white
+                // text — invisible against this pale a lime. Same fix as
+                // every other lime-filled button on the site (dark text,
+                // not white).
+                formButtonPrimary: { color: palette.navy },
+                // Explicit, high-contrast override for wrong-password/
+                // wrong-identifier feedback — a mismatched credential must
+                // never fail "silently" from the user's point of view.
+                formFieldErrorText: { color: "#DC2626", fontWeight: 600 },
+                alertText: { color: "#DC2626", fontWeight: 600 },
+                identityPreviewText: { color: palette.navy },
               },
             }}
           />

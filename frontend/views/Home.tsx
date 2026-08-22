@@ -1,4 +1,4 @@
-"use client" /* Hero */ /* Trusted Partners */ /* About Us */ /* Methodology */ /* Our Projects */ /* Our Services (carousel) */ /* Our Clients */ /* Footer CTA */
+"use client" /* Hero */ /* Trusted Partners */ /* About Us */ /* Mission */ /* Our Projects */ /* Our Services (carousel) */ /* Our Clients */ /* Footer CTA */
 import { useEffect, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import PublicNav from "../components/PublicNav"
@@ -162,6 +162,7 @@ export default function Home({ onNavigate }: Props) {
             }}
           />
           <div
+            className="hero-wordmark-row"
             style={{
               position: "absolute",
               left: 0,
@@ -227,6 +228,7 @@ export default function Home({ onNavigate }: Props) {
                 </button>
                 <button
                   onClick={() => onNavigate("client-login")}
+                  aria-label={t("aria.clientLogin")}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -366,12 +368,13 @@ export default function Home({ onNavigate }: Props) {
                   </button>
                   <button
                     onClick={() => onNavigate("services")}
+                    aria-label={t("aria.seeMoreServices")}
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      width: 38,
-                      height: 38,
+                      width: 44,
+                      height: 44,
                       borderRadius: 9999,
                       background: LIME,
                       color: TEXT,
@@ -493,7 +496,7 @@ export default function Home({ onNavigate }: Props) {
               style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 40, flexWrap: "wrap" }}
             >
               <div>
-                <PublicTag>Our Methodology</PublicTag>
+                <PublicTag>Our Mission</PublicTag>
                 <h2
                   style={{
                     margin: "26px 0 0",
@@ -714,7 +717,9 @@ export default function Home({ onNavigate }: Props) {
                       </button>
                       <button
                         onClick={() => onNavigate("services")}
-                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: 9999, background: LIME, color: TEXT, fontSize: 15, border: "none", cursor: "pointer" }}
+                        aria-hidden="true"
+                        tabIndex={-1}
+                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 44, height: 44, borderRadius: 9999, background: LIME, color: TEXT, fontSize: 15, border: "none", cursor: "pointer" }}
                       >
                         {arrow}
                       </button>
@@ -813,6 +818,14 @@ export default function Home({ onNavigate }: Props) {
                   </p>
                 </>
               )}
+              {!activeSvc && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div className="us-skeleton" style={{ height: 12, width: 160, borderRadius: 4, opacity: 0.25 }} />
+                  <div className="us-skeleton" style={{ height: 40, width: "70%", borderRadius: 6, opacity: 0.25 }} />
+                  <div className="us-skeleton" style={{ height: 12, width: "90%", borderRadius: 4, opacity: 0.2, marginTop: 8 }} />
+                  <div className="us-skeleton" style={{ height: 12, width: "60%", borderRadius: 4, opacity: 0.2 }} />
+                </div>
+              )}
             </div>
           </div>
           <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 28 }}>
@@ -831,12 +844,14 @@ export default function Home({ onNavigate }: Props) {
             <div style={{ display: "flex", gap: 10 }}>
               <button
                 onClick={() => step(-1)}
+                aria-label={t("aria.previousService")}
                 style={{ width: 44, height: 44, borderRadius: 9999, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(14,14,16,0.6)", color: "#fff", fontSize: 16, cursor: "pointer" }}
               >
                 ←
               </button>
               <button
                 onClick={() => step(1)}
+                aria-label={t("aria.nextService")}
                 style={{ width: 44, height: 44, borderRadius: 9999, border: "none", background: LIME, color: TEXT, fontSize: 16, cursor: "pointer" }}
               >
                 →
@@ -982,7 +997,9 @@ export default function Home({ onNavigate }: Props) {
                     </button>
                     <button
                       onClick={() => onNavigate("services")}
-                      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 42, height: 42, borderRadius: 9999, background: LIME, color: TEXT, fontSize: 15, border: "none", cursor: "pointer" }}
+                      aria-hidden="true"
+                      tabIndex={-1}
+                      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 44, height: 44, borderRadius: 9999, background: LIME, color: TEXT, fontSize: 15, border: "none", cursor: "pointer" }}
                     >
                       {arrow}
                     </button>

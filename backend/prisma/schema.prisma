@@ -399,6 +399,39 @@ model AnalyticsEvent {
   @@index([country])
 }
 
+// Declaration order is load-bearing: Postgres native enums sort by their
+// declared ordinal, not alphabetically, so `ORDER BY type ASC` gives the
+// admin queue exactly the priority order the product wants (technical
+// first, then disabled-account, then non-technical) with no extra sort
+// key needed.
+enum TicketType {
+  technical
+  disabled_account
+  non_technical
+}
+
+// Submitted by any visitor — signed in or not — so there is no relation
+// back to User (a disabled user reporting their own lockout may not even
+// be able to authenticate a request). "Resolved" isn't a status stored
+// here: resolving a ticket deletes the row (and its screenshot) outright,
+// mirroring services.controller.ts's remove() — see TicketsController.
+model Ticket {
+  id              String     @id @default(cuid())
+  name            String
+  email           String
+  company         String?
+  type            TicketType
+  details         String
+  screenshotS3Key String?
+  createdAt       DateTime   @default(now())
+  // Toggleable, not a one-way flag — the admin can mark a ticket back to
+  // "uncontacted" if that turns out to be a mistake. Only resolving
+  // (deleting the row) is irreversible.
+  contactedAt     DateTime?
+
+  @@index([type, createdAt])
+}
+
 // Cached machine translation of a source row's translatable fields into
 // one non-English locale. No hash column lives on the source row itself
 // (e.g. OpenPosition) — sourceHash is computed on demand from the live
