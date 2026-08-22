@@ -204,6 +204,15 @@ export function IconCopy({ size = 16 }: IconProps) {
   )
 }
 
+export function IconTicket({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4Z" />
+      <path d="M10 6v2M10 16v2M10 10.5v3" />
+    </svg>
+  )
+}
+
 export function IconCheck({ size = 16 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" {...base}>

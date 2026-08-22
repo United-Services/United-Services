@@ -133,6 +133,7 @@ export default function SignInPage() {
             appearance={{
               variables: {
                 colorPrimary: palette.accent,
+                colorDanger: "#DC2626",
                 fontFamily: "Poppins, sans-serif",
               },
               elements: {
@@ -142,6 +143,12 @@ export default function SignInPage() {
                 // every other lime-filled button on the site (dark text,
                 // not white).
                 formButtonPrimary: { color: palette.navy },
+                // Explicit, high-contrast override for wrong-password/
+                // wrong-identifier feedback — a mismatched credential must
+                // never fail "silently" from the user's point of view.
+                formFieldErrorText: { color: "#DC2626", fontWeight: 600 },
+                alertText: { color: "#DC2626", fontWeight: 600 },
+                identityPreviewText: { color: palette.navy },
               },
             }}
           />

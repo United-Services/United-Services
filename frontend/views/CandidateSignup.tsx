@@ -6,6 +6,7 @@ import { InlineSpinner } from "../components/Spinner"
 import { axios, authHeader } from "../lib/api"
 import PublicNav from "../components/PublicNav"
 import { PAPER, TEXT, MUTED, LIME, HEAD, BODY } from "../lib/publicTheme"
+import OtpInput from "../components/OtpInput"
 
 interface Props {
   onNavigate: (page: string) => void
@@ -324,6 +325,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
               </p>
               <div style={{ marginBottom: 16 }}>
                 <label
+                  htmlFor="verificationCode"
                   style={{
                     display: "block",
                     fontSize: 13,
@@ -334,20 +336,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                 >
                   {t("verify.label")}
                 </label>
-                <input
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder={t("verify.placeholder")}
-                  required
-                  autoComplete="one-time-code"
-                  style={fieldInputStyle}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = TEXT
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = "#E6E5E0"
-                  }}
-                />
+                <OtpInput id="verificationCode" autoFocus value={code} onChange={setCode} />
               </div>
               {error && (
                 <p
@@ -398,6 +387,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
               >
                 <div>
                   <label
+                    htmlFor="candFirstName"
                     style={{
                       display: "block",
                       fontSize: 13,
@@ -409,6 +399,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                     {t("form.firstName")}
                   </label>
                   <input
+                    id="candFirstName"
                     value={form.firstName}
                     onChange={set("firstName")}
                     placeholder={t("form.firstNamePlaceholder")}
@@ -424,6 +415,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                 </div>
                 <div>
                   <label
+                    htmlFor="candLastName"
                     style={{
                       display: "block",
                       fontSize: 13,
@@ -435,6 +427,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                     {t("form.lastName")}
                   </label>
                   <input
+                    id="candLastName"
                     value={form.lastName}
                     onChange={set("lastName")}
                     placeholder={t("form.lastNamePlaceholder")}
@@ -452,6 +445,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
 
               <div style={{ marginBottom: 16 }}>
                 <label
+                  htmlFor="candDob"
                   style={{
                     display: "block",
                     fontSize: 13,
@@ -463,6 +457,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                   {t("form.dob")}
                 </label>
                 <input
+                  id="candDob"
                   type="date"
                   value={form.dob}
                   onChange={set("dob")}
@@ -479,6 +474,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
 
               <div style={{ marginBottom: 16 }}>
                 <label
+                  htmlFor="candEmail"
                   style={{
                     display: "block",
                     fontSize: 13,
@@ -490,6 +486,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                   {t("form.email")}
                 </label>
                 <input
+                  id="candEmail"
                   type="email"
                   autoComplete="email"
                   value={form.email}
@@ -508,6 +505,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
 
               <div style={{ marginBottom: 28 }}>
                 <label
+                  htmlFor="candPassword"
                   style={{
                     display: "block",
                     fontSize: 13,
@@ -519,6 +517,7 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                   {t("form.password")}
                 </label>
                 <input
+                  id="candPassword"
                   type="password"
                   autoComplete="new-password"
                   value={form.password}

@@ -5,8 +5,17 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
   CopyObjectCommand,
+  CreateMultipartUploadCommand,
+  UploadPartCommand,
+  CompleteMultipartUploadCommand,
+  AbortMultipartUploadCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+
+export interface MultipartPart {
+  partNumber: number;
+  eTag: string;
+}
 
 // All service spec files, candidate ID photos, and CVs live in one private
 // bucket (block-all-public-access at the bucket level). Nothing here ever
@@ -81,5 +90,73 @@ export class S3Service {
       }),
     );
     await this.deleteObject(pendingKey);
+  }
+
+  // --- Multipart upload: lets the browser upload a large file in chunks
+  // (~5-8MB parts) instead of one atomic PUT. Each part is presigned
+  // individually, so if the connection drops mid-upload the client only
+  // needs to re-request presigned URLs for the parts it hasn't completed
+  // yet and resume from there, instead of restarting the whole file.
+
+  async createMultipartUpload(
+    key: string,
+    contentType: string,
+  ): Promise<string> {
+    const { UploadId } = await this.client.send(
+      new CreateMultipartUploadCommand({
+        Bucket: this.bucket,
+        Key: key,
+        ContentType: contentType,
+      }),
+    );
+    if (!UploadId) throw new Error('S3 did not return an UploadId');
+    return UploadId;
+  }
+
+  async presignUploadPart(
+    key: string,
+    uploadId: string,
+    partNumber: number,
+    expiresInSeconds = 300,
+  ): Promise<string> {
+    const command = new UploadPartCommand({
+      Bucket: this.bucket,
+      Key: key,
+      UploadId: uploadId,
+      PartNumber: partNumber,
+    });
+    return getSignedUrl(this.client, command, { expiresIn: expiresInSeconds });
+  }
+
+  async completeMultipartUpload(
+    key: string,
+    uploadId: string,
+    parts: MultipartPart[],
+  ): Promise<void> {
+    await this.client.send(
+      new CompleteMultipartUploadCommand({
+        Bucket: this.bucket,
+        Key: key,
+        UploadId: uploadId,
+        MultipartUpload: {
+          Parts: parts
+            .slice()
+            .sort((a, b) => a.partNumber - b.partNumber)
+            .map((p) => ({ PartNumber: p.partNumber, ETag: p.eTag })),
+        },
+      }),
+    );
+  }
+
+  async abortMultipartUpload(key: string, uploadId: string): Promise<void> {
+    await this.client
+      .send(
+        new AbortMultipartUploadCommand({
+          Bucket: this.bucket,
+          Key: key,
+          UploadId: uploadId,
+        }),
+      )
+      .catch(() => undefined);
   }
 }

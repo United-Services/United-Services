@@ -6,6 +6,7 @@ import { useAuth } from "@clerk/nextjs"
 import { useLocale, useTranslations } from "next-intl"
 import { palette, inputStyle } from "../theme"
 import { InlineSpinner } from "../components/Spinner"
+import { Skeleton, SkeletonCards, SkeletonRows } from "../components/Skeleton"
 import {
   IconGear,
   IconClipboard,
@@ -95,6 +96,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
   const [apptSent, setApptSent] = useState(false)
   const [apptLoading, setApptLoading] = useState(false)
   const [apptError, setApptError] = useState<string | null>(null)
+  const [pageLoading, setPageLoading] = useState(true)
 
   const authed = async () => authHeader(await getToken())
 
@@ -129,6 +131,8 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
       setLatestFiles(Object.fromEntries(filePairs))
     } catch (err) {
       setError(getErrorMessage(err, tCommon("errors.loadFailed")))
+    } finally {
+      setPageLoading(false)
     }
   }
 
@@ -371,7 +375,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                 {me ? (
                   `${me.firstName} ${me.lastName}`
                 ) : (
-                  <InlineSpinner size={12} />
+                  <Skeleton height={11} width={90} style={{ background: "rgba(255,255,255,0.25)" }} />
                 )}
               </div>
               <div style={{ fontSize: 11, color: "#475569" }}>
@@ -436,7 +440,16 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
             dismissLabel={tCommon("errors.dismiss")}
           />
           {}
-          {section === "services" && (
+          {pageLoading && (
+            <div>
+              {section === "appointments" ? (
+                <SkeletonRows count={5} withAvatar={false} />
+              ) : (
+                <SkeletonCards count={3} />
+              )}
+            </div>
+          )}
+          {!pageLoading && section === "services" && (
             <div>
               <p
                 style={{ fontSize: 14, color: palette.muted, marginBottom: 28 }}
@@ -610,7 +623,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
           )}
 
           {}
-          {section === "rfq" && (
+          {!pageLoading && section === "rfq" && (
             <div style={{ maxWidth: 640, margin: "0 auto" }}>
               {rfqSent ? (
                 <div
@@ -803,7 +816,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
           )}
 
           {}
-          {section === "appointments" && (
+          {!pageLoading && section === "appointments" && (
             <div style={{ maxWidth: 540, margin: "0 auto" }}>
               {apptSent ? (
                 <div
@@ -1032,7 +1045,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                       {me ? (
                         `${me.firstName} ${me.lastName}`
                       ) : (
-                        <InlineSpinner size={12} />
+                        <Skeleton height={13} width={110} />
                       )}
                     </div>
                     <div style={{ fontSize: 13, color: palette.muted }}>

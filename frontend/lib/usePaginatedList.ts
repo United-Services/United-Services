@@ -27,6 +27,11 @@ export function usePaginatedList<T>(onError: (err: unknown) => void, pageSize = 
   const [items, setItems] = useState<T[]>([])
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  // Only ever flips true -> false, on the very first reload() to settle —
+  // a skeleton placeholder for the initial fetch, not something that
+  // re-triggers on every filter change (the list just updates in place
+  // after that, same as before this flag existed).
+  const [initialLoading, setInitialLoading] = useState(true)
   const guard = useRequestGuard()
 
   // Replaces the list from the start — call on mount and whenever a
@@ -41,6 +46,8 @@ export function usePaginatedList<T>(onError: (err: unknown) => void, pageSize = 
     } catch (err) {
       if (guard.stale(reqId)) return
       onError(err)
+    } finally {
+      if (!guard.stale(reqId)) setInitialLoading(false)
     }
   }
 
@@ -60,5 +67,5 @@ export function usePaginatedList<T>(onError: (err: unknown) => void, pageSize = 
     }
   }
 
-  return { items, setItems, hasMore, loadingMore, reload, loadMore }
+  return { items, setItems, hasMore, loadingMore, initialLoading, reload, loadMore }
 }

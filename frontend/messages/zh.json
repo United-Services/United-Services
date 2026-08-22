@@ -30,7 +30,8 @@
     "operatingRegions": "伊拉克 · 沙特阿拉伯 · 阿联酋",
     "copyright": "© 2026 United Services Egypt。保留所有权利。· 埃及石油总公司注册企业",
     "privacyPolicy": "隐私政策",
-    "termsOfService": "服务条款"
+    "termsOfService": "服务条款",
+    "reportProblem": "报告问题"
   },
   "services": {
     "names": {
@@ -135,6 +136,12 @@
         "coating": "在管道离开工厂之前施加的熔结环氧树脂或液态环氧涂层。",
         "lining": "内衬屏障——GRE 或 HDPE——防止管道内的介质接触钢管本身。"
       }
+    },
+    "aria": {
+      "clientLogin": "登录客户门户",
+      "seeMoreServices": "查看更多服务",
+      "previousService": "上一项服务",
+      "nextService": "下一项服务"
     }
   },
   "about": {
@@ -736,7 +743,8 @@
       "audit": "Audit Log",
       "security": "Security",
       "positions": "Open Positions",
-      "analytics": "Analytics"
+      "analytics": "Analytics",
+      "tickets": "工单"
     },
     "status": {
       "pending": "Pending",
@@ -805,7 +813,8 @@
       "tempPasswordHeading": "Temporary password for {email}",
       "tempPasswordSub": "Share this with the user through a secure channel — it will not be shown again. They must set a new password on first sign-in.",
       "copy": "Copy",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "copied": "已复制！"
     },
     "specs": {
       "noFile": "No spec file uploaded yet",
@@ -959,6 +968,26 @@
       "serviceViewsSub": "Views per service page, all-time",
       "noCandidates": "No candidate applications yet.",
       "noEvents": "No events recorded yet."
+    },
+    "tickets": {
+      "cols": [
+        "姓名",
+        "电子邮件",
+        "类型",
+        "详情",
+        "提交时间",
+        "状态",
+        "操作"
+      ],
+      "none": "尚未提交任何工单。",
+      "resolveConfirm": "将此工单标记为已解决？这将永久删除它，且无法撤销。",
+      "clickToExpand": "点击展开",
+      "viewScreenshot": "查看截图",
+      "contacted": "已联系",
+      "uncontacted": "未联系",
+      "markContacted": "标记为已联系",
+      "markUncontacted": "标记为未联系",
+      "resolve": "解决"
     }
   },
   "adminMfaSetup": {
@@ -1218,5 +1247,9 @@
       "mismatch": "两次输入的密码不一致。",
       "failed": "无法设置新密码，请重试。"
     }
+  },
+  "phoneInput": {
+    "searchPlaceholder": "搜索国家或区号...",
+    "noResults": "没有匹配“{query}”的国家"
   }
 }

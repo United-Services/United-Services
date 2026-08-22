@@ -6,6 +6,7 @@ import { palette, inputStyle } from "../theme"
 import { InlineSpinner } from "../components/Spinner"
 import PublicNav from "../components/PublicNav"
 import PhoneInput from "../components/PhoneInput"
+import OtpInput from "../components/OtpInput"
 const worldImg =
   "https://images.unsplash.com/photo-1602860109208-613d39362844?w=1200&q=85"
 
@@ -449,6 +450,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
               <div style={{ marginBottom: 9 }}>
                 <div style={{ marginBottom: 9 }}>
                   <label
+                    htmlFor="firstName"
                     style={{
                       display: "block",
                       fontSize: 13,
@@ -460,6 +462,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                     {t("form.firstName")}
                   </label>
                   <input
+                    id="firstName"
                     autoFocus
                     name="firstName"
                     autoComplete="given-name"
@@ -478,6 +481,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                 </div>
                 <div>
                   <label
+                    htmlFor="lastName"
                     style={{
                       display: "block",
                       fontSize: 13,
@@ -489,6 +493,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                     {t("form.lastName")}
                   </label>
                   <input
+                    id="lastName"
                     name="lastName"
                     autoComplete="family-name"
                     value={form.lastName}
@@ -531,6 +536,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
             {step === 3 && (
               <div style={{ marginBottom: 9 }}>
                 <label
+                  htmlFor="company"
                   style={{
                     display: "block",
                     fontSize: 13,
@@ -542,6 +548,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                   {t("form.company")}
                 </label>
                 <input
+                  id="company"
                   autoFocus
                   name="company"
                   autoComplete="organization"
@@ -562,6 +569,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
             {step === 4 && (
               <div style={{ marginBottom: 9 }}>
                 <label
+                  htmlFor="email"
                   style={{
                     display: "block",
                     fontSize: 13,
@@ -573,6 +581,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                   {t("form.email")}
                 </label>
                 <input
+                  id="email"
                   autoFocus
                   name="email"
                   type="email"
@@ -594,6 +603,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
             {step === 5 && (
               <div style={{ marginBottom: 9 }}>
                 <label
+                  htmlFor="password"
                   style={{
                     display: "block",
                     fontSize: 13,
@@ -605,6 +615,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                   {t("form.password")}
                 </label>
                 <input
+                  id="password"
                   autoFocus
                   name="password"
                   type="password"
@@ -655,6 +666,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
             {step === 6 && (
               <div style={{ marginBottom: 9 }}>
                 <label
+                  htmlFor="confirmPassword"
                   style={{
                     display: "block",
                     fontSize: 13,
@@ -666,6 +678,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                   {t("form.confirmPassword")}
                 </label>
                 <input
+                  id="confirmPassword"
                   autoFocus
                   name="confirmPassword"
                   type="password"
@@ -688,6 +701,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
             {step === 7 && (
               <div style={{ marginBottom: 9 }}>
                 <label
+                  htmlFor="code"
                   style={{
                     display: "block",
                     fontSize: 13,
@@ -707,22 +721,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                 >
                   {t("form.codePrompt", { email: form.email })}
                 </p>
-                <input
-                  autoFocus
-                  name="code"
-                  autoComplete="one-time-code"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder={t("form.codePlaceholder")}
-                  required
-                  style={compactInputStyle}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = palette.accent
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = "#E6E5E0"
-                  }}
-                />
+                <OtpInput id="code" autoFocus value={code} onChange={setCode} />
               </div>
             )}
 
@@ -792,7 +791,7 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
               style={{
                 background: "none",
                 border: "none",
-                color: palette.accent,
+                color: palette.navy,
                 fontSize: 13,
                 fontWeight: 700,
                 cursor: "pointer",

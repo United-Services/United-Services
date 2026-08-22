@@ -29,6 +29,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { AdminUsersModule } from './admin-users/admin-users.module';
 import { GeoModule } from './geo/geo.module';
 import { AlertingModule } from './alerting/alerting.module';
+import { TicketsModule } from './tickets/tickets.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { AlertingModule } from './alerting/alerting.module';
     AdminUsersModule,
     GeoModule,
     AlertingModule,
+    TicketsModule,
   ],
   controllers: [HealthController, MeController, UploadsController],
   providers: [

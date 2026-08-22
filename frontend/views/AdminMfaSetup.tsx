@@ -4,8 +4,10 @@ import { useAuth } from "@clerk/nextjs"
 import { useTranslations } from "next-intl"
 import { startRegistration } from "@simplewebauthn/browser"
 import { Fingerprint } from "lucide-react"
-import { palette, inputStyle } from "../theme"
+import { palette } from "../theme"
 import Spinner, { InlineSpinner } from "../components/Spinner"
+import { Skeleton } from "../components/Skeleton"
+import OtpInput from "../components/OtpInput"
 import {
   IconShieldCheck,
   IconKeyRound,
@@ -326,7 +328,8 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
           <form onSubmit={confirmTotp}>
             {loading && !qrCodeDataUrl ? (
               <div style={{ textAlign: "center", padding: "20px 0" }}>
-                <Spinner size="sm" message={t("verifying")} />
+                <Skeleton height={180} width={180} radius={12} style={{ margin: "0 auto 16px" }} />
+                <Skeleton height={13} width={140} style={{ margin: "0 auto" }} />
               </div>
             ) : (
               qrCodeDataUrl && (
@@ -414,31 +417,7 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
                   >
                     {t("enterCode")}
                   </label>
-                  <input
-                    autoFocus
-                    inputMode="numeric"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                    placeholder={t("codePlaceholder")}
-                    required
-                    maxLength={6}
-                    autoComplete="one-time-code"
-                    style={{
-                      ...inputStyle,
-                      textAlign: "center",
-                      fontSize: 20,
-                      letterSpacing: "0.5em",
-                      fontFamily: "monospace",
-                      paddingLeft: 0,
-                      paddingRight: 0,
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = palette.accent
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = "#E6E5E0"
-                    }}
-                  />
+                  <OtpInput autoFocus value={code} onChange={setCode} />
                   {error && (
                     <p style={{ fontSize: 13, color: "#DC2626", marginTop: 14 }}>
                       {error}

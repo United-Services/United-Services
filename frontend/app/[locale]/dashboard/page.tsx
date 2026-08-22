@@ -48,6 +48,20 @@ export default async function DashboardRedirectPage({
   } catch (error) {
     if (error && typeof error === "object" && "digest" in error) throw error // Next.js redirect() control-flow signal
 
+    // ClerkAuthGuard throws this exact 401 message specifically when the
+    // account exists but has been disabled by an admin (never for a
+    // genuinely missing/invalid session — see clerk-auth.guard.ts) — Clerk
+    // itself has no idea the account is disabled, so redirecting to
+    // /sign-in here would just bounce the user straight back to /dashboard
+    // in an infinite loop instead of telling them what's actually wrong.
+    if (
+      isAxiosError(error) &&
+      error.response?.status === 401 &&
+      error.response?.data?.message === "Account not found or disabled"
+    ) {
+      redirect({ href: "/account-disabled", locale })
+    }
+
     // Only a genuine 401 from our backend means Clerk's session is no
     // longer valid — that's the one case /sign-in is the right answer.
     // Anything else (network hiccup, backend 5xx) means Clerk still thinks

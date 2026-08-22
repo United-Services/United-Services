@@ -6,14 +6,12 @@ import type React from "react"
 // moved to publicTheme.tsx, so updating the values here retints every
 // private page in one place.
 //
-// Known tradeoff: `accent` is also used as plain text color (labels,
-// small links) at ~10 call sites across AdminDashboard.tsx,
-// ClientSignup.tsx, and CandidateDashboard.tsx — bright lime text on a
-// white background reads as very low-contrast/hard to read at those
-// sizes. Left as-is per explicit instruction to match the exact color;
-// flag if those specific spots should get a readable treatment (e.g. a
-// dark chip/pill background behind the lime text, same pattern already
-// used for badges) rather than lime text directly on white.
+// `accent` is never used as plain text color on a light background —
+// lime at ~1.3:1 fails WCAG AA (4.5:1) there. Every former lime-text
+// call site (AdminDashboard.tsx, ClientSignup.tsx, CandidateDashboard.tsx)
+// was moved to `navy` for text; `accent` stays reserved for backgrounds
+// (buttons/badges/progress fills) where navy or another dark tone sits
+// on top of it.
 export const palette = {
   accent: "#D8FF3E",
   accentDark: "#C2E82E",

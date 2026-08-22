@@ -27,10 +27,13 @@ export const ROUTES: Record<string, string> = {
   "change-password": "/change-password",
   privacy: "/privacy",
   terms: "/terms",
+  tickets: "/tickets",
+  "account-disabled": "/account-disabled",
 }
 const PARAM_KEY: Record<string, string> = {
   projects: "company",
   "candidate-signup": "position",
+  tickets: "type",
 }
 
 export function useAppNavigate() {

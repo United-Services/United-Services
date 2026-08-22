@@ -8,6 +8,7 @@ import { axios } from "../lib/api"
 import { LAYER_KEYS, LAYER_STYLE } from "../lib/pipelineLayers"
 import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY } from "../lib/publicTheme"
 import PipeCrossSection3D from "../components/three/PipeCrossSection3D"
+import { Skeleton } from "../components/Skeleton"
 
 interface Props {
   onNavigate: (page: string) => void
@@ -217,13 +218,27 @@ export default function Services({ onNavigate }: Props) {
             gap: 2,
           }}
         >
-          {loading && (
-            <div
-              style={{ padding: 40, textAlign: "center", color: MUTED }}
-            >
-              {t("loading")}
-            </div>
-          )}
+          {loading &&
+            Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  border: "1px solid #E6E5E0",
+                  borderRadius: 20,
+                  padding: 28,
+                  marginBottom: 2,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 20,
+                }}
+              >
+                <Skeleton height={48} width={48} radius={12} />
+                <div style={{ flex: 1 }}>
+                  <Skeleton height={16} width="30%" style={{ marginBottom: 10 }} />
+                  <Skeleton height={12} width="55%" />
+                </div>
+              </div>
+            ))}
           {services.map((svc, i) => (
             <div
               key={svc.id}
