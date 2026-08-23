@@ -7,6 +7,7 @@ import { InlineSpinner } from "../components/Spinner"
 import PublicNav from "../components/PublicNav"
 import PhoneInput from "../components/PhoneInput"
 import OtpInput from "../components/OtpInput"
+import { validatePhoneNumber } from "../lib/validatePhone"
 const worldImg =
   "https://images.unsplash.com/photo-1602860109208-613d39362844?w=1200&q=85"
 
@@ -90,6 +91,17 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
   const handleStepSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    if (step === 2) {
+      const phoneError = validatePhoneNumber(form.phone)
+      if (phoneError === "empty") {
+        setError(t("errors.phoneEmpty"))
+        return
+      }
+      if (phoneError) {
+        setError(t("errors.phoneInvalid"))
+        return
+      }
+    }
     if (step === 5 && !passwordValid) {
       setError(t("errors.passwordRequirements"))
       return
@@ -761,8 +773,8 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                   padding: "10px",
                   borderRadius: 9999,
                   border: "none",
-                  background: loading ? "#9CA3AF" : palette.accent,
-                  color: loading ? "#fff" : palette.navy,
+                  background: loading ? "#9CA3AF" : palette.navy,
+                  color: "#fff",
                   fontWeight: 700,
                   fontSize: 14,
                   cursor: "pointer",

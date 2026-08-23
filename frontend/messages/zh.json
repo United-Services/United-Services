@@ -585,7 +585,7 @@
       "lastNamePlaceholder": "Your last name",
       "dob": "Date of Birth",
       "email": "Email Address",
-      "emailPlaceholder": "Your personal or work email",
+      "emailPlaceholder": "username@example.com",
       "password": "Password",
       "passwordPlaceholder": "Create a password (8+ characters)",
       "creatingAccount": "Creating Account…",
@@ -640,7 +640,7 @@
       "company": "公司 / 运营方名称",
       "companyPlaceholder": "您所在机构的全称",
       "email": "电子邮箱",
-      "emailPlaceholder": "您的工作邮箱地址",
+      "emailPlaceholder": "username@example.com",
       "password": "密码",
       "passwordPlaceholder": "创建一个强密码",
       "confirmPassword": "确认密码",
@@ -671,7 +671,9 @@
       "createFailed": "无法创建您的账户，请检查您的信息后重试。",
       "codeFailed": "无法发送验证码，请重试。",
       "invalidCode": "验证码无效，请重试。",
-      "finalizeFailed": "无法完成注册，请重试。"
+      "finalizeFailed": "无法完成注册，请重试。",
+      "phoneEmpty": "请输入您的电话号码。",
+      "phoneInvalid": "请输入有效的电话号码——该号码看起来不真实。"
     }
   },
   "clientDashboard": {
@@ -969,7 +971,12 @@
       "serviceViews": "Service Page Views",
       "serviceViewsSub": "Views per service page, all-time",
       "noCandidates": "No candidate applications yet.",
-      "noEvents": "No events recorded yet."
+      "noEvents": "No events recorded yet.",
+      "ticketsByStatus": "按状态划分的工单",
+      "ticketsByStatusSub": "已解决、未解决、已联系（总计）",
+      "ticketsByType": "按类型划分的工单",
+      "ticketsByTypeSub": "按类别分组的提交报告",
+      "noTickets": "尚未提交任何工单。"
     },
     "tickets": {
       "cols": [

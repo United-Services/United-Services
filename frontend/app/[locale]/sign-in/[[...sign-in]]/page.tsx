@@ -149,6 +149,14 @@ export default function SignInPage() {
                 formFieldErrorText: { color: "#DC2626", fontWeight: 600 },
                 alertText: { color: "#DC2626", fontWeight: 600 },
                 identityPreviewText: { color: palette.navy },
+                // Only the "Don't have an account? Sign up" footer link —
+                // a plain text link, not a filled button, so
+                // colorPrimary's lime read as low-contrast text-on-white
+                // here specifically. Scoped to just this element rather
+                // than changing colorPrimary globally, which would also
+                // repaint the Sign In button and every other
+                // colorPrimary-driven element in the form.
+                footerActionLink: { color: palette.navy },
               },
             }}
           />

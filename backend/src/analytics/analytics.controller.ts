@@ -53,6 +53,8 @@ export class AnalyticsController {
       appointmentCount,
       candidatesByStatus,
       ctaClicks,
+      ticketsByStatus,
+      ticketsByType,
     ] = await Promise.all([
       this.prisma.user.count({ where: { role: Role.client } }),
       this.prisma.user.findMany({
@@ -75,6 +77,8 @@ export class AnalyticsController {
         where: { eventType: { startsWith: AnalyticsEventTypePrefix.CtaClick } },
         _count: true,
       }),
+      this.prisma.ticket.groupBy({ by: ['status'], _count: true }),
+      this.prisma.ticket.groupBy({ by: ['type'], _count: true }),
     ]);
 
     const serviceViews = await this.prisma.analyticsEvent.groupBy({
@@ -103,6 +107,14 @@ export class AnalyticsController {
       serviceViews: serviceViews.map((c) => ({
         eventType: c.eventType,
         count: c._count,
+      })),
+      ticketsByStatus: ticketsByStatus.map((t) => ({
+        status: t.status,
+        count: t._count,
+      })),
+      ticketsByType: ticketsByType.map((t) => ({
+        type: t.type,
+        count: t._count,
       })),
     };
   }

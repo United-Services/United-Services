@@ -248,8 +248,8 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
           <button
             onClick={() => onNavigate("candidate-dashboard")}
             style={{
-              background: LIME,
-              color: TEXT,
+              background: TEXT,
+              color: "#fff",
               border: "none",
               borderRadius: 9999,
               padding: "12px 32px",
@@ -358,8 +358,8 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                   padding: "14px",
                   borderRadius: 9999,
                   border: "none",
-                  background: loading ? "#B9B8B2" : LIME,
-                  color: TEXT,
+                  background: loading ? "#B9B8B2" : TEXT,
+                  color: "#fff",
                   fontWeight: 600,
                   fontSize: 15,
                   cursor: "pointer",
@@ -569,8 +569,8 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
                   padding: "14px",
                   borderRadius: 9999,
                   border: "none",
-                  background: loading ? "#B9B8B2" : LIME,
-                  color: TEXT,
+                  background: loading ? "#B9B8B2" : TEXT,
+                  color: "#fff",
                   fontWeight: 600,
                   fontSize: 15,
                   cursor: loading ? "not-allowed" : "pointer",

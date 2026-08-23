@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import { requestLoggingMiddleware } from './common/middleware/request-logging.middleware';
 
 // Every non-DI-registered piece of app setup (main.ts's imperative
 // app.use()/app.set()/app.useGlobalPipes() calls) lives here instead of
@@ -33,6 +34,13 @@ export function configureApp(app: NestExpressApplication): void {
   // hop (nginx) asserting the client IP, whether or not Cloudflare is
   // live in front of it.
   app.set('trust proxy', 1);
+
+  // Registered before everything else that can short-circuit a request
+  // (helmet's redirects aside, cookieParser/CORS/guards/throttling all
+  // come after) so its res.on('finish') listener is attached — and thus
+  // guaranteed to fire — no matter which layer downstream ends up
+  // resolving the request.
+  app.use(requestLoggingMiddleware);
 
   app.use(cookieParser());
   app.use(

@@ -585,7 +585,7 @@
       "lastNamePlaceholder": "Your last name",
       "dob": "Date of Birth",
       "email": "Email Address",
-      "emailPlaceholder": "Your personal or work email",
+      "emailPlaceholder": "username@example.com",
       "password": "Password",
       "passwordPlaceholder": "Create a password (8+ characters)",
       "creatingAccount": "Creating Account…",
@@ -640,7 +640,7 @@
       "company": "Company / Operator Name",
       "companyPlaceholder": "Full name of your organisation",
       "email": "Email Address",
-      "emailPlaceholder": "Your work email address",
+      "emailPlaceholder": "username@example.com",
       "password": "Password",
       "passwordPlaceholder": "Create a strong password",
       "confirmPassword": "Confirm Password",
@@ -671,7 +671,9 @@
       "createFailed": "Could not create your account. Please check your details and try again.",
       "codeFailed": "Could not send a verification code. Please try again.",
       "invalidCode": "Invalid verification code. Please try again.",
-      "finalizeFailed": "Could not complete sign-up. Please try again."
+      "finalizeFailed": "Could not complete sign-up. Please try again.",
+      "phoneEmpty": "Please enter your phone number.",
+      "phoneInvalid": "Please enter a valid phone number — it doesn't look like a real one."
     }
   },
   "clientDashboard": {
@@ -969,7 +971,12 @@
       "serviceViews": "Service Page Views",
       "serviceViewsSub": "Views per service page, all-time",
       "noCandidates": "No candidate applications yet.",
-      "noEvents": "No events recorded yet."
+      "noEvents": "No events recorded yet.",
+      "ticketsByStatus": "Tickets by Status",
+      "ticketsByStatusSub": "Resolved vs. unresolved vs. contacted, all-time",
+      "ticketsByType": "Tickets by Type",
+      "ticketsByTypeSub": "Submitted reports grouped by category",
+      "noTickets": "No tickets submitted yet."
     },
     "tickets": {
       "cols": [
