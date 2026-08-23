@@ -17,6 +17,7 @@ describe('AnalyticsController', () => {
       serviceRequest: { count: jest.fn().mockResolvedValue(0) },
       appointment: { count: jest.fn().mockResolvedValue(0) },
       candidateApplication: { groupBy: jest.fn().mockResolvedValue([]) },
+      ticket: { groupBy: jest.fn().mockResolvedValue([]) },
     } as unknown as PrismaService;
     const geo = {
       countryForIp: jest.fn().mockReturnValue(country),
