@@ -410,26 +410,36 @@ enum TicketType {
   non_technical
 }
 
+// Freely switchable in either direction — an admin can move a ticket back
+// to unresolved (e.g. a "resolved" turned out not to be), not just
+// forward. Declaration order doesn't carry the same load-bearing meaning
+// TicketType's does; this one's just the natural lifecycle order.
+enum TicketStatus {
+  unresolved
+  contacted
+  resolved
+}
+
 // Submitted by any visitor — signed in or not — so there is no relation
 // back to User (a disabled user reporting their own lockout may not even
-// be able to authenticate a request). "Resolved" isn't a status stored
-// here: resolving a ticket deletes the row (and its screenshot) outright,
-// mirroring services.controller.ts's remove() — see TicketsController.
+// be able to authenticate a request).
 model Ticket {
-  id              String     @id @default(cuid())
+  id              String       @id @default(cuid())
   name            String
   email           String
   company         String?
   type            TicketType
   details         String
   screenshotS3Key String?
-  createdAt       DateTime   @default(now())
-  // Toggleable, not a one-way flag — the admin can mark a ticket back to
-  // "uncontacted" if that turns out to be a mistake. Only resolving
-  // (deleting the row) is irreversible.
+  createdAt       DateTime     @default(now())
+  status          TicketStatus @default(unresolved)
+  // First time status ever moved to `contacted` — kept even if later
+  // switched away, as a "when were they first reached" record; status
+  // itself is the source of truth for the current state.
   contactedAt     DateTime?
 
   @@index([type, createdAt])
+  @@index([status])
 }
 
 // Cached machine translation of a source row's translatable fields into

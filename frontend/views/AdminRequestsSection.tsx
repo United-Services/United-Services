@@ -121,7 +121,7 @@ export default function AdminRequestsSection({ setError }: Props) {
                   style={{
                     padding: "14px 16px",
                     fontSize: 12,
-                    color: palette.accent,
+                    color: palette.navy,
                     fontWeight: 600,
                   }}
                 >

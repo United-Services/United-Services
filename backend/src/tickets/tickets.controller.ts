@@ -3,7 +3,6 @@ import {
   Body,
   Controller,
   DefaultValuePipe,
-  Delete,
   Get,
   NotFoundException,
   Param,
@@ -21,9 +20,12 @@ import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { matchesContentType } from '../common/utils/file-security';
-import { DEFAULT_PAGE_SIZE } from '../common/utils/paginate';
+import { DEFAULT_PAGE_SIZE, paginate } from '../common/utils/paginate';
+import { SEARCH_SCAN_LIMIT } from '../common/constants/search-scan-limit';
+import { fuzzyMatch, searchableText } from '../common/utils/fuzzy-match';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { PresignTicketScreenshotDto } from './dto/presign-ticket-screenshot.dto';
+import { UpdateTicketStatusDto } from './dto/update-ticket-status.dto';
 import { Role, type User } from '../generated/prisma';
 
 const ALLOWED_SCREENSHOT_TYPES: Record<string, string> = {
@@ -111,21 +113,31 @@ export class TicketsController {
   // Priority order is the enum's own declaration order (technical,
   // disabled_account, non_technical — see schema.prisma) — Postgres
   // native enums sort by declared ordinal, not alphabetically, so this
-  // ORDER BY alone gives the admin queue the right triage order.
+  // ORDER BY alone gives the admin queue the right triage order. `q`
+  // fuzzy-matches name/email/company/details over a bounded scan, same
+  // in-app-filter-then-paginate pattern as every other searchable admin
+  // list (see SEARCH_SCAN_LIMIT) — pushing this particular sort into SQL
+  // while still supporting fuzzy search would mean duplicating the
+  // priority ORDER BY as a raw query; simpler to keep everything on the
+  // one established pattern.
   @Roles(Role.admin)
   @Get()
   async list(
+    @Query('q') q: string | undefined,
     @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip: number,
     @Query('take', new DefaultValuePipe(DEFAULT_PAGE_SIZE), ParseIntPipe)
     take: number,
   ) {
     const rows = await this.prisma.ticket.findMany({
       orderBy: [{ type: 'asc' }, { createdAt: 'asc' }],
-      skip,
-      take: take + 1,
+      take: SEARCH_SCAN_LIMIT,
     });
-    const hasMore = rows.length > take;
-    const page = hasMore ? rows.slice(0, take) : rows;
+    const filtered = q
+      ? rows.filter((t) =>
+          fuzzyMatch(searchableText(t.name, t.email, t.company, t.details), q),
+        )
+      : rows;
+    const { items: page, hasMore } = paginate(filtered, skip, take);
 
     const items = await Promise.all(
       page.map(async (t) => ({
@@ -142,58 +154,40 @@ export class TicketsController {
     return { items, hasMore };
   }
 
-  // Toggles, not one-way — an admin can mark a ticket back to
-  // "uncontacted" if that turns out to be a mistake (see schema.prisma's
-  // comment on Ticket.contactedAt). Resolving (below) is the only
-  // irreversible action.
+  // Freely switchable in any direction — see schema.prisma's comment on
+  // TicketStatus. `contactedAt` is set the first time status ever moves
+  // to `contacted` and never cleared afterward, even if later switched
+  // away — it's a "when were they first reached" record, not the current
+  // state (status is).
   @Roles(Role.admin)
-  @Patch(':id/contacted')
-  async toggleContacted(@CurrentUser() admin: User, @Param('id') id: string) {
+  @Patch(':id/status')
+  async updateStatus(
+    @CurrentUser() admin: User,
+    @Param('id') id: string,
+    @Body() dto: UpdateTicketStatusDto,
+  ) {
     const existing = await this.prisma.ticket.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Ticket not found');
 
     const ticket = await this.prisma.ticket.update({
       where: { id },
-      data: { contactedAt: existing.contactedAt ? null : new Date() },
+      data: {
+        status: dto.status,
+        contactedAt:
+          dto.status === 'contacted' && !existing.contactedAt
+            ? new Date()
+            : existing.contactedAt,
+      },
     });
 
     await this.auditLog.record({
       actorUserId: admin.id,
-      action: ticket.contactedAt ? 'ticket.contacted' : 'ticket.uncontacted',
+      action: 'ticket.status_updated',
       targetType: 'Ticket',
       targetId: id,
-      metadata: {},
+      metadata: { from: existing.status, to: dto.status },
     });
 
     return ticket;
-  }
-
-  // Irreversible: deletes the ticket (and its screenshot) outright rather
-  // than storing a "resolved" status — same DB-delete-first,
-  // best-effort-S3-cleanup-after pattern as
-  // services.controller.ts's remove().
-  @Roles(Role.admin)
-  @Delete(':id')
-  async resolve(@CurrentUser() admin: User, @Param('id') id: string) {
-    const existing = await this.prisma.ticket.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException('Ticket not found');
-
-    await this.prisma.ticket.delete({ where: { id } });
-
-    await this.auditLog.record({
-      actorUserId: admin.id,
-      action: 'ticket.resolved',
-      targetType: 'Ticket',
-      targetId: id,
-      metadata: { type: existing.type, email: existing.email },
-    });
-
-    if (existing.screenshotS3Key) {
-      await this.s3
-        .deleteObject(existing.screenshotS3Key)
-        .catch(() => undefined);
-    }
-
-    return { ok: true };
   }
 }

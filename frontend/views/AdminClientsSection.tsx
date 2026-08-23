@@ -308,7 +308,7 @@ export default function AdminClientsSection({ setError }: Props) {
               borderRadius: 9999,
               border: "none",
               background: palette.accent,
-              color: "#fff",
+              color: palette.navy,
               fontWeight: 700,
               fontSize: 13,
               cursor: "pointer",
@@ -492,7 +492,7 @@ export default function AdminClientsSection({ setError }: Props) {
               borderRadius: 9999,
               border: "none",
               background: palette.accent,
-              color: "#fff",
+              color: palette.navy,
               fontWeight: 700,
               fontSize: 13,
               cursor: creatingUser ? "default" : "pointer",
@@ -541,7 +541,7 @@ export default function AdminClientsSection({ setError }: Props) {
                       style={{
                         fontSize: 10,
                         fontWeight: 700,
-                        color: palette.accent,
+                        color: palette.navy,
                         marginTop: 2,
                       }}
                     >
@@ -611,7 +611,7 @@ export default function AdminClientsSection({ setError }: Props) {
                 </td>
                 <td style={{ padding: "14px 16px" }}>
                   <StatusBadge
-                    status={c.disabledAt ? "denied" : "approved"}
+                    status={c.disabledAt ? "disabled" : "active"}
                   />
                 </td>
                 <td style={{ padding: "14px 16px" }}>

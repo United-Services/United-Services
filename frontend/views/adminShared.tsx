@@ -55,6 +55,8 @@ export function StatusBadge({ status }: { status: string }) {
     done: { bg: "#DCFCE7", color: "#166534" },
     cancelled: { bg: "#FEE2E2", color: "#991B1B" },
     contacted: { bg: "#DCFCE7", color: "#166534" },
+    active: { bg: "#DCFCE7", color: "#166534" },
+    disabled: { bg: "#FEE2E2", color: "#991B1B" },
   }
   const s = map[status] ?? { bg: "#F3F2EE", color: "#475569" }
   const label = t.has(`status.${status}`) ? t(`status.${status}` as any) : status

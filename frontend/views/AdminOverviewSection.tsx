@@ -218,7 +218,7 @@ export default function AdminOverviewSection({
               style={{
                 fontSize: 36,
                 fontWeight: 800,
-                color: palette.accent,
+                color: palette.navy,
                 lineHeight: 1,
                 marginBottom: 6,
               }}
@@ -291,7 +291,7 @@ export default function AdminOverviewSection({
                 <span style={{ color: palette.slate, fontWeight: 600 }}>
                   {row.country}
                 </span>
-                <span style={{ color: palette.accent, fontWeight: 700 }}>
+                <span style={{ color: palette.navy, fontWeight: 700 }}>
                   {row.count}
                 </span>
               </div>
@@ -350,7 +350,7 @@ export default function AdminOverviewSection({
             marginTop: 12,
             background: "none",
             border: "none",
-            color: palette.accent,
+            color: palette.navy,
             fontSize: 12,
             fontWeight: 700,
             cursor: "pointer",

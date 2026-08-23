@@ -585,7 +585,7 @@
       "lastNamePlaceholder": "Your last name",
       "dob": "Date of Birth",
       "email": "Email Address",
-      "emailPlaceholder": "Your personal or work email",
+      "emailPlaceholder": "username@example.com",
       "password": "Password",
       "passwordPlaceholder": "Create a password (8+ characters)",
       "creatingAccount": "Creating Account…",
@@ -640,7 +640,7 @@
       "company": "اسم الشركة / الجهة المشغّلة",
       "companyPlaceholder": "الاسم الكامل لمؤسستك",
       "email": "البريد الإلكتروني",
-      "emailPlaceholder": "بريدك الإلكتروني الخاص بالعمل",
+      "emailPlaceholder": "username@example.com",
       "password": "كلمة المرور",
       "passwordPlaceholder": "أنشئ كلمة مرور قوية",
       "confirmPassword": "تأكيد كلمة المرور",
@@ -671,7 +671,9 @@
       "createFailed": "تعذّر إنشاء حسابك. يرجى التحقق من بياناتك والمحاولة مرة أخرى.",
       "codeFailed": "تعذّر إرسال رمز التحقق. يرجى المحاولة مرة أخرى.",
       "invalidCode": "رمز التحقق غير صحيح. يرجى المحاولة مرة أخرى.",
-      "finalizeFailed": "تعذّر إتمام التسجيل. يرجى المحاولة مرة أخرى."
+      "finalizeFailed": "تعذّر إتمام التسجيل. يرجى المحاولة مرة أخرى.",
+      "phoneEmpty": "الرجاء إدخال رقم هاتفك.",
+      "phoneInvalid": "الرجاء إدخال رقم هاتف صحيح — هذا الرقم لا يبدو حقيقيًا."
     }
   },
   "clientDashboard": {
@@ -757,7 +759,9 @@
       "booked": "Booked",
       "done": "Done",
       "cancelled": "Cancelled",
-      "contacted": "Contacted"
+      "contacted": "Contacted",
+      "active": "نشط",
+      "disabled": "معطل"
     },
     "approve": "Approve",
     "deny": "Deny",
@@ -967,7 +971,12 @@
       "serviceViews": "Service Page Views",
       "serviceViewsSub": "Views per service page, all-time",
       "noCandidates": "No candidate applications yet.",
-      "noEvents": "No events recorded yet."
+      "noEvents": "No events recorded yet.",
+      "ticketsByStatus": "التذاكر حسب الحالة",
+      "ticketsByStatusSub": "تم الحل مقابل غير محلولة مقابل تم التواصل، منذ البداية",
+      "ticketsByType": "التذاكر حسب النوع",
+      "ticketsByTypeSub": "التقارير المرسلة مجمعة حسب الفئة",
+      "noTickets": "لم يتم إرسال أي تذاكر بعد."
     },
     "tickets": {
       "cols": [
@@ -980,14 +989,14 @@
         "الإجراءات"
       ],
       "none": "لم يتم إرسال أي تذاكر بعد.",
-      "resolveConfirm": "هل تريد وضع علامة على هذه التذكرة كمحلولة؟ سيؤدي هذا إلى حذفها نهائيًا ولا يمكن التراجع عنه.",
       "clickToExpand": "انقر للتوسيع",
       "viewScreenshot": "عرض لقطة الشاشة",
-      "contacted": "تم التواصل",
-      "uncontacted": "لم يتم التواصل",
-      "markContacted": "وضع علامة تم التواصل",
-      "markUncontacted": "وضع علامة لم يتم التواصل",
-      "resolve": "حل"
+      "searchPlaceholder": "ابحث في التذاكر بالاسم أو البريد الإلكتروني أو الشركة أو التفاصيل",
+      "status": {
+        "unresolved": "غير محلولة",
+        "contacted": "تم التواصل",
+        "resolved": "تم الحل"
+      }
     }
   },
   "adminMfaSetup": {

@@ -252,7 +252,7 @@ export default function AdminPositionsSection({ setError }: Props) {
               borderRadius: 9999,
               border: "none",
               background: palette.accent,
-              color: "#fff",
+              color: palette.navy,
               fontWeight: 700,
               fontSize: 13,
               cursor: "pointer",

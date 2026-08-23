@@ -36,7 +36,11 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} dir={dir}>
       <body>
-        <ClerkProvider>
+        <ClerkProvider
+          localization={{
+            formFieldInputPlaceholder__emailAddress: "username@example.com",
+          }}
+        >
           <NextIntlClientProvider>
             <GlobalLoadingBar />
             <PageViewTracker />
