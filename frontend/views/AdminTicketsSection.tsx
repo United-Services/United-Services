@@ -7,9 +7,10 @@ import { palette } from "../theme"
 import { axios, authHeader } from "../lib/api"
 import { getErrorMessage } from "../lib/errors"
 import { usePaginatedList } from "../lib/usePaginatedList"
-import { fmtDateTime, tableHead, TableSkeletonRows, LoadMoreButton } from "./adminShared"
+import { fmtDateTime, tableHead, TableSkeletonRows, LoadMoreButton, SearchBox } from "./adminShared"
 
 type TicketType = "technical" | "disabled_account" | "non_technical"
+type TicketStatus = "unresolved" | "contacted" | "resolved"
 
 interface TicketRow {
   id: string
@@ -20,7 +21,7 @@ interface TicketRow {
   details: string
   screenshotUrl: string | null
   createdAt: string
-  contactedAt: string | null
+  status: TicketStatus
 }
 
 interface Props {
@@ -33,6 +34,14 @@ const TYPE_BADGE: Record<TicketType, { bg: string; color: string; label: string 
   non_technical: { bg: "#F3F2EE", color: "#475569", label: "Other" },
 }
 
+const STATUS_BADGE: Record<TicketStatus, { bg: string; color: string }> = {
+  unresolved: { bg: "#F3F2EE", color: "#475569" },
+  contacted: { bg: "#DBEAFE", color: "#1E40AF" },
+  resolved: { bg: "#DCFCE7", color: "#166534" },
+}
+
+const STATUS_OPTIONS: TicketStatus[] = ["unresolved", "contacted", "resolved"]
+
 export default function AdminTicketsSection({ setError }: Props) {
   const { getToken } = useAuth()
   const t = useTranslations("adminDashboard")
@@ -42,41 +51,28 @@ export default function AdminTicketsSection({ setError }: Props) {
   const onListError = (err: unknown) =>
     setError(getErrorMessage(err, tCommon("errors.loadFailed")))
   const ticketsList = usePaginatedList<TicketRow>(onListError)
+  const [query, setQuery] = useState("")
   const [busyId, setBusyId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  const ticketsFetchPage = () => async (skip: number, take: number) => {
+  const ticketsFetchPage = (q: string) => async (skip: number, take: number) => {
     const headers = await authed()
-    const { data } = await axios.get("/tickets", { headers, params: { skip, take } })
+    const { data } = await axios.get("/tickets", { headers, params: { q: q || undefined, skip, take } })
     return data
   }
-  const loadTickets = () => ticketsList.reload(ticketsFetchPage())
-  const loadMoreTickets = () => ticketsList.loadMore(ticketsFetchPage())
+  const loadTickets = (q = "") => ticketsList.reload(ticketsFetchPage(q))
+  const loadMoreTickets = () => ticketsList.loadMore(ticketsFetchPage(query))
 
   useEffect(() => {
     loadTickets()
   }, [])
 
-  const toggleContacted = async (id: string) => {
+  const updateStatus = async (id: string, status: TicketStatus) => {
     setBusyId(id)
     try {
       const headers = await authed()
-      const { data } = await axios.patch(`/tickets/${id}/contacted`, {}, { headers })
+      const { data } = await axios.patch(`/tickets/${id}/status`, { status }, { headers })
       ticketsList.setItems((prev) => prev.map((row) => (row.id === id ? { ...row, ...data } : row)))
-    } catch (err) {
-      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  const resolveTicket = async (id: string) => {
-    if (!window.confirm(t("tickets.resolveConfirm"))) return
-    setBusyId(id)
-    try {
-      const headers = await authed()
-      await axios.delete(`/tickets/${id}`, { headers })
-      ticketsList.setItems((prev) => prev.filter((row) => row.id !== id))
     } catch (err) {
       setError(getErrorMessage(err, tCommon("errors.actionFailed")))
     } finally {
@@ -86,6 +82,12 @@ export default function AdminTicketsSection({ setError }: Props) {
 
   return (
     <>
+      <SearchBox
+        value={query}
+        onChange={setQuery}
+        onSearch={() => loadTickets(query)}
+        placeholder={t("tickets.searchPlaceholder")}
+      />
       <div
         style={{
           background: "#fff",
@@ -103,6 +105,7 @@ export default function AdminTicketsSection({ setError }: Props) {
             <tbody>
               {ticketsList.items.map((row, i) => {
                 const badge = TYPE_BADGE[row.type]
+                const statusBadge = STATUS_BADGE[row.status]
                 const expanded = expandedId === row.id
                 return (
                   <tr key={row.id} style={{ background: i % 2 === 0 ? "#fff" : "#FAFAFA" }}>
@@ -170,51 +173,35 @@ export default function AdminTicketsSection({ setError }: Props) {
                           fontWeight: 700,
                           padding: "3px 10px",
                           borderRadius: 9999,
-                          background: row.contactedAt ? "#DCFCE7" : "#F3F2EE",
-                          color: row.contactedAt ? "#166534" : "#475569",
+                          background: statusBadge.bg,
+                          color: statusBadge.color,
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {row.contactedAt ? t("tickets.contacted") : t("tickets.uncontacted")}
+                        {t(`tickets.status.${row.status}`)}
                       </span>
                     </td>
                     <td style={{ padding: "14px 16px" }}>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <button
-                          onClick={() => toggleContacted(row.id)}
-                          disabled={busyId === row.id}
-                          style={{
-                            background: "#F3F2EE",
-                            color: palette.navy,
-                            border: "none",
-                            borderRadius: 9999,
-                            padding: "5px 12px",
-                            fontSize: 11.5,
-                            fontWeight: 600,
-                            cursor: busyId === row.id ? "default" : "pointer",
-                            fontFamily: "Poppins, sans-serif",
-                          }}
-                        >
-                          {row.contactedAt ? t("tickets.markUncontacted") : t("tickets.markContacted")}
-                        </button>
-                        <button
-                          onClick={() => resolveTicket(row.id)}
-                          disabled={busyId === row.id}
-                          style={{
-                            background: "#166534",
-                            color: "#fff",
-                            border: "none",
-                            borderRadius: 9999,
-                            padding: "5px 12px",
-                            fontSize: 11.5,
-                            fontWeight: 600,
-                            cursor: busyId === row.id ? "default" : "pointer",
-                            fontFamily: "Poppins, sans-serif",
-                          }}
-                        >
-                          {t("tickets.resolve")}
-                        </button>
-                      </div>
+                      <select
+                        value={row.status}
+                        disabled={busyId === row.id}
+                        onChange={(e) => updateStatus(row.id, e.target.value as TicketStatus)}
+                        style={{
+                          padding: "5px 10px",
+                          borderRadius: 8,
+                          border: "1.5px solid #E6E5E0",
+                          fontSize: 12,
+                          fontFamily: "Poppins, sans-serif",
+                          color: palette.navy,
+                          cursor: busyId === row.id ? "default" : "pointer",
+                        }}
+                      >
+                        {STATUS_OPTIONS.map((s) => (
+                          <option key={s} value={s}>
+                            {t(`tickets.status.${s}`)}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                   </tr>
                 )

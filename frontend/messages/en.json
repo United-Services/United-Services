@@ -757,7 +757,9 @@
       "booked": "Booked",
       "done": "Done",
       "cancelled": "Cancelled",
-      "contacted": "Contacted"
+      "contacted": "Contacted",
+      "active": "Active",
+      "disabled": "Disabled"
     },
     "approve": "Approve",
     "deny": "Deny",
@@ -980,14 +982,14 @@
         "Actions"
       ],
       "none": "No tickets submitted yet.",
-      "resolveConfirm": "Mark this ticket resolved? This deletes it permanently and cannot be undone.",
       "clickToExpand": "Click to expand",
       "viewScreenshot": "View screenshot",
-      "contacted": "Contacted",
-      "uncontacted": "Not contacted",
-      "markContacted": "Mark contacted",
-      "markUncontacted": "Mark uncontacted",
-      "resolve": "Resolve"
+      "searchPlaceholder": "Search tickets by name, email, company, or details",
+      "status": {
+        "unresolved": "Unresolved",
+        "contacted": "Contacted",
+        "resolved": "Resolved"
+      }
     }
   },
   "adminMfaSetup": {

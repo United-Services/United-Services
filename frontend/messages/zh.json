@@ -757,7 +757,9 @@
       "booked": "Booked",
       "done": "Done",
       "cancelled": "Cancelled",
-      "contacted": "Contacted"
+      "contacted": "Contacted",
+      "active": "活跃",
+      "disabled": "已禁用"
     },
     "approve": "Approve",
     "deny": "Deny",
@@ -980,14 +982,14 @@
         "操作"
       ],
       "none": "尚未提交任何工单。",
-      "resolveConfirm": "将此工单标记为已解决？这将永久删除它，且无法撤销。",
       "clickToExpand": "点击展开",
       "viewScreenshot": "查看截图",
-      "contacted": "已联系",
-      "uncontacted": "未联系",
-      "markContacted": "标记为已联系",
-      "markUncontacted": "标记为未联系",
-      "resolve": "解决"
+      "searchPlaceholder": "按姓名、电子邮件、公司或详情搜索工单",
+      "status": {
+        "unresolved": "未解决",
+        "contacted": "已联系",
+        "resolved": "已解决"
+      }
     }
   },
   "adminMfaSetup": {

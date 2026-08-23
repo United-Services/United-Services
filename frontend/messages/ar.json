@@ -757,7 +757,9 @@
       "booked": "Booked",
       "done": "Done",
       "cancelled": "Cancelled",
-      "contacted": "Contacted"
+      "contacted": "Contacted",
+      "active": "نشط",
+      "disabled": "معطل"
     },
     "approve": "Approve",
     "deny": "Deny",
@@ -980,14 +982,14 @@
         "الإجراءات"
       ],
       "none": "لم يتم إرسال أي تذاكر بعد.",
-      "resolveConfirm": "هل تريد وضع علامة على هذه التذكرة كمحلولة؟ سيؤدي هذا إلى حذفها نهائيًا ولا يمكن التراجع عنه.",
       "clickToExpand": "انقر للتوسيع",
       "viewScreenshot": "عرض لقطة الشاشة",
-      "contacted": "تم التواصل",
-      "uncontacted": "لم يتم التواصل",
-      "markContacted": "وضع علامة تم التواصل",
-      "markUncontacted": "وضع علامة لم يتم التواصل",
-      "resolve": "حل"
+      "searchPlaceholder": "ابحث في التذاكر بالاسم أو البريد الإلكتروني أو الشركة أو التفاصيل",
+      "status": {
+        "unresolved": "غير محلولة",
+        "contacted": "تم التواصل",
+        "resolved": "تم الحل"
+      }
     }
   },
   "adminMfaSetup": {
