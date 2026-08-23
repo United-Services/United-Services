@@ -7,7 +7,10 @@ import { useReveal } from "../hooks/useReveal"
 import { axios } from "../lib/api"
 import { LAYER_KEYS, LAYER_STYLE } from "../lib/pipelineLayers"
 import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY } from "../lib/publicTheme"
-import PipeCrossSection3D from "../components/three/PipeCrossSection3D"
+import dynamic from "next/dynamic"
+// See views/About.tsx for why this is dynamic — same heavy, WebGL-only,
+// purely decorative dependency.
+const PipeCrossSection3D = dynamic(() => import("../components/three/PipeCrossSection3D"), { ssr: false })
 import { Skeleton } from "../components/Skeleton"
 
 interface Props {

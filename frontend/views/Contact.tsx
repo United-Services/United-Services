@@ -3,7 +3,10 @@ import { useTranslations } from "next-intl"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { PAPER, TEXT, MUTED, LIME, HEAD, BODY } from "../lib/publicTheme"
-import RegionGlobe3D from "../components/three/RegionGlobe3D"
+import dynamic from "next/dynamic"
+// See views/About.tsx for why this is dynamic — same heavy, WebGL-only,
+// purely decorative dependency.
+const RegionGlobe3D = dynamic(() => import("../components/three/RegionGlobe3D"), { ssr: false })
 
 interface Props {
   onNavigate: (page: string) => void

@@ -1,11 +1,15 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
+import Image from "next/image"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { useReveal } from "../hooks/useReveal"
 import { INK, PAPER, TEXT, MUTED, HEAD, BODY } from "../lib/publicTheme"
-import RegionGlobe3D from "../components/three/RegionGlobe3D"
+import dynamic from "next/dynamic"
+// See views/About.tsx for why this is dynamic — same heavy, WebGL-only,
+// purely decorative dependency.
+const RegionGlobe3D = dynamic(() => import("../components/three/RegionGlobe3D"), { ssr: false })
 const headerImg = "/images/LD-01.png"
 
 const adnocLogo = "/images/adnoc.png"
@@ -213,17 +217,13 @@ export default function Projects({ onNavigate, company }: Props) {
           overflow: "hidden",
         }}
       >
-        <img
+        <Image
           src={headerImg}
           alt="Industrial pipe corridor"
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            opacity: 0.4,
-          }}
+          fill
+          priority
+          sizes="100vw"
+          style={{ objectFit: "cover", opacity: 0.4 }}
         />
         <div
           style={{
@@ -407,17 +407,17 @@ export default function Projects({ onNavigate, company }: Props) {
                       background: "#fff",
                     }}
                   >
-                    <img
-                      src={p.img}
-                      alt={t(
-                        `companies.${c.slug}.projects.${p.key}.title` as any,
-                      )}
-                      style={{
-                        width: "100%",
-                        aspectRatio: "16/9",
-                        objectFit: "cover",
-                      }}
-                    />
+                    <div style={{ position: "relative", width: "100%", aspectRatio: "16/9" }}>
+                      <Image
+                        src={p.img}
+                        alt={t(
+                          `companies.${c.slug}.projects.${p.key}.title` as any,
+                        )}
+                        fill
+                        sizes="(max-width: 900px) 100vw, 320px"
+                        style={{ objectFit: "cover" }}
+                      />
+                    </div>
                     <div style={{ padding: "20px 22px" }}>
                       <div
                         style={{

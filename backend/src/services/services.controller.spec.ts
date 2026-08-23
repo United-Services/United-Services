@@ -201,6 +201,40 @@ describe('ServicesController', () => {
     });
   });
 
+  describe('latestFiles', () => {
+    it('returns an empty object for no ids', async () => {
+      const { controller } = makeController();
+      expect(await controller.latestFiles(undefined)).toEqual({});
+      expect(await controller.latestFiles('')).toEqual({});
+    });
+
+    it('queries once for every requested service and keeps only the newest file per service', async () => {
+      const { controller, prisma } = makeController();
+      // findMany is called ordered newest-first — the handler relies on
+      // that ordering to pick "first occurrence per serviceId" as latest.
+      (prisma.serviceFile.findMany as jest.Mock).mockResolvedValue([
+        { serviceId: 'svc-1', id: 'file-2', originalFilename: 'v2.pdf' },
+        { serviceId: 'svc-1', id: 'file-1', originalFilename: 'v1.pdf' },
+        { serviceId: 'svc-2', id: 'file-3', originalFilename: 'only.pdf' },
+      ]);
+
+      const result = await controller.latestFiles('svc-1,svc-2,svc-3');
+
+      expect(prisma.serviceFile.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { serviceId: { in: ['svc-1', 'svc-2', 'svc-3'] } },
+          orderBy: { uploadedAt: 'desc' },
+        }),
+      );
+      expect(result).toEqual({
+        'svc-1': { serviceId: 'svc-1', id: 'file-2', originalFilename: 'v2.pdf' },
+        'svc-2': { serviceId: 'svc-2', id: 'file-3', originalFilename: 'only.pdf' },
+      });
+      // svc-3 had no files at all — correctly absent, not a null entry.
+      expect(result).not.toHaveProperty('svc-3');
+    });
+  });
+
   describe('create', () => {
     it('rejects a slug that already exists', async () => {
       const { controller, prisma } = makeController();

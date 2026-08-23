@@ -1,10 +1,14 @@
 "use client"
 import { useTranslations } from "next-intl"
+import Image from "next/image"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { useReveal } from "../hooks/useReveal"
 import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY, PublicTag } from "../lib/publicTheme"
-import ParticleField from "../components/three/ParticleField"
+import dynamic from "next/dynamic"
+// See views/About.tsx for why this is dynamic — same heavy, WebGL-only,
+// purely decorative dependency.
+const ParticleField = dynamic(() => import("../components/three/ParticleField"), { ssr: false })
 const heroImg = "/images/lux-hero-petroleum.jpg"
 
 interface Props {
@@ -35,16 +39,13 @@ export default function Vision({ onNavigate }: Props) {
           background: INK,
         }}
       >
-        <img
+        <Image
           src={heroImg}
           alt="Industrial pipe corridor"
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-          }}
+          fill
+          priority
+          sizes="100vw"
+          style={{ objectFit: "cover" }}
         />
         <div
           style={{

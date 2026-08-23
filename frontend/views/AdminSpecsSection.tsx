@@ -75,13 +75,26 @@ export default function AdminSpecsSection({ setError }: Props) {
       const headers = await authed()
       const { data } = await axios.get("/services", { headers })
       setServices(data)
-      const pairs = await Promise.all(
-        data.map(async (s: Service) => {
-          const res = await axios.get(`/services/${s.id}/files`, { headers })
-          return [s.id, res.data] as const
-        }),
-      )
-      setServiceFiles(Object.fromEntries(pairs))
+
+      // Batched — the card list only ever displays each service's latest
+      // file (see `files[0]` below), so one request for all of them
+      // replaces what used to be one /services/:id/files round trip per
+      // card. A single service's full version history is still fetched
+      // individually, but only right after that one service's own
+      // upload/edit action, never at page load.
+      if (data.length > 0) {
+        const ids = data.map((s: Service) => s.id).join(",")
+        const { data: latestFiles } = await axios.get("/services/latest-files", {
+          headers,
+          params: { ids },
+        })
+        const entries: [string, ServiceFile[]][] = Object.entries(
+          latestFiles as Record<string, ServiceFile>,
+        ).map(([serviceId, file]) => [serviceId, [file]])
+        setServiceFiles(Object.fromEntries(entries))
+      } else {
+        setServiceFiles({})
+      }
     } catch (err) {
       setError(getErrorMessage(err, tCommon("errors.loadFailed")))
     } finally {
