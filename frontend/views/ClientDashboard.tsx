@@ -120,15 +120,16 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
       setSlots(slotsRes.data)
       setMyAppointments(myApptsRes.data)
 
-      const filePairs = await Promise.all(
-        servicesRes.data.map(async (s: Service) => {
-          const { data } = await axios.get(`/services/${s.id}/latest-file`, {
-            headers,
-          })
-          return [s.id, data] as const
-        }),
-      )
-      setLatestFiles(Object.fromEntries(filePairs))
+      const serviceIds = servicesRes.data.map((s: Service) => s.id)
+      if (serviceIds.length > 0) {
+        const { data } = await axios.get("/services/latest-files", {
+          headers,
+          params: { ids: serviceIds.join(",") },
+        })
+        setLatestFiles(data)
+      } else {
+        setLatestFiles({})
+      }
     } catch (err) {
       setError(getErrorMessage(err, tCommon("errors.loadFailed")))
     } finally {

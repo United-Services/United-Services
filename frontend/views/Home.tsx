@@ -1,10 +1,14 @@
 "use client" /* Hero */ /* Trusted Partners */ /* About Us */ /* Mission */ /* Our Projects */ /* Our Services (carousel) */ /* Our Clients */ /* Footer CTA */
 import { useEffect, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
+import Image from "next/image"
 import PublicNav from "../components/PublicNav"
 import Hero from "../components/home/Hero"
-import ParticleField from "../components/three/ParticleField"
-import RegionGlobe3D from "../components/three/RegionGlobe3D"
+import dynamic from "next/dynamic"
+// See views/About.tsx for why these are dynamic — heavy, WebGL-only,
+// purely decorative dependencies.
+const ParticleField = dynamic(() => import("../components/three/ParticleField"), { ssr: false })
+const RegionGlobe3D = dynamic(() => import("../components/three/RegionGlobe3D"), { ssr: false })
 import { useReveal } from "../hooks/useReveal"
 import { axios } from "../lib/api"
 import { LAYER_STYLE, SERVICE_SLUG_TO_LAYER } from "../lib/pipelineLayers"
@@ -459,10 +463,12 @@ export default function Home({ onNavigate }: Props) {
                 className="reveal"
                 style={{ background: INK, borderRadius: 24, position: "relative", overflow: "hidden", minHeight: 440 }}
               >
-                <img
+                <Image
                   src={facilityImg}
                   alt="United Services Egypt technician welding in the Cairo facility"
-                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                  fill
+                  sizes="(max-width: 900px) 100vw, 50vw"
+                  style={{ objectFit: "cover" }}
                 />
                 <div
                   style={{
@@ -573,11 +579,13 @@ export default function Home({ onNavigate }: Props) {
                 </div>
               </div>
               <div className="reveal" style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center" }}>
-                <div style={{ width: "100%", maxWidth: 480, aspectRatio: "4/5", borderRadius: 18, overflow: "hidden", background: "#fff" }}>
-                  <img
+                <div style={{ width: "100%", maxWidth: 480, aspectRatio: "4/5", borderRadius: 18, overflow: "hidden", background: "#fff", position: "relative" }}>
+                  <Image
                     src={layerFigImg}
                     alt="Close-up cross-section of a pipe wall showing the coating layer against corroded steel beneath"
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    fill
+                    sizes="(max-width: 900px) 100vw, 480px"
+                    style={{ objectFit: "cover" }}
                   />
                 </div>
                 <div style={{ fontFamily: "ui-monospace,monospace", fontSize: 11.5, color: MUTED }}>
@@ -642,15 +650,15 @@ export default function Home({ onNavigate }: Props) {
                     ;(e.currentTarget as HTMLButtonElement).style.transform = "none"
                   }}
                 >
-                  <img
+                  <Image
                     src={projThumb2}
                     alt=""
+                    width={128}
+                    height={118}
                     style={{
                       position: "absolute",
                       top: 0,
                       left: 40,
-                      width: 128,
-                      height: 118,
                       borderRadius: 14,
                       objectFit: "cover",
                       transform: "rotate(6deg)",
@@ -658,15 +666,15 @@ export default function Home({ onNavigate }: Props) {
                       border: `3px solid ${PAPER}`,
                     }}
                   />
-                  <img
+                  <Image
                     src={projThumb1}
                     alt="Pipeline integrity project photos — view all projects"
+                    width={128}
+                    height={118}
                     style={{
                       position: "absolute",
                       top: 0,
                       left: 0,
-                      width: 128,
-                      height: 118,
                       borderRadius: 14,
                       objectFit: "cover",
                       transform: "rotate(-4deg)",

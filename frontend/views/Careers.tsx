@@ -6,7 +6,10 @@ import PublicFooter from "../components/PublicFooter"
 import { useReveal } from "../hooks/useReveal"
 import { axios } from "../lib/api"
 import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY } from "../lib/publicTheme"
-import ParticleField from "../components/three/ParticleField"
+import dynamic from "next/dynamic"
+// See views/About.tsx for why this is dynamic — same heavy, WebGL-only,
+// purely decorative dependency.
+const ParticleField = dynamic(() => import("../components/three/ParticleField"), { ssr: false })
 import { Skeleton } from "../components/Skeleton"
 
 interface Props {

@@ -146,6 +146,42 @@ export class ServicesController {
     return services;
   }
 
+  // Batched counterpart to latestFile() below — replaces what used to be
+  // one /services/:id/latest-file round trip per card on the client
+  // dashboard (an N+1 over HTTP: N services on screen meant N requests,
+  // each paying full auth-guard/CSRF/throttler overhead on top of an
+  // otherwise-cheap indexed query). Registered ahead of the `:slug`
+  // route below so "latest-files" is matched as this literal path, not
+  // captured as a slug param.
+  @Get('latest-files')
+  async latestFiles(@Query('ids') ids?: string) {
+    const serviceIds = (ids ?? '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+    if (serviceIds.length === 0) return {};
+
+    const files = await this.prisma.serviceFile.findMany({
+      where: { serviceId: { in: serviceIds } },
+      orderBy: { uploadedAt: 'desc' },
+      select: {
+        serviceId: true,
+        id: true,
+        originalFilename: true,
+        version: true,
+        uploadedAt: true,
+      },
+    });
+
+    // Keep only the newest file per service — `files` is already ordered
+    // newest-first, so the first time a serviceId is seen is its latest.
+    const byServiceId: Record<string, (typeof files)[number]> = {};
+    for (const file of files) {
+      if (!byServiceId[file.serviceId]) byServiceId[file.serviceId] = file;
+    }
+    return byServiceId;
+  }
+
   @Public()
   @Get(':slug')
   async bySlug(@Param('slug') slug: string, @Query('locale') locale?: string) {

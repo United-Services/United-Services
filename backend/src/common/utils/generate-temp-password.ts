@@ -1,4 +1,4 @@
-import { createHash, randomInt } from 'crypto';
+import { randomInt } from 'crypto';
 
 const LOWER = 'abcdefghijkmnpqrstuvwxyz'; // no l/o — avoids look-alike chars
 const UPPER = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I/O
@@ -26,36 +26,20 @@ function generateOnce(length: number): string {
   return chars.join('');
 }
 
-// Never stores the plaintext password itself (that would be a much worse
-// security posture than the collision this guards against) — just a
-// one-way hash of every password issued since this process started, so a
-// same-instance repeat is provably impossible on top of the already-
-// negligible odds from 14 chars over a ~70-char alphabet (~70^14, roughly
-// 10^25 possibilities — far beyond any realistic collision risk on its
-// own; this is defense in depth, not a load-bearing guarantee).
-const issuedHashes = new Set<string>();
-function fingerprint(password: string): string {
-  return createHash('sha256').update(password).digest('hex');
-}
-
 // One-time credential shown to an admin exactly once and never stored —
 // guaranteed to satisfy Clerk's default password policy (length +
 // character variety) so account creation never fails on a policy check
 // the admin has no way to see in advance. Look-alike characters (0/O,
 // 1/l/I) are excluded so it's practical to read aloud or retype. Backed by
 // Node's crypto.randomInt (CSPRNG, not Math.random) for every character
-// choice and the shuffle.
+// choice and the shuffle — 14 chars over a ~70-char alphabet is ~70^14
+// (~10^25) possibilities, far beyond any realistic collision risk without
+// needing to track previously-issued values. (An earlier version of this
+// function kept an in-memory Set of issued-password hashes as a belt-
+// -and-suspenders uniqueness guard; removed — it only deduped within one
+// process, so it silently stopped doing anything useful the moment this
+// ran on more than one backend instance, while still growing unboundedly
+// for the life of that process.)
 export function generateTempPassword(length = 14): string {
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const password = generateOnce(length);
-    const hash = fingerprint(password);
-    if (!issuedHashes.has(hash)) {
-      issuedHashes.add(hash);
-      return password;
-    }
-  }
-  // Astronomically unlikely to ever be reached (see issuedHashes comment)
-  // — if it is, the search space itself is exhausted for this length, so
-  // widen it rather than retry forever.
-  return generateTempPassword(length + 1);
+  return generateOnce(length);
 }

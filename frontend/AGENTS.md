@@ -21,9 +21,19 @@ be added alongside this app later.
 - `src/theme.tsx` — shared color palette and style constants.
 - `src/app/layout.tsx` / `src/app/globals.css` — root layout and Tailwind v4
   entrypoint (`@import 'tailwindcss'`).
-- `public/images/` — static image assets referenced by plain `/images/...`
-  paths (not `next/image`, to keep the original inline-style-driven layouts
-  unchanged).
+- `public/images/` — static image assets. Large/hero photography on the
+  public marketing pages (Home, About, Vision, Projects) uses `next/image`
+  (`fill` + a `position: relative` wrapper for layouts that were
+  `position: absolute` + `inset: 0`, or explicit `width`/`height` props
+  for fixed-pixel-size images) for automatic resizing/format negotiation
+  at scale — see `next.config.mjs`'s `images.remotePatterns` for the one
+  external source (Unsplash) that needs it. Small decorative marks
+  (client-logo marquees, company logos) and any image whose `src` is a
+  dynamic S3 presigned URL (service hero images, candidate documents —
+  unknown domain/host at build time, and the URL's signature changes
+  every request) are deliberately left as plain `<img>` — `next/image`
+  can't optimize either case usefully, and for the S3 case doesn't know
+  the bucket hostname ahead of time to allowlist it.
 
 ## Conventions
 

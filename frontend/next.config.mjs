@@ -8,6 +8,15 @@ const nextConfig = {
   // subset + server.js) so the Docker image doesn't need the full
   // node_modules tree copied in at runtime. See Dockerfile.
   output: "standalone",
+  // Unsplash-sourced photography (project thumbnails in Projects.tsx,
+  // the client-signup/sign-in split-panel photo) needs an explicit
+  // remotePattern before next/image will optimize it — local /images/...
+  // assets need no entry here.
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "images.unsplash.com" },
+    ],
+  },
   // Next sets "X-Powered-By: Next.js" on every response by default — pure
   // information disclosure (confirms the stack to a scanner/attacker for
   // no benefit), and nginx doesn't strip it either. Off entirely rather

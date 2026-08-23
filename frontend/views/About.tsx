@@ -1,10 +1,16 @@
 "use client" /* Header */ /* Story */ /* Certifications */ /* Facility */
 import { useTranslations } from "next-intl"
+import Image from "next/image"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { useReveal } from "../hooks/useReveal"
 import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY, PublicTag } from "../lib/publicTheme"
-import ParticleField from "../components/three/ParticleField"
+import dynamic from "next/dynamic"
+// Three.js/@react-three/fiber is a heavy, WebGL-only dependency — loading
+// it eagerly would ship it in every public page's main bundle even
+// though it's purely decorative. `ssr:false` since WebGL has no server
+// equivalent to render anyway.
+const ParticleField = dynamic(() => import("../components/three/ParticleField"), { ssr: false })
 const worldImg = "/images/LD-02.png"
 const weldImg = "/images/bp-plant.jpg"
 
@@ -67,17 +73,23 @@ export default function About({ onNavigate }: Props) {
             alignItems: "center",
           }}
         >
-          <div className="reveal-left">
-            <img
+          <div
+            className="reveal-left"
+            style={{
+              position: "relative",
+              width: "100%",
+              aspectRatio: "4/3",
+              borderRadius: 20,
+              overflow: "hidden",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.1)",
+            }}
+          >
+            <Image
               src={worldImg}
               alt="Industrial pipe racking at a processing facility"
-              style={{
-                width: "100%",
-                aspectRatio: "4/3",
-                objectFit: "cover",
-                borderRadius: 20,
-                boxShadow: "0 20px 60px rgba(0,0,0,0.1)",
-              }}
+              fill
+              sizes="(max-width: 900px) 100vw, 50vw"
+              style={{ objectFit: "cover" }}
             />
           </div>
           <div className="reveal-right">
@@ -275,17 +287,23 @@ export default function About({ onNavigate }: Props) {
               ))}
             </div>
           </div>
-          <div className="reveal-right">
-            <img
+          <div
+            className="reveal-right"
+            style={{
+              position: "relative",
+              width: "100%",
+              aspectRatio: "3/4",
+              borderRadius: 20,
+              overflow: "hidden",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.12)",
+            }}
+          >
+            <Image
               src={weldImg}
               alt="Interior of the USE manufacturing facility with process piping and equipment"
-              style={{
-                width: "100%",
-                aspectRatio: "3/4",
-                objectFit: "cover",
-                borderRadius: 20,
-                boxShadow: "0 20px 60px rgba(0,0,0,0.12)",
-              }}
+              fill
+              sizes="(max-width: 900px) 100vw, 50vw"
+              style={{ objectFit: "cover" }}
             />
           </div>
         </div>
