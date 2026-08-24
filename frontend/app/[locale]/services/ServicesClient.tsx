@@ -1,9 +1,13 @@
 "use client"
 
-import Services from "@/views/Services"
+import Services, { type Service } from "@/views/Services"
 import { useAppNavigate } from "@/lib/navigate"
 
-export default function ServicesClient() {
+interface Props {
+  initialServices?: Service[]
+}
+
+export default function ServicesClient({ initialServices }: Props) {
   const navigate = useAppNavigate()
-  return <Services onNavigate={navigate} />
+  return <Services onNavigate={navigate} initialServices={initialServices} />
 }
