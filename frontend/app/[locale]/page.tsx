@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
 import HomeClient from "./HomeClient"
+import type { ServicePreview } from "@/views/Home"
+import type { AppLocale } from "@/i18n/routing"
 
 export const metadata: Metadata = {
   title: "United Services Egypt | Pipeline Integrity & Corrosion Control",
@@ -37,14 +39,35 @@ const structuredData = {
   areaServed: ["Egypt", "Iraq", "Saudi Arabia", "United Arab Emirates"],
 }
 
-export default function HomePage() {
+// Server-fetched so the services carousel is present in the first HTML
+// response — see Careers.tsx's page.tsx for the identical reasoning and
+// the same revalidate window as the backend's own cache.
+async function fetchInitialServices(locale: string): Promise<ServicePreview[] | undefined> {
+  try {
+    const url = new URL("/services", process.env.NEXT_PUBLIC_API_URL)
+    if (locale !== "en") url.searchParams.set("locale", locale)
+    const res = await fetch(url, { next: { revalidate: 300 } })
+    if (!res.ok) return undefined
+    return await res.json()
+  } catch {
+    return undefined
+  }
+}
+
+export default async function HomePage({
+  params,
+}: {
+  params: Promise<{ locale: AppLocale }>
+}) {
+  const { locale } = await params
+  const initialServices = await fetchInitialServices(locale)
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-      <HomeClient />
+      <HomeClient initialServices={initialServices} />
     </>
   )
 }

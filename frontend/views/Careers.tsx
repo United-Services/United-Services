@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
@@ -14,9 +14,16 @@ import { Skeleton } from "../components/Skeleton"
 
 interface Props {
   onNavigate: (page: string, param?: string) => void
+  // Server-fetched (see app/[locale]/careers/page.tsx) for the locale the
+  // page was first rendered with — seeds initial state so the list is
+  // present in the very first HTML instead of appearing only after a
+  // client-side round trip. undefined (not just an empty array) is the
+  // signal that no server data was available and a client fetch is
+  // still needed.
+  initialPositions?: OpenPosition[]
 }
 
-interface OpenPosition {
+export interface OpenPosition {
   id: string
   title: string
   description: string
@@ -31,20 +38,27 @@ interface OpenPosition {
 
 const ALL = "All"
 
-export default function Careers({ onNavigate }: Props) {
+export default function Careers({ onNavigate, initialPositions }: Props) {
   useReveal()
   const t = useTranslations("careers")
   const locale = useLocale()
-  const [positions, setPositions] = useState<OpenPosition[]>([])
-  const [loading, setLoading] = useState(true)
+  const [positions, setPositions] = useState<OpenPosition[]>(initialPositions ?? [])
+  const [loading, setLoading] = useState(initialPositions === undefined)
   const [filter, setFilter] = useState<string>(ALL)
+  // Skips exactly one fetch: the mount-time run when the server already
+  // supplied this same locale's data. Any subsequent locale change still
+  // fetches client-side as before.
+  const skipNextFetch = useRef(initialPositions !== undefined)
 
   useEffect(() => {
+    if (skipNextFetch.current) {
+      skipNextFetch.current = false
+      return
+    }
     // Intentional: re-fetching on locale change should show the loading
     // state immediately, not just on first mount — this isn't the
     // derived-state anti-pattern the rule is meant to catch, it's
     // resetting the UI for a genuinely new request.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     axios
       .get("/positions", { params: locale !== "en" ? { locale } : undefined })

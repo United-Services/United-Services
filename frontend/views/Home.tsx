@@ -47,6 +47,9 @@ const petrosilahLogo = "/images/petrosilah.png"
 
 interface Props {
   onNavigate: (page: string, param?: string) => void
+  // Server-fetched (see app/[locale]/page.tsx) — see Careers.tsx's
+  // identical initialPositions prop for the full reasoning.
+  initialServices?: ServicePreview[]
 }
 
 const LOGO_CLIENTS = [
@@ -76,7 +79,7 @@ const CERT_CODES: Record<(typeof CERT_KEYS)[number], string> = {
   egpc: "EGPC",
 }
 
-interface ServicePreview {
+export interface ServicePreview {
   id: string
   slug: string
   name: string
@@ -103,19 +106,24 @@ function cardBackground(slug: string, fallbackIndex: number): string {
   return FALLBACK_CARD_COLORS[fallbackIndex % FALLBACK_CARD_COLORS.length]
 }
 
-export default function Home({ onNavigate }: Props) {
+export default function Home({ onNavigate, initialServices }: Props) {
   useReveal()
   const t = useTranslations("home")
   const tNav = useTranslations("nav")
   const tFooter = useTranslations("footer")
   const locale = useLocale()
   const arrow = locale === "ar" ? "←" : "→"
-  const [services, setServices] = useState<ServicePreview[]>([])
+  const [services, setServices] = useState<ServicePreview[]>(initialServices ?? [])
   const [svcIndex, setSvcIndex] = useState(0)
   const [clientsProgress, setClientsProgress] = useState(0.15)
   const clientsRef = useRef<HTMLDivElement>(null)
+  const skipNextFetch = useRef(initialServices !== undefined)
 
   useEffect(() => {
+    if (skipNextFetch.current) {
+      skipNextFetch.current = false
+      return
+    }
     axios
       .get("/services", { params: locale !== "en" ? { locale } : undefined })
       .then(({ data }) => setServices(data))

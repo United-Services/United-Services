@@ -1,9 +1,13 @@
 "use client"
 
-import Home from "@/views/Home"
+import Home, { type ServicePreview } from "@/views/Home"
 import { useAppNavigate } from "@/lib/navigate"
 
-export default function HomeClient() {
+interface Props {
+  initialServices?: ServicePreview[]
+}
+
+export default function HomeClient({ initialServices }: Props) {
   const navigate = useAppNavigate()
-  return <Home onNavigate={navigate} />
+  return <Home onNavigate={navigate} initialServices={initialServices} />
 }

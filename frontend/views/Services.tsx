@@ -1,5 +1,5 @@
 "use client" /* Page header */ /* Cross-section diagram */ /* Services list */ /* Collapsed header */ /* Expanded content */
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
@@ -15,9 +15,12 @@ import { Skeleton } from "../components/Skeleton"
 
 interface Props {
   onNavigate: (page: string) => void
+  // Server-fetched (see app/[locale]/services/page.tsx) — see
+  // Careers.tsx's identical initialPositions prop for the full reasoning.
+  initialServices?: Service[]
 }
 
-interface Service {
+export interface Service {
   id: string
   slug: string
   name: string
@@ -27,20 +30,24 @@ interface Service {
   imageUrl: string | null
 }
 
-export default function Services({ onNavigate }: Props) {
+export default function Services({ onNavigate, initialServices }: Props) {
   useReveal()
   const t = useTranslations("servicesPage")
   const tNav = useTranslations("nav")
   const locale = useLocale()
   const [active, setActive] = useState<number | null>(null)
-  const [services, setServices] = useState<Service[]>([])
-  const [loading, setLoading] = useState(true)
+  const [services, setServices] = useState<Service[]>(initialServices ?? [])
+  const [loading, setLoading] = useState(initialServices === undefined)
+  const skipNextFetch = useRef(initialServices !== undefined)
 
   useEffect(() => {
+    if (skipNextFetch.current) {
+      skipNextFetch.current = false
+      return
+    }
     // Re-fetch on locale change too, same reasoning as Careers.tsx's
     // identical effect — a switched-language visitor should see
     // translated content without needing a full page reload.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     axios
       .get("/services", {
