@@ -8,11 +8,8 @@ import * as path from 'node:path';
 import sodium from 'libsodium-wrappers';
 import { PrismaService } from '../prisma/prisma.service';
 
-// Loads every active/retiring KEK private key from disk once at process
-// start (never per-request — these are read from KEK_KEYS_DIR, one file
-// per keyId, permissions 0400). Public keys are not secret and live on
-// the KekRegistry row instead. See docs comment on the TotpCredential /
-// KekRegistry Prisma models for the full envelope-encryption scheme.
+// Loads KEK private key material once at process start. See docs comment on
+// the TotpCredential / KekRegistry Prisma models for the envelope-encryption scheme.
 @Injectable()
 export class KekKeyStore implements OnModuleInit {
   private readonly privateKeys = new Map<string, Uint8Array>();

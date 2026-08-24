@@ -27,13 +27,7 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import type { User } from '../generated/prisma';
 
 const CHALLENGE_TTL_SECONDS = 300;
-// Deliberately generous rather than trying to mirror Clerk's own session
-// lifetime (configurable in the Clerk Dashboard, not something this app
-// reads) — this key's real invalidation is that a *new* sign-in gets a
-// *new* Clerk session id, so a stale key from a long-dead session simply
-// never matches a current one. This TTL only exists so Redis doesn't hold
-// verification records forever for sessions that were abandoned rather
-// than explicitly signed out of.
+// Housekeeping TTL only, so Redis doesn't hold abandoned session records forever.
 const SESSION_VERIFIED_TTL_SECONDS = 60 * 60 * 24 * 30;
 const RP_NAME = 'United Services Egypt';
 
@@ -72,10 +66,7 @@ export class MfaService {
     return `mfa:session-verified:${sessionId}`;
   }
 
-  // Enrollment ("mfaEnrolled") only ever needs to happen once; this is the
-  // separate "did *this sign-in* prove the second factor" check that must
-  // happen again on every new session — see MfaSessionVerifiedGuard for
-  // why /me and the enrollment endpoints stay exempt from it.
+  // Per-session verification check — see MfaSessionVerifiedGuard.
   async isSessionVerified(sessionId: string): Promise<boolean> {
     return (await this.redis.get(this.sessionVerifiedKey(sessionId))) !== null;
   }
@@ -89,25 +80,14 @@ export class MfaService {
     );
   }
 
-  // otplib's built-in replay guard: verification rejects any time step at
-  // or before the last one that was successfully used, so a captured code
-  // can't be replayed a second time within its own tolerance window (a
-  // plain .verify() call has no memory of prior successes — the same
-  // valid code would otherwise pass every time it's resubmitted).
+  // TOTP replay protection — see recordUsedTimeStep below.
   private async getAfterTimeStep(userId: string): Promise<number | undefined> {
     const stored = await this.redis.get(this.totpLastStepKey(userId));
     return stored ? Number(stored) : undefined;
   }
 
-  // A plain GET-then-SET here would be a real race: two concurrent
-  // requests carrying the identical still-valid code both read the same
-  // stale afterTimeStep, both pass .verify(), and both would then record
-  // "success" — the second call's code was, in effect, replayed. This
-  // Lua script makes the read-compare-write a single atomic Redis
-  // operation, so only the request whose timeStep is genuinely newer than
-  // whatever's currently stored ever wins; the loser gets `recorded:
-  // false` and must be treated as an invalid/replayed attempt even though
-  // its own .verify() call succeeded.
+  // Atomic read-compare-write to avoid a race between concurrent requests
+  // using the same code.
   private static readonly RECORD_TIME_STEP_SCRIPT = `
     local current = redis.call('GET', KEYS[1])
     if (not current) or tonumber(ARGV[1]) > tonumber(current) then
@@ -117,9 +97,7 @@ export class MfaService {
     return 0
   `;
 
-  // Returns false if this exact time step (or a newer one) was already
-  // recorded by a concurrent request — the caller must treat that as a
-  // failed/replayed verification, not a successful one.
+  // Returns false if this attempt should be treated as a replay.
   private async recordUsedTimeStep(
     userId: string,
     timeStep: number,
@@ -222,10 +200,7 @@ export class MfaService {
     return true;
   }
 
-  // Rotation-in-use: on a successful TOTP verification, if the secret was
-  // still wrapped under a "retiring" KEK, re-wrap it under the current
-  // active key right away rather than waiting for a background job. Never
-  // logs key material or the plaintext secret — only which key ids moved.
+  // Opportunistic re-wrap of the secret under the active KEK on successful verification.
   private async rewrapIfKekRetiring(
     user: User,
     currentKeyId: string,

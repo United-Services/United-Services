@@ -14,12 +14,7 @@ export interface EncryptedTotpSecret {
   totpKekKeyId: string;
 }
 
-// Envelope encryption for TOTP secrets — no external KMS, no single
-// symmetric key from an env var. Each secret gets its own random 256-bit
-// DEK (AES-256-GCM); the DEK is sealed to the currently-active KEK's
-// public key via a libsodium anonymous sealed box (crypto_box_seal), so
-// only the private key on disk for that keyId can ever unwrap it. See
-// KekKeyStore for where those private keys live.
+// Envelope encryption for TOTP secrets. See KekKeyStore for key management.
 @Injectable()
 export class TotpCryptoService {
   constructor(private readonly kekStore: KekKeyStore) {}

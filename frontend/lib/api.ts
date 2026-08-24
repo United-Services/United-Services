@@ -15,10 +15,7 @@ export const axios = axiosLib.create({
   // surfacing its error/retry state. 15s is generous for anything this
   // app calls; nothing here is a long-running job.
   timeout: 15_000,
-  // Required by the backend's CsrfHeaderGuard on every state-changing
-  // request: cookie-based auth alone can't distinguish this app's own
-  // requests from a cross-site form submission, and a plain HTML form
-  // can't set a custom header, so this closes that gap.
+  // Required by the backend's CSRF header check on state-changing requests.
   headers: { "X-Requested-With": "XMLHttpRequest" },
 })
 

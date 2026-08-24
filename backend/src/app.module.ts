@@ -67,16 +67,7 @@ import { TicketsModule } from './tickets/tickets.module';
   ],
   controllers: [HealthController, MeController, UploadsController],
   providers: [
-    // Order matters: CsrfHeaderGuard is cheap and independent of req.user,
-    // so it runs first and rejects unsafe-method requests missing the
-    // custom header before any auth work happens. Then ClerkAuthGuard
-    // attaches req.user, then RolesGuard can read it, then
-    // MfaEnrolledGuard (only ever gates admin accounts, so it's safe to
-    // run after role checks) rejects an admin who's never enrolled, then
-    // MfaSessionVerifiedGuard rejects an enrolled admin whose *current
-    // sign-in* hasn't proven the second factor yet (enrollment is once
-    // ever; verification is once per session — see that guard's comment),
-    // then ThrottlerGuard applies rate limits.
+    // Order matters — see each guard class for its individual rejection reasons.
     { provide: APP_GUARD, useClass: CsrfHeaderGuard },
     { provide: APP_GUARD, useClass: ClerkAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },

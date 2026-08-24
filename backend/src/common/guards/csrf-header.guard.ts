@@ -10,20 +10,8 @@ import { CSRF_EXEMPT_KEY } from '../decorators/csrf-exempt.decorator';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-// ClerkAuthGuard authenticates state-changing requests off the __session
-// cookie alone (checked before the Authorization header — see
-// extractToken()), and this API is called with axios's withCredentials:
-// true. A cookie-only auth story is vulnerable to CSRF: a plain
-// cross-site HTML <form method="POST"> auto-attaches the cookie and needs
-// no preflight for a simple content-type, so cookie presence alone can't
-// distinguish our own frontend from an attacker's page.
-//
-// This guard closes that gap the same way most cookie-authenticated APIs
-// do: require a custom header on every state-changing request. A bare
-// HTML form cannot set custom headers, so this is enough to block the
-// classic form-based CSRF vector without needing a token-issuance round
-// trip. The frontend's shared axios instance (frontend/src/lib/api.ts)
-// sends this header on every request.
+// Requires a custom header on state-changing requests to mitigate CSRF
+// against cookie-based auth. See frontend/src/lib/api.ts for the client side.
 @Injectable()
 export class CsrfHeaderGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
