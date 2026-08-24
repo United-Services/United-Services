@@ -111,10 +111,27 @@ services:
       TRANSLATION_MONTHLY_CHAR_BUDGET: ${TRANSLATION_MONTHLY_CHAR_BUDGET:-2000000}
       TRANSLATION_LOCK_TTL_MS: ${TRANSLATION_LOCK_TTL_MS:-30000}
       TRANSLATION_SYNC_WAIT_MS: ${TRANSLATION_SYNC_WAIT_MS:-2500}
+      # Powers GeoService's country-based locale/analytics lookups (admin
+      # dashboard's requests-by-country map). Optional: unset means
+      # docker-entrypoint.sh skips the GeoLite2 download entirely and
+      # GeoService falls back to 'en'/null lookups — nothing breaks, that
+      # feature just doesn't work until these are set.
+      GEOIP_MAXMIND_ACCOUNT_ID: ${GEOIP_MAXMIND_ACCOUNT_ID:-}
+      GEOIP_MAXMIND_LICENSE_KEY: ${GEOIP_MAXMIND_LICENSE_KEY:-}
+      # GeoService only ever reads GeoLite2-Country.mmdb, but this stays
+      # overridable rather than hardcoded — matches the account's actual
+      # MaxMind license, which may cover additional editions.
+      GEOIP_MAXMIND_EDITION_IDS: ${GEOIP_MAXMIND_EDITION_IDS:-GeoLite2-Country}
+      GEOIP_MAXMIND_DB_DIR: /app/geoip-db
     volumes:
       # TOTP KEK private keys must survive container restarts/redeploys —
       # never let this be an ephemeral container filesystem path.
       - kek-keys:/app/secrets/kek
+      # Downloaded GeoLite2-Country.mmdb — persisted so a restart doesn't
+      # force a re-download; docker-entrypoint.sh refreshes it in place
+      # on every start (cheap/idempotent — geoipupdate does a conditional
+      # fetch) rather than relying on a separate update mechanism.
+      - geoip-db:/app/geoip-db
     networks: [internal]
 
   frontend:
@@ -151,3 +168,4 @@ volumes:
   redis-data:
   kek-keys:
   libretranslate-models:
+  geoip-db:

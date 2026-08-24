@@ -173,18 +173,23 @@ painful later (the backend prompt already flags this).
 
 ## 7. Geo-IP for automatic language detection
 
-**What you need:** a way to map a visitor's IP to a country/language on
-first visit. Two options, pick one:
-- **MaxMind GeoLite2** — free, no per-request API key needed; you download
-  their database file (requires a free MaxMind account to get a license
-  key for the download, but no runtime API key or per-request cost).
-- **A hosted geo-IP API** (ipapi.co, ipinfo.io, etc.) — simpler to wire up,
-  but needs an `API_KEY` env var and has a request quota on the free tier.
+**What you need:** a MaxMind account (free) with a license key — this is
+the option that actually got implemented (`backend/src/geo/geo.service.ts`
+only ever reads the local GeoLite2-Country database; there's no hosted-API
+code path). No runtime API key, no per-request cost, no request quota —
+it's a local `.mmdb` file lookup, which also matters once traffic is high
+(no external call per request).
 
-Either is fine for this use case; a hosted API is faster to implement if
-you want to move quickly, MaxMind is better once traffic is high (matches
-the "high traffic" concern already raised) since it's a local lookup with
-no external call per request.
+- `GEOIP_MAXMIND_ACCOUNT_ID` / `GEOIP_MAXMIND_LICENSE_KEY` — from your
+  MaxMind account, used by `geoipupdate` (bundled in the backend's Docker
+  image — see `backend/docker-entrypoint.sh`) to download/refresh
+  `GeoLite2-Country.mmdb` on every container start.
+- `GEOIP_MAXMIND_DB_DIR` — where that file lives; `docker-compose.yml`
+  sets this to `/app/geoip-db`, a named volume so it survives restarts.
+- Leaving both ID/key unset is safe: the entrypoint skips the download
+  entirely and `GeoService` falls back to `'en'`/`null` lookups rather
+  than failing anything — country analytics and geo-based locale
+  detection just won't have real data until these are set.
 
 ---
 
@@ -264,9 +269,11 @@ NTFY_TOPIC_URL=
 # Redis
 REDIS_URL=
 
-# Geo-IP (pick one path from section 7)
-GEOIP_PROVIDER=maxmind   # or: hosted-api
-GEOIP_API_KEY=           # only if GEOIP_PROVIDER=hosted-api
+# Geo-IP (see section 7 — MaxMind, the only implemented path)
+GEOIP_MAXMIND_ACCOUNT_ID=
+GEOIP_MAXMIND_LICENSE_KEY=
+GEOIP_MAXMIND_EDITION_IDS=GeoLite2-Country
+GEOIP_MAXMIND_DB_DIR=./geoip-db
 
 # WebAuthn
 WEBAUTHN_RP_ID=
