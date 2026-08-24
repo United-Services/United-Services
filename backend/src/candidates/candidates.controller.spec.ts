@@ -63,6 +63,48 @@ describe('CandidatesController', () => {
         expect.objectContaining({ action: 'candidate.denied' }),
       );
     });
+
+    // Rule 5: there is no auto-approval path. The whole controller is
+    // admin-only (@Roles(Role.admin) at the class level, enforced by
+    // RolesGuard), and this endpoint is the *only* place status can move
+    // out of 'pending' — it derives status strictly from the boolean
+    // `approve` flag, never from any other field a caller might smuggle
+    // into the body (e.g. a raw `status: 'approved'`).
+    it('derives status only from the approve boolean, ignoring any other status-like field in the body', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.candidateApplication.update as jest.Mock).mockImplementation(
+        ({ data }) => Promise.resolve({ id: 'app-1', ...data }),
+      );
+
+      await controller.decide(admin, 'app-1', {
+        approve: false,
+        status: 'approved',
+      } as any);
+
+      const passedData = (prisma.candidateApplication.update as jest.Mock).mock
+        .calls[0][0].data;
+      expect(passedData.status).toBe(ApplicationStatus.denied);
+    });
+
+    // The reviewer must always be the authenticated admin from the
+    // request's auth context, never a caller-supplied id in the body —
+    // otherwise an admin action could be misattributed in the AuditLog
+    // (rule 8) or, worse, a non-admin-authored id could slip through.
+    it('always attributes the review to the authenticated admin, ignoring a body-supplied reviewer id', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.candidateApplication.update as jest.Mock).mockImplementation(
+        ({ data }) => Promise.resolve({ id: 'app-1', ...data }),
+      );
+
+      await controller.decide(admin, 'app-1', {
+        approve: true,
+        reviewedByAdminId: 'someone-else',
+      } as any);
+
+      const passedData = (prisma.candidateApplication.update as jest.Mock).mock
+        .calls[0][0].data;
+      expect(passedData.reviewedByAdminId).toBe(admin.id);
+    });
   });
 
   describe('documents', () => {
