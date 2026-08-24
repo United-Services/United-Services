@@ -35,6 +35,7 @@ const ALLOWED_SCREENSHOT_TYPES: Record<string, string> = {
 };
 
 const IMAGE_URL_TTL_SECONDS = 3600;
+const MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024;
 
 @Controller('tickets')
 export class TicketsController {
@@ -88,15 +89,17 @@ export class TicketsController {
     });
 
     if (dto.screenshotS3Key) {
+      const size = await this.s3.getObjectSize(dto.screenshotS3Key);
       const bytes = await this.s3.readLeadingBytes(dto.screenshotS3Key);
       const matchesAny = Object.keys(ALLOWED_SCREENSHOT_TYPES).some((type) =>
         matchesContentType(bytes, type),
       );
-      if (!matchesAny) {
+      if (size > MAX_SCREENSHOT_BYTES || !matchesAny) {
         await this.s3.deleteObject(dto.screenshotS3Key).catch(() => undefined);
-        // The ticket itself is still useful without its screenshot — a
-        // bad/mismatched image shouldn't lose the whole report, so this
-        // isn't rolled back into a hard failure of the submission.
+        // The ticket itself is still useful without its screenshot — an
+        // oversized or bad/mismatched image shouldn't lose the whole
+        // report, so this isn't rolled back into a hard failure of the
+        // submission.
       } else {
         const permanentKey = `tickets/${ticket.id}/${dto.screenshotS3Key.slice('pending/tickets/'.length)}`;
         await this.s3.promoteUpload(dto.screenshotS3Key, permanentKey);

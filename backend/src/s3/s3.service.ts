@@ -3,6 +3,7 @@ import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   DeleteObjectCommand,
   CopyObjectCommand,
   CreateMultipartUploadCommand,
@@ -63,6 +64,16 @@ export class S3Service {
       chunks.push(Buffer.from(chunk));
     }
     return Buffer.concat(chunks);
+  }
+
+  // Actual uploaded size — a presigned PUT URL doesn't cap request size on
+  // its own, so a client-declared size check alone isn't enough for a
+  // public/unauthenticated endpoint; this is the real, post-upload check.
+  async getObjectSize(key: string): Promise<number> {
+    const { ContentLength } = await this.client.send(
+      new HeadObjectCommand({ Bucket: this.bucket, Key: key }),
+    );
+    return ContentLength ?? 0;
   }
 
   // Used to remove an object that failed post-upload validation (e.g. its
