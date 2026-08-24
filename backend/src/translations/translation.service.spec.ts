@@ -309,6 +309,43 @@ describe('TranslationService', () => {
       expect(stored.errorMessage).toContain('unreachable');
     });
 
+    it('acquires the lock under the documented key format lock:translation:{contentType}:{id}:{locale}', async () => {
+      const position = makePosition();
+      libreTranslate.translateBatch.mockResolvedValue({
+        translations: ['مهندس', 'بناء أشياء', 'هندسة'],
+        charCount: 30,
+      });
+
+      await service.getTranslatedPositions([position], 'ar');
+
+      expect(redis.set).toHaveBeenCalledWith(
+        'lock:translation:open_position:pos-1:ar',
+        '1',
+        'PX',
+        expect.any(Number),
+        'NX',
+      );
+    });
+
+    it('a request that loses the lock race falls back to English without calling LibreTranslate itself, instead of blocking indefinitely', async () => {
+      process.env.TRANSLATION_SYNC_WAIT_MS = '50';
+      const position = makePosition();
+      // Simulate another request already holding the lock for this item.
+      redis._store.set('lock:translation:open_position:pos-1:ar', '1');
+
+      const result = await service.getTranslatedPositions([position], 'ar');
+
+      expect(libreTranslate.translateBatch).not.toHaveBeenCalled();
+      expect(result.get('pos-1')).toEqual({
+        status: 'translating',
+        title: position.title,
+        description: position.description,
+        department: position.department,
+      });
+
+      delete process.env.TRANSLATION_SYNC_WAIT_MS;
+    }, 10000);
+
     it('the throughput guard skips the call once the monthly counter is at/over budget, without throwing', async () => {
       process.env.TRANSLATION_MONTHLY_CHAR_BUDGET = '10';
       const monthKey = `translation:usage:${new Date().toISOString().slice(0, 7)}`;
@@ -420,6 +457,45 @@ describe('TranslationService', () => {
         name: service_.name,
         shortDescription: service_.shortDescription,
         longDescription: service_.longDescription,
+      });
+    });
+
+    it('changing specs alone (a field outside SERVICE_FIELDS) does not affect the source hash or trigger retranslation', async () => {
+      const service_ = makeService();
+      const hash = service.computeSourceHash({
+        name: service_.name,
+        shortDescription: service_.shortDescription,
+        longDescription: service_.longDescription,
+      });
+      prisma._rows.set('service:svc-1:ar', {
+        contentType: 'service',
+        contentId: 'svc-1',
+        locale: 'ar',
+        status: 'translated',
+        sourceHash: hash,
+        fields: {
+          name: 'اسم',
+          shortDescription: 'وصف قصير',
+          longDescription: 'وصف طويل',
+        },
+      });
+      // specs changed since the row was cached — name/shortDescription/
+      // longDescription (the only hashed fields) did not.
+      const updatedSpecsService = makeService({
+        specs: ['API 15CLT Compliant', 'DN50 – DN900', 'A NEW STANDARD CODE'],
+      });
+
+      const result = await service.getTranslatedServices(
+        [updatedSpecsService],
+        'ar',
+      );
+
+      expect(libreTranslate.translateBatch).not.toHaveBeenCalled();
+      expect(result.get('svc-1')).toEqual({
+        status: 'translated',
+        name: 'اسم',
+        shortDescription: 'وصف قصير',
+        longDescription: 'وصف طويل',
       });
     });
   });

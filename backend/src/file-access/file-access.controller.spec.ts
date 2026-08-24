@@ -59,6 +59,63 @@ describe('FileAccessController', () => {
         controller.create(client, { serviceFileId: 'file-1' }),
       ).rejects.toThrow(ConflictException);
     });
+
+    // Rule 1: a request can only ever be approved by an admin, via
+    // POST /:id/decide — never by the create/request endpoint itself,
+    // regardless of what the client sends. This is the adversarial case
+    // that actually matters (a client trying to smuggle a status through
+    // the request body), not just "status defaults to pending when
+    // omitted".
+    it('always creates the request as pending, even if the request body tries to set status to approved', async () => {
+      const { controller, prisma } = makeController();
+
+      await controller.create(client, {
+        serviceFileId: 'file-1',
+        status: 'approved',
+      } as any);
+
+      expect(prisma.fileAccessRequest.create).toHaveBeenCalledWith({
+        data: { clientId: client.id, serviceFileId: 'file-1' },
+      });
+      const passedData = (prisma.fileAccessRequest.create as jest.Mock).mock
+        .calls[0][0].data;
+      expect(passedData).not.toHaveProperty('status');
+    });
+
+    // Rule 3: the request is always scoped to the authenticated caller's
+    // own id, never a client-supplied one — even if the body tries to
+    // create a request on another client's behalf.
+    it('ignores a client-supplied clientId in the request body and scopes to the caller', async () => {
+      const { controller, prisma } = makeController();
+
+      await controller.create(client, {
+        serviceFileId: 'file-1',
+        clientId: otherClient.id,
+      } as any);
+
+      expect(prisma.fileAccessRequest.create).toHaveBeenCalledWith({
+        data: { clientId: client.id, serviceFileId: 'file-1' },
+      });
+    });
+  });
+
+  // Rule 3: a client cannot see another client's data.
+  describe('mine', () => {
+    it('scopes the listing to the authenticated caller, never a caller-supplied id', () => {
+      const findMany = jest.fn().mockResolvedValue([]);
+      const prisma = {
+        fileAccessRequest: { findMany },
+      } as unknown as PrismaService;
+      const s3 = {} as unknown as S3Service;
+      const auditLog = { record: jest.fn() } as unknown as AuditLogService;
+      const controller = new FileAccessController(prisma, s3, auditLog);
+
+      controller.mine(client);
+
+      expect(findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { clientId: client.id } }),
+      );
+    });
   });
 
   describe('download', () => {

@@ -130,12 +130,12 @@ export class AppointmentsController {
   async book(@CurrentUser() client: User, @Body() dto: BookSlotDto) {
     return this.prisma.$transaction(async (tx) => {
       const { count } = await tx.appointmentSlot.updateMany({
-        where: { id: dto.slotId, isBooked: false },
+        where: { id: dto.slotId, isBooked: false, isClosed: false },
         data: { isBooked: true },
       });
       if (count === 0)
         throw new ConflictException(
-          'This slot was just booked by someone else — please pick another.',
+          'This slot is no longer available — please pick another.',
         );
 
       return tx.appointment.create({
