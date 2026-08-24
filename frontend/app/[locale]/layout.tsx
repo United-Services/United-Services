@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { Poppins, Space_Grotesk, Inter } from "next/font/google"
 import { hasLocale, NextIntlClientProvider } from "next-intl"
 import { notFound } from "next/navigation"
 import { ClerkProvider } from "@clerk/nextjs"
@@ -21,6 +22,25 @@ export function generateStaticParams() {
 
 const RTL_LOCALES = new Set(["ar"])
 
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  variable: "--font-poppins",
+  display: "swap",
+})
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-space-grotesk",
+  display: "swap",
+})
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-inter",
+  display: "swap",
+})
+
 export default async function LocaleLayout({
   children,
   params,
@@ -34,7 +54,11 @@ export default async function LocaleLayout({
   const dir = RTL_LOCALES.has(locale) ? "rtl" : "ltr"
 
   return (
-    <html lang={locale} dir={dir}>
+    <html
+      lang={locale}
+      dir={dir}
+      className={`${poppins.variable} ${spaceGrotesk.variable} ${inter.variable}`}
+    >
       <body>
         <ClerkProvider
           localization={{

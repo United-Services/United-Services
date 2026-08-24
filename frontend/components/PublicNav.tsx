@@ -3,8 +3,9 @@ import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { useUser } from "@clerk/nextjs"
 import LanguageSwitcher from "./LanguageSwitcher"
+import { usePrefetchOnHover } from "../lib/navigate"
 import { PAPER, TEXT, MUTED, LIME, BODY } from "../lib/publicTheme"
-const navLogo = "/images/logo-nav-future-energy.png"
+const navLogo = "/images/logo-nav-future-energy.webp"
 
 interface Props {
   current: string
@@ -29,6 +30,7 @@ export default function PublicNav({ current, onNavigate, transparentOverHero }: 
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(!transparentOverHero)
   const { isSignedIn } = useUser()
+  const prefetchOnHover = usePrefetchOnHover()
 
   useEffect(() => {
     if (!transparentOverHero) return
@@ -78,6 +80,7 @@ export default function PublicNav({ current, onNavigate, transparentOverHero }: 
         {}
         <button
           onClick={() => go("home")}
+          onMouseEnter={prefetchOnHover("home")}
           style={{
             background: "none",
             border: "none",
@@ -104,6 +107,7 @@ export default function PublicNav({ current, onNavigate, transparentOverHero }: 
           {overlay && (
             <button
               onClick={() => go("home")}
+              onMouseEnter={prefetchOnHover("home")}
               style={{
                 background: "rgba(24,24,26,0.38)",
                 backdropFilter: "blur(10px)",
@@ -114,7 +118,7 @@ export default function PublicNav({ current, onNavigate, transparentOverHero }: 
                 fontWeight: 500,
                 color: "#fff",
                 borderRadius: 10,
-                fontFamily: "Poppins, sans-serif",
+                fontFamily: "var(--font-poppins), sans-serif",
                 marginInlineEnd: 4,
                 display: "flex",
                 alignItems: "center",
@@ -128,6 +132,7 @@ export default function PublicNav({ current, onNavigate, transparentOverHero }: 
             <button
               key={id}
               onClick={() => go(id)}
+              onMouseEnter={prefetchOnHover(id)}
               style={{
                 background: overlay ? "rgba(24,24,26,0.38)" : current === id ? "rgba(216,255,62,0.35)" : "none",
                 backdropFilter: overlay ? "blur(10px)" : "none",
@@ -160,6 +165,7 @@ export default function PublicNav({ current, onNavigate, transparentOverHero }: 
           <LanguageSwitcher />
           <button
             onClick={() => go(portalTarget)}
+            onMouseEnter={prefetchOnHover(portalTarget)}
             style={{
               background: LIME,
               color: TEXT,
@@ -225,6 +231,7 @@ export default function PublicNav({ current, onNavigate, transparentOverHero }: 
             <button
               key={id}
               onClick={() => go(id)}
+              onMouseEnter={prefetchOnHover(id)}
               style={{
                 background: current === id ? "rgba(216,255,62,0.35)" : "none",
                 border: "none",
@@ -246,6 +253,7 @@ export default function PublicNav({ current, onNavigate, transparentOverHero }: 
           </div>
           <button
             onClick={() => go(portalTarget)}
+            onMouseEnter={prefetchOnHover(portalTarget)}
             style={{
               background: LIME,
               color: TEXT,

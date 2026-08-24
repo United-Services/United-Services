@@ -36,15 +36,28 @@ const PARAM_KEY: Record<string, string> = {
   tickets: "type",
 }
 
+function resolveHref(page: string, param?: string): string {
+  const base = ROUTES[page] ?? "/"
+  const paramKey = PARAM_KEY[page]
+  return paramKey && param
+    ? `${base}?${paramKey}=${encodeURIComponent(param)}`
+    : base
+}
+
 export function useAppNavigate() {
   const router = useRouter()
   return (page: string, param?: string) => {
-    const base = ROUTES[page] ?? "/"
-    const paramKey = PARAM_KEY[page]
-    if (paramKey && param) {
-      router.push(`${base}?${paramKey}=${encodeURIComponent(param)}`)
-    } else {
-      router.push(base)
-    }
+    router.push(resolveHref(page, param))
+  }
+}
+
+// Prefetch the route's RSC payload on hover/focus, before the click happens,
+// so the navigation triggered by useAppNavigate() lands instantly instead of
+// waiting on the fetch. Pair with useAppNavigate() on the same trigger:
+// `onMouseEnter={prefetchOnHover("services")}`.
+export function usePrefetchOnHover() {
+  const router = useRouter()
+  return (page: string, param?: string) => () => {
+    router.prefetch(resolveHref(page, param))
   }
 }

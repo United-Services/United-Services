@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
 import { requestLoggingMiddleware } from './common/middleware/request-logging.middleware';
 
 // Every non-DI-registered piece of app setup (main.ts's imperative
@@ -43,6 +44,13 @@ export function configureApp(app: NestExpressApplication): void {
   app.use(requestLoggingMiddleware);
 
   app.use(cookieParser());
+  // gzip/brotli response compression. nginx.conf also compresses at the
+  // edge in production — the two don't double-compress each other
+  // (nginx skips a response that already carries Content-Encoding), so
+  // this is the same defense-in-depth pattern as the security headers
+  // above: nginx handles it in production, this covers the case where
+  // the app is hit directly (local dev, health checks, no nginx layer).
+  app.use(compression());
   app.use(
     helmet({
       // This process only ever serves JSON — no HTML, no inline scripts —

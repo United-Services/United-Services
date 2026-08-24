@@ -281,7 +281,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
             }}
           >
             <img
-              src="/images/logo-footer.png"
+              src="/images/logo-footer.webp"
               alt="United Services Egypt"
               style={{ height: 28, width: "auto", objectFit: "contain" }}
             />

@@ -81,9 +81,9 @@ describe('ServicesController', () => {
 
       const result = await controller.list();
 
-      expect(result).toEqual([
-        { id: 'svc-1', imageS3Key: null, imageUrl: null },
-      ]);
+      // imageS3Key is never in the response — see withImageUrl's doc
+      // comment on why it's stripped, not just resolved.
+      expect(result).toEqual([{ id: 'svc-1', imageUrl: null }]);
       expect(prisma.service.findMany).not.toHaveBeenCalled();
     });
 
@@ -96,9 +96,7 @@ describe('ServicesController', () => {
 
       const result = await controller.list();
 
-      expect(result).toEqual([
-        { id: 'svc-1', imageS3Key: null, imageUrl: null },
-      ]);
+      expect(result).toEqual([{ id: 'svc-1', imageUrl: null }]);
       expect(redis.set).toHaveBeenCalledWith(
         'cache:services:list',
         JSON.stringify([{ id: 'svc-1', imageS3Key: null }]),
@@ -122,6 +120,9 @@ describe('ServicesController', () => {
         3600,
       );
       expect(result[0].imageUrl).toBe('https://s3.example/get?signed=1');
+      // The private S3 key never appears in what an unauthenticated
+      // visitor's browser receives from this public endpoint.
+      expect(result[0]).not.toHaveProperty('imageS3Key');
     });
 
     it('with a translatable locale, merges the machine translation onto each service', async () => {
@@ -186,7 +187,6 @@ describe('ServicesController', () => {
       expect(result).toEqual({
         id: 'svc-1',
         slug: 'gre-lining',
-        imageS3Key: null,
         imageUrl: null,
       });
     });
@@ -227,8 +227,16 @@ describe('ServicesController', () => {
         }),
       );
       expect(result).toEqual({
-        'svc-1': { serviceId: 'svc-1', id: 'file-2', originalFilename: 'v2.pdf' },
-        'svc-2': { serviceId: 'svc-2', id: 'file-3', originalFilename: 'only.pdf' },
+        'svc-1': {
+          serviceId: 'svc-1',
+          id: 'file-2',
+          originalFilename: 'v2.pdf',
+        },
+        'svc-2': {
+          serviceId: 'svc-2',
+          id: 'file-3',
+          originalFilename: 'only.pdf',
+        },
       });
       // svc-3 had no files at all — correctly absent, not a null entry.
       expect(result).not.toHaveProperty('svc-3');
@@ -456,7 +464,10 @@ describe('ServicesController', () => {
       expect(s3.deleteObject).toHaveBeenCalledWith(
         'service-images/svc-1/old.jpg',
       );
-      expect(result.imageS3Key).toBe('service-images/svc-1/new.jpg');
+      // The private S3 key itself never leaves this server in the
+      // response body — only the presigned imageUrl derived from it.
+      expect(result).not.toHaveProperty('imageS3Key');
+      expect(result.imageUrl).toBe('https://s3.example/get?signed=1');
     });
 
     it('404s for an unknown service id', async () => {

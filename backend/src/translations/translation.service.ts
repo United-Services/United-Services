@@ -1,8 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { createHash } from 'node:crypto';
+import type { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { LibreTranslateClient, chunkText } from './libretranslate.client';
+import { TRANSLATION_QUEUE } from '../queue/queue.tokens';
+import type { TranslationJobData } from '../queue/queue.tokens';
 import type {
   OpenPosition,
   Service,
@@ -65,6 +68,8 @@ export class TranslationService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly libreTranslate: LibreTranslateClient,
+    @Inject(TRANSLATION_QUEUE)
+    private readonly queue: Queue<TranslationJobData>,
   ) {}
 
   // Stable across key order — sorts keys before stringifying — so the same
@@ -474,30 +479,82 @@ export class TranslationService {
     return this.getTranslatedContent(services, locale, this.serviceSpec());
   }
 
-  // Fire-and-forget publish-time hook — NOT awaited by the caller.
-  // Wrapped so a failure here can never surface as an unhandled rejection.
+  // Fire-and-forget publish-time hook, from the caller's point of view —
+  // not awaited, and enqueue() itself is wrapped so a Redis hiccup here
+  // can never surface as an unhandled rejection or block the request
+  // that triggered it. The actual translation work no longer happens
+  // inline: each (item, locale) pair becomes a queued job with real
+  // retries and backoff (see queue.module.ts), processed by
+  // TranslationWorker calling processQueuedJob() below — a transient
+  // LibreTranslate failure used to just log-and-drop that one
+  // translation forever; now it retries automatically, and only a job
+  // that's exhausted every retry lands in the DLQ for inspection.
   triggerAsync(position: OpenPosition, locales: string[]): void {
     for (const locale of locales) {
-      this.runTriggerGeneric(position, locale, this.positionSpec()).catch(
-        (error: Error) => {
-          this.logger.error(
-            `triggerAsync failed for position=${position.id} locale=${locale}: ${error.message}`,
-          );
-        },
-      );
+      this.enqueue('open_position', position.id, locale);
     }
   }
 
   triggerServiceAsync(service: Service, locales: string[]): void {
     for (const locale of locales) {
-      this.runTriggerGeneric(service, locale, this.serviceSpec()).catch(
-        (error: Error) => {
-          this.logger.error(
-            `triggerServiceAsync failed for service=${service.id} locale=${locale}: ${error.message}`,
-          );
-        },
-      );
+      this.enqueue('service', service.id, locale);
     }
+  }
+
+  private enqueue(
+    contentType: TranslationJobData['contentType'],
+    contentId: string,
+    locale: string,
+  ): void {
+    this.queue
+      .add(
+        `${contentType}:${contentId}:${locale}`,
+        { contentType, contentId, locale },
+        {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 5_000 },
+          // A retry for the exact same (contentType, contentId, locale)
+          // already queued/running is redundant — e.g. an admin editing
+          // the same service twice in quick succession — so BullMQ just
+          // no-ops the duplicate add instead of stacking up parallel
+          // attempts at the same translation.
+          jobId: `${contentType}:${contentId}:${locale}`,
+          removeOnComplete: { age: 3600 },
+          // Failed (post-DLQ-transfer) jobs are still kept briefly in
+          // BullMQ's own failed set for the retries/backoff timeline to
+          // be inspectable, but the DLQ (queue.module.ts's
+          // TRANSLATION_DLQ) is the durable, meant-to-be-checked record —
+          // this doesn't need to grow unbounded here too.
+          removeOnFail: { age: 86_400 },
+        },
+      )
+      .catch((error: Error) => {
+        this.logger.error(
+          `Failed to enqueue translation job for ${contentType}=${contentId} locale=${locale}: ${error.message}`,
+        );
+      });
+  }
+
+  // Called by TranslationWorker (queue/translation.worker.ts) for each
+  // dequeued job — re-fetches the entity fresh from the DB rather than
+  // trusting whatever was true at enqueue time, since a job can sit in
+  // the queue (or be retried) well after the row that triggered it was
+  // enqueued. If the row's been deleted since, there's nothing left to
+  // translate — that's a successful no-op, not a failure to retry.
+  async processQueuedJob(data: TranslationJobData): Promise<void> {
+    if (data.contentType === 'open_position') {
+      const position = await this.prisma.openPosition.findUnique({
+        where: { id: data.contentId },
+      });
+      if (!position) return;
+      await this.runTriggerGeneric(position, data.locale, this.positionSpec());
+      return;
+    }
+    const service = await this.prisma.service.findUnique({
+      where: { id: data.contentId },
+    });
+    if (!service) return;
+    await this.runTriggerGeneric(service, data.locale, this.serviceSpec());
   }
 
   async invalidate(

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { axios } from "../lib/api"
 import { INK, LIME, HEAD, BODY } from "../lib/publicTheme"
-const footerLogo = "/images/logo-footer.png"
+const footerLogo = "/images/logo-footer.webp"
 
 interface Props {
   onNavigate: (page: string) => void
