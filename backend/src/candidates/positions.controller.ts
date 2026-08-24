@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Param,
   Patch,
   Post,
@@ -39,6 +40,13 @@ export class PositionsController {
   // 'en', or anything unrecognized takes the exact same path as before
   // this endpoint had any translation awareness.
   @Public()
+  // Same reasoning as ServicesController.list()'s Cache-Control — public,
+  // no per-user data, safe for a browser/CDN to cache directly rather
+  // than hitting this endpoint (even a Redis-cache-hit one) every time.
+  @Header(
+    'Cache-Control',
+    `public, max-age=${CACHE_TTL_SECONDS}, stale-while-revalidate=60`,
+  )
   @Get()
   async listOpen(@Query('locale') locale?: string) {
     const cacheKey = OPEN_POSITIONS_CACHE_KEY(locale ?? 'en');

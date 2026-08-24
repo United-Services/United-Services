@@ -66,6 +66,8 @@ function makePrismaMock() {
     `${contentType}:${contentId}:${locale}`;
 
   return {
+    openPosition: { findUnique: jest.fn() },
+    service: { findUnique: jest.fn() },
     contentTranslation: {
       findMany: jest.fn(({ where }: any) => {
         const ids: string[] = where.contentId.in;
@@ -117,16 +119,19 @@ describe('TranslationService', () => {
   let redis: ReturnType<typeof makeRedisMock>;
   let prisma: ReturnType<typeof makePrismaMock>;
   let libreTranslate: { translateBatch: jest.Mock };
+  let queue: { add: jest.Mock };
   let service: TranslationService;
 
   beforeEach(() => {
     redis = makeRedisMock();
     prisma = makePrismaMock();
     libreTranslate = { translateBatch: jest.fn() };
+    queue = { add: jest.fn().mockResolvedValue(undefined) };
     service = new TranslationService(
       prisma as unknown as PrismaService,
       redis as unknown as RedisService,
       libreTranslate as unknown as LibreTranslateClient,
+      queue as any,
     );
   });
 
@@ -420,15 +425,34 @@ describe('TranslationService', () => {
   });
 
   describe('triggerServiceAsync', () => {
+    it('enqueues one job per locale instead of translating inline', () => {
+      const service_ = makeService();
+
+      service.triggerServiceAsync(service_, ['ar', 'zh']);
+
+      expect(queue.add).toHaveBeenCalledTimes(2);
+      expect(queue.add).toHaveBeenCalledWith(
+        'service:svc-1:ar',
+        { contentType: 'service', contentId: 'svc-1', locale: 'ar' },
+        expect.objectContaining({ attempts: 3, jobId: 'service:svc-1:ar' }),
+      );
+    });
+  });
+
+  describe('processQueuedJob (service)', () => {
     it('translates and stores a service translation, keyed under contentType "service"', async () => {
       const service_ = makeService();
+      prisma.service.findUnique.mockResolvedValue(service_);
       libreTranslate.translateBatch.mockResolvedValue({
         translations: ['اسم', 'وصف قصير', 'وصف طويل'],
         charCount: 20,
       });
 
-      service.triggerServiceAsync(service_, ['ar']);
-      await new Promise((r) => setTimeout(r, 20));
+      await service.processQueuedJob({
+        contentType: 'service',
+        contentId: 'svc-1',
+        locale: 'ar',
+      });
 
       const stored = prisma._rows.get('service:svc-1:ar');
       expect(stored.status).toBe('translated');
@@ -437,6 +461,7 @@ describe('TranslationService', () => {
 
     it('does not retranslate when the stored hash already matches the current content', async () => {
       const service_ = makeService();
+      prisma.service.findUnique.mockResolvedValue(service_);
       const hash = service.computeSourceHash({
         name: service_.name,
         shortDescription: service_.shortDescription,
@@ -455,9 +480,25 @@ describe('TranslationService', () => {
         },
       });
 
-      service.triggerServiceAsync(service_, ['ar']);
-      await new Promise((r) => setTimeout(r, 20));
+      await service.processQueuedJob({
+        contentType: 'service',
+        contentId: 'svc-1',
+        locale: 'ar',
+      });
 
+      expect(libreTranslate.translateBatch).not.toHaveBeenCalled();
+    });
+
+    it('is a successful no-op when the service has since been deleted', async () => {
+      prisma.service.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.processQueuedJob({
+          contentType: 'service',
+          contentId: 'svc-gone',
+          locale: 'ar',
+        }),
+      ).resolves.toBeUndefined();
       expect(libreTranslate.translateBatch).not.toHaveBeenCalled();
     });
   });
@@ -481,8 +522,23 @@ describe('TranslationService', () => {
   });
 
   describe('triggerAsync', () => {
-    it('translates each locale independently and never throws, even when one locale fails', async () => {
+    it('enqueues one job per locale and never throws, even if enqueueing itself fails', () => {
       const position = makePosition();
+
+      expect(() => service.triggerAsync(position, ['ar', 'zh'])).not.toThrow();
+      expect(queue.add).toHaveBeenCalledTimes(2);
+      expect(queue.add).toHaveBeenCalledWith(
+        'open_position:pos-1:zh',
+        { contentType: 'open_position', contentId: 'pos-1', locale: 'zh' },
+        expect.objectContaining({ attempts: 3 }),
+      );
+    });
+  });
+
+  describe('processQueuedJob (open_position)', () => {
+    it('translates each locale independently, one job at a time', async () => {
+      const position = makePosition();
+      prisma.openPosition.findUnique.mockResolvedValue(position);
       libreTranslate.translateBatch.mockImplementation((_texts, locale) =>
         locale === 'ar'
           ? Promise.reject(new Error('ar backend down'))
@@ -492,10 +548,16 @@ describe('TranslationService', () => {
             }),
       );
 
-      expect(() => service.triggerAsync(position, ['ar', 'zh'])).not.toThrow();
-      // triggerAsync is fire-and-forget — give its internal promises a
-      // tick to settle before asserting on their side effects.
-      await new Promise((r) => setTimeout(r, 20));
+      await service.processQueuedJob({
+        contentType: 'open_position',
+        contentId: 'pos-1',
+        locale: 'ar',
+      });
+      await service.processQueuedJob({
+        contentType: 'open_position',
+        contentId: 'pos-1',
+        locale: 'zh',
+      });
 
       expect(prisma._rows.get('open_position:pos-1:ar').status).toBe('failed');
       expect(prisma._rows.get('open_position:pos-1:zh').status).toBe(
@@ -505,6 +567,7 @@ describe('TranslationService', () => {
 
     it('does not retranslate when the stored hash already matches the current content', async () => {
       const position = makePosition();
+      prisma.openPosition.findUnique.mockResolvedValue(position);
       const hash = service.computeSourceHash({
         title: position.title,
         description: position.description,
@@ -523,9 +586,25 @@ describe('TranslationService', () => {
         },
       });
 
-      service.triggerAsync(position, ['ar']);
-      await new Promise((r) => setTimeout(r, 20));
+      await service.processQueuedJob({
+        contentType: 'open_position',
+        contentId: 'pos-1',
+        locale: 'ar',
+      });
 
+      expect(libreTranslate.translateBatch).not.toHaveBeenCalled();
+    });
+
+    it('is a successful no-op when the position has since been deleted', async () => {
+      prisma.openPosition.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.processQueuedJob({
+          contentType: 'open_position',
+          contentId: 'pos-gone',
+          locale: 'ar',
+        }),
+      ).resolves.toBeUndefined();
       expect(libreTranslate.translateBatch).not.toHaveBeenCalled();
     });
   });

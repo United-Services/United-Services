@@ -5,6 +5,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   NotFoundException,
   Param,
   Patch,
@@ -88,15 +89,23 @@ export class ServicesController {
   // hit or not, since presigning is local (HMAC over the request, no S3
   // round trip) and a URL baked into the 5-minute service-list cache would
   // otherwise go stale/expired well before the cache entry itself does.
+  //
+  // `imageS3Key` itself is stripped from the returned object — the
+  // comment above already documented that promise, but the code didn't
+  // actually keep it: every field of `service` was being spread verbatim
+  // into every response, including this one, so the public GET /services
+  // and GET /services/:slug endpoints were handing an unauthenticated
+  // visitor the private internal S3 key on every request.
   private async withImageUrl<T extends Service>(
     service: T,
-  ): Promise<T & { imageUrl: string | null }> {
-    if (!service.imageS3Key) return { ...service, imageUrl: null };
+  ): Promise<Omit<T, 'imageS3Key'> & { imageUrl: string | null }> {
+    const { imageS3Key, ...rest } = service;
+    if (!imageS3Key) return { ...rest, imageUrl: null };
     const imageUrl = await this.s3.createDownloadUrl(
-      service.imageS3Key,
+      imageS3Key,
       IMAGE_URL_TTL_SECONDS,
     );
-    return { ...service, imageUrl };
+    return { ...rest, imageUrl };
   }
 
   // Merges each service's machine translation (name/shortDescription/
@@ -123,6 +132,18 @@ export class ServicesController {
   // translation is merged in afterward per-request, same reasoning as
   // withImageUrl not being baked into the cache either.
   @Public()
+  // Safe to let a browser/CDN cache this response body directly, not
+  // just the DB read behind it — every field is public marketing
+  // content, and the presigned imageUrl embedded per service is valid
+  // for a full hour (IMAGE_URL_TTL_SECONDS), well past this max-age. No
+  // per-user data ever appears here. stale-while-revalidate lets an
+  // edge cache keep serving the previous response for a bit while it
+  // refetches, instead of every visitor blocking on a fresh fetch the
+  // instant max-age expires.
+  @Header(
+    'Cache-Control',
+    `public, max-age=${CACHE_TTL_SECONDS}, stale-while-revalidate=60`,
+  )
   @Get()
   async list(@Query('locale') locale?: string) {
     const cached = await this.redis.get(SERVICES_LIST_CACHE_KEY);
@@ -183,6 +204,10 @@ export class ServicesController {
   }
 
   @Public()
+  @Header(
+    'Cache-Control',
+    `public, max-age=${CACHE_TTL_SECONDS}, stale-while-revalidate=60`,
+  )
   @Get(':slug')
   async bySlug(@Param('slug') slug: string, @Query('locale') locale?: string) {
     const service = await this.prisma.service.findUnique({ where: { slug } });

@@ -18,6 +18,7 @@ import { MeController } from './me/me.controller';
 import { UploadsController } from './uploads/uploads.controller';
 import { CryptoModule } from './crypto/crypto.module';
 import { RedisModule } from './redis/redis.module';
+import { QueueModule } from './queue/queue.module';
 import { RedisService } from './redis/redis.service';
 import { MfaModule } from './mfa/mfa.module';
 import { ServicesModule } from './services/services.module';
@@ -35,6 +36,7 @@ import { TicketsModule } from './tickets/tickets.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     RedisModule,
+    QueueModule,
     // Reuses the same RedisService connection RedisModule already manages
     // (services-list caching etc.) instead of opening a second, separate
     // ioredis connection just for throttler storage.

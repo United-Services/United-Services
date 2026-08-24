@@ -13,8 +13,8 @@ export const PAPER = "#F3F2EE"
 export const TEXT = "#121212"
 export const MUTED = "#8C8C88"
 export const LIME = "#D8FF3E"
-export const HEAD = "'Space Grotesk', sans-serif"
-export const BODY = "'Inter', sans-serif"
+export const HEAD = "var(--font-space-grotesk), sans-serif"
+export const BODY = "var(--font-inter), sans-serif"
 
 export const publicBtnPrimary: React.CSSProperties = {
   display: "inline-flex",

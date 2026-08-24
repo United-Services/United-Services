@@ -36,7 +36,7 @@ export const btnPrimary: React.CSSProperties = {
   fontWeight: 700,
   fontSize: 15,
   cursor: "pointer",
-  fontFamily: "Poppins, sans-serif",
+  fontFamily: "var(--font-poppins), sans-serif",
   transition: "background 0.2s, box-shadow 0.2s",
   display: "inline-block",
 }
@@ -50,7 +50,7 @@ export const btnGrey: React.CSSProperties = {
   fontWeight: 600,
   fontSize: 15,
   cursor: "pointer",
-  fontFamily: "Poppins, sans-serif",
+  fontFamily: "var(--font-poppins), sans-serif",
   transition: "background 0.2s, box-shadow 0.2s",
   display: "inline-block",
 }
@@ -66,5 +66,5 @@ export const inputStyle: React.CSSProperties = {
   outline: "none",
   transition: "border-color 0.2s",
   boxSizing: "border-box" as const,
-  fontFamily: "Poppins, sans-serif",
+  fontFamily: "var(--font-poppins), sans-serif",
 }
