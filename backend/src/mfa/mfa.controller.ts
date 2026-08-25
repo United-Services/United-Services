@@ -26,11 +26,7 @@ import type {
 
 // MFA is mandatory for admins only (docs/BUSINESS_RULES.md rule 2) —
 // every route here is admin-only, enforced by the global RolesGuard.
-// @MfaExempt() at the class level: MfaEnrolledGuard would otherwise lock
-// an unenrolled admin out of the very endpoints they need to enroll
-// through. The post-enrollment routes (webauthn/auth-*,
-// admin-password-reset) are still safe to expose pre-enrollment since
-// they require an already-registered credential to succeed at all.
+// See MfaEnrolledGuard for why this controller is @MfaExempt().
 @Controller('mfa')
 @Roles(Role.admin)
 @MfaExempt()
@@ -81,14 +77,7 @@ export class MfaController {
     return this.mfa.webauthnAuthOptions(user);
   }
 
-  // Not used by the admin-password-reset flow — that flow only calls
-  // webauthn/auth-options for the challenge, then bundles the raw
-  // response into POST /mfa/admin-password-reset directly, verifying via
-  // the service method itself rather than this endpoint. This one is the
-  // per-session MFA challenge (see MfaSessionVerifiedGuard): a successful
-  // verification here always marks the *current* Clerk session as having
-  // proven its second factor, since that's true regardless of why the
-  // challenge was requested.
+  // Per-session MFA challenge (see MfaSessionVerifiedGuard).
   @Post('webauthn/auth-verify')
   async webauthnAuthVerify(
     @CurrentUser() user: User,
@@ -103,11 +92,7 @@ export class MfaController {
     return { verified };
   }
 
-  // The TOTP counterpart to webauthn/auth-verify above — proves the
-  // second factor for *this sign-in* (MfaSessionVerifiedGuard), distinct
-  // from totp/confirm (one-time, at enrollment) and from the TOTP branch
-  // of admin-password-reset (which re-verifies specifically to authorize
-  // a password change, not to mark the session itself).
+  // TOTP counterpart to webauthn/auth-verify above.
   @Post('challenge/totp')
   async challengeTotp(
     @CurrentUser() user: User,

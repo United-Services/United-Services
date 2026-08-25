@@ -48,13 +48,6 @@ const CANDIDATE_UPLOAD_TYPES: Record<CandidateUploadKind, string[]> = {
 
 // Validates a pending upload (ownership + magic-byte content check) and,
 // if it passes, promotes it to its permanent key and returns that key.
-// The presigned PUT URL that wrote `pendingKey` is reusable until it
-// expires (S3 presigned URLs are not single-use) — validating content
-// once and then continuing to trust `pendingKey` forever would let an
-// attacker re-PUT different content to the same key after this check
-// already passed. Promoting to a fresh, non-presign-writable key and
-// deleting the pending object closes that window: nothing ever stores or
-// serves `pendingKey` again after this call returns.
 async function promoteValidatedCandidateUpload(
   s3: S3Service,
   userId: string,
@@ -97,31 +90,15 @@ export class MeController {
     private readonly mfa: MfaService,
   ) {}
 
-  // Exempt from MfaEnrolledGuard *and* MfaSessionVerifiedGuard: the
-  // frontend's /dashboard redirect calls this first to decide where an
-  // admin should go, including whether that's /admin-mfa-setup
-  // (me.mfaEnrolled === false) or /admin-mfa-challenge
-  // (me.mfaSessionVerified === false) in the first place. Without this
-  // exemption an admin's very first request in either state 403s here,
-  // before ever learning where to go — a lockout, not a security
-  // boundary. Returns only basic profile/role info (toDto below), nothing
-  // admin-privileged, so this doesn't weaken what either guard actually
-  // protects.
+  // Exempt from MFA guards to avoid a lockout loop before an admin has
+  // enrolled/verified. Returns only basic profile/role info.
   @MfaExempt()
   @Get()
   async me(@CurrentUser() user: User, @CurrentSessionId() sessionId: string) {
     return this.toDto(user, sessionId);
   }
 
-  // Same exemption reasoning as me() above: an admin with
-  // mustChangePassword=true hasn't necessarily enrolled MFA yet (a brand
-  // new admin-created account hasn't), so MfaEnrolledGuard would otherwise
-  // block them from ever reaching the one endpoint that lets them past
-  // the temp password in the first place — a lockout, not a real
-  // boundary, since this only ever changes the caller's own password.
-  // signOutOfOtherSessions clears every other session on the temp
-  // password, same as the admin-password-reset and admin-reset-someone-
-  // else's-password flows.
+  // Same exemption reasoning as me() above — only changes the caller's own password.
   @MfaExempt()
   @Post('change-password')
   async changePassword(

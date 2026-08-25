@@ -9,13 +9,9 @@ import type { Request } from 'express';
 import { MFA_EXEMPT_KEY } from '../decorators/mfa-exempt.decorator';
 import { Role, type User } from '../../generated/prisma';
 
-// The /admin-mfa-setup redirect in the frontend is a UX nudge, not an
-// authorization boundary — a raw HTTP request to any admin-only endpoint
-// would previously succeed for an admin account that has never completed
-// TOTP/WebAuthn enrollment. This guard closes that gap server-side.
-// Runs after RolesGuard in the chain (see app.module.ts), so any request
-// reaching here that belongs to a non-admin has already been rejected;
-// this guard only ever needs to gate admin accounts.
+// Enforces MFA enrollment server-side for admin accounts (the frontend
+// redirect alone is a UX nudge, not an authorization boundary).
+// Runs after RolesGuard in the chain (see app.module.ts).
 @Injectable()
 export class MfaEnrolledGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}

@@ -59,7 +59,7 @@ describe('AppointmentsController.book', () => {
     const result = await controller.book(client, { slotId: 'slot-1' });
 
     expect(tx.appointmentSlot.updateMany).toHaveBeenCalledWith({
-      where: { id: 'slot-1', isBooked: false },
+      where: { id: 'slot-1', isBooked: false, isClosed: false },
       data: { isBooked: true },
     });
     expect(tx.appointment.create).toHaveBeenCalledWith({
@@ -78,6 +78,71 @@ describe('AppointmentsController.book', () => {
     );
     expect(tx.appointment.create).not.toHaveBeenCalled();
   });
+
+  // A stricter simulation of rule 4's "no double-booking" guarantee: rather
+  // than mocking each call's count in isolation, this drives a single
+  // shared in-memory slot record through two sequential book() calls (as
+  // if two clients raced and the DB serialized them one after the other,
+  // which is exactly what the real $transaction's atomic updateMany
+  // achieves against Postgres). The first call must flip isBooked and
+  // succeed; the second, seeing isBooked already true, must be rejected
+  // cleanly rather than silently succeeding or throwing something
+  // unexpected/uncaught.
+  it('the second of two sequential booking attempts on the same slot is rejected, the first is not', async () => {
+    const slotState = { isBooked: false };
+    const otherClient = { id: 'client-2' } as User;
+
+    function makeRacyPrisma() {
+      type RacyTx = {
+        appointmentSlot: { updateMany: jest.Mock };
+        appointment: { create: jest.Mock };
+      };
+      const tx: RacyTx = {
+        appointmentSlot: {
+          updateMany: jest.fn(
+            ({
+              where,
+              data,
+            }: {
+              where: { isBooked: boolean };
+              data: { isBooked: boolean };
+            }) => {
+              if (slotState.isBooked !== where.isBooked) {
+                return Promise.resolve({ count: 0 });
+              }
+              slotState.isBooked = data.isBooked;
+              return Promise.resolve({ count: 1 });
+            },
+          ),
+        },
+        appointment: {
+          create: jest.fn().mockResolvedValue({ id: 'appt-1' }),
+        },
+      };
+      const prisma = {
+        $transaction: jest.fn((fn: (tx: RacyTx) => unknown) => fn(tx)),
+      } as unknown as PrismaService;
+      return prisma;
+    }
+
+    const prisma = makeRacyPrisma();
+    const controller = new AppointmentsController(prisma, makeAuditLog());
+
+    await expect(
+      controller.book(client, { slotId: 'slot-1' }),
+    ).resolves.toMatchObject({ id: 'appt-1' });
+
+    await expect(
+      controller.book(otherClient, { slotId: 'slot-1' }),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  // Rule 4 covers "no double-booking", and an admin-closed slot is also
+  // supposed to be unavailable to clients (it's deliberately excluded from
+  // GET /appointments/slots — see openSlots below). The atomic guard that
+  // actually enforces booking eligibility must therefore also exclude
+  // closed slots, not just booked ones, otherwise a client who already has
+  // a stale/guessed slotId for a since-closed slot can still book it.
 });
 
 describe('AppointmentsController.openSlots', () => {
@@ -111,6 +176,23 @@ describe('AppointmentsController.allSlots', () => {
       { appointment: null },
       { appointment: { status: { not: 'done' } } },
     ]);
+  });
+
+  // Per schema.prisma's AppointmentSlot.isClosed comment, the admin "all
+  // slots" view is the one place isClosed slots must still show up (so an
+  // admin can reopen/manage them) — unlike the client-facing openSlots
+  // list, which hides them entirely.
+  it('does not filter out admin-closed slots (unlike the client-facing openSlots list)', () => {
+    const findMany = jest.fn();
+    const prisma = {
+      appointmentSlot: { findMany },
+    } as unknown as PrismaService;
+    const controller = new AppointmentsController(prisma, makeAuditLog());
+
+    controller.allSlots();
+
+    const where = findMany.mock.calls[0][0].where;
+    expect(where.isClosed).toBeUndefined();
   });
 });
 
