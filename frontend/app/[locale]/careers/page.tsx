@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import CareersClient from "./CareersClient"
 import type { OpenPosition } from "@/views/Careers"
 import type { AppLocale } from "@/i18n/routing"
+import { SERVER_API_BASE_URL } from "@/lib/serverApiUrl"
 
 export const metadata: Metadata = {
   title: "Careers | United Services Egypt",
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
 // client-side fetch, same as before this existed.
 async function fetchInitialPositions(locale: string): Promise<OpenPosition[] | undefined> {
   try {
-    const url = new URL("/positions", process.env.NEXT_PUBLIC_API_URL)
+    const url = new URL("/positions", SERVER_API_BASE_URL)
     if (locale !== "en") url.searchParams.set("locale", locale)
     const res = await fetch(url, { next: { revalidate: 300 } })
     if (!res.ok) return undefined
