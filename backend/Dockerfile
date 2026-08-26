@@ -27,7 +27,16 @@ RUN npm run build
 # ── runtime ──────────────────────────────────────────────────────────────
 FROM node:22-slim AS runtime
 WORKDIR /app
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/* \
+# geoipupdate: downloads the GeoLite2-Country database GeoService reads
+# (see docker-entrypoint.sh) — a missing/stale DB doesn't break anything
+# (GeoService falls back to 'en'/null on a failed open), but without this
+# the admin dashboard's country analytics would just silently never work
+# in any Docker deployment. It lives in Debian's "contrib" component
+# (not "main"), which node:22-slim's default sources.list.d/debian.sources
+# doesn't enable — sed it in before apt-get update, or `apt-get install`
+# reports "no installation candidate" even though the package exists.
+RUN sed -i 's/^Components: main$/Components: main contrib/' /etc/apt/sources.list.d/debian.sources \
+    && apt-get update -y && apt-get install -y openssl geoipupdate && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 1001 nodejs \
     && useradd --system --uid 1001 --gid nodejs nestjs
 
@@ -53,7 +62,9 @@ RUN chmod +x docker-entrypoint.sh
 
 # TOTP KEK private keys live here — mount a real volume in production
 # (docker-compose.yml does this). Never bake a real key into the image.
-RUN mkdir -p /app/secrets/kek && chown -R nestjs:nodejs /app
+# geoip-db is the same story: a real volume in production so the
+# downloaded .mmdb survives restarts instead of re-fetching on every one.
+RUN mkdir -p /app/secrets/kek /app/geoip-db && chown -R nestjs:nodejs /app
 
 USER nestjs
 EXPOSE 3002

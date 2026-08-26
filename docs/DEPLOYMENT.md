@@ -77,21 +77,45 @@ Postgres+Redis, real migrations + KEK bootstrap, real nginx routing both
 3. Point DNS at the server, then add the domain as a Cloudflare zone in
    front of it (orange-cloud proxy mode) for WAF/CDN/DDoS protection —
    this is the deferred step `docs/REQUIREMENTS.md` flags as not done.
-   **Required as part of this step, not optional/later**: add nginx's
-   `real_ip` module to `nginx/nginx.conf` —
-   `set_real_ip_from <Cloudflare's current IP ranges>;` (fetch the live
-   list from https://www.cloudflare.com/ips-v4/ and /ips-v6/ at deploy
-   time — don't hardcode a snapshot, Cloudflare rotates these) plus
-   `real_ip_header CF-Connecting-IP;`. `backend/src/configure-app.ts`
-   sets `trust proxy: 1`, meaning it trusts exactly one hop (nginx) to
-   have already resolved the true visitor IP into `X-Forwarded-For`.
-   Without this nginx-side config, that assumption silently breaks the
-   moment Cloudflare goes in front: nginx would forward Cloudflare's edge
-   IP (or a spoofable client-supplied header) instead of the real
-   visitor, and the per-IP rate limiter would collapse every visitor into
-   the same bucket — no error, no crash, just a rate limiter that quietly
-   stops doing its job. See `configure-app.ts`'s comment on `trust proxy`
-   for the full reasoning.
+   **Required as part of this step, not optional/later**: nginx's
+   `real_ip` module — `real_ip_header CF-Connecting-IP;` plus a
+   `set_real_ip_from` line per Cloudflare IP range — is already wired up
+   in `nginx/nginx.conf`, kept current by `scripts/update-cloudflare-ips.sh`
+   (see that script's own comment for the mechanics; run it once by hand
+   now to confirm it applies cleanly, then put it on a daily
+   cron/systemd timer on whichever host runs `docker compose` — Cloudflare
+   rotates these ranges occasionally and publishes no webhook for it, so
+   daily polling is the only way to catch a change):
+   ```cron
+   # /etc/cron.d/update-cloudflare-ips — runs once a day; the script
+   # itself is a no-op whenever the fetched list hasn't changed.
+   0 4 * * * root cd /path/to/repo && ./scripts/update-cloudflare-ips.sh >> /var/log/update-cloudflare-ips.log 2>&1
+   ```
+   or, as a systemd timer instead of cron:
+   ```ini
+   # /etc/systemd/system/update-cloudflare-ips.service
+   [Service]
+   Type=oneshot
+   WorkingDirectory=/path/to/repo
+   ExecStart=/path/to/repo/scripts/update-cloudflare-ips.sh
+
+   # /etc/systemd/system/update-cloudflare-ips.timer
+   [Timer]
+   OnCalendar=daily
+   Persistent=true
+   [Install]
+   WantedBy=timers.target
+   ```
+   `backend/src/configure-app.ts` sets `trust proxy: 1`, meaning it
+   trusts exactly one hop (nginx) to have already resolved the true
+   visitor IP into `X-Forwarded-For`. Without the `real_ip` config above
+   staying current, that assumption silently breaks the moment
+   Cloudflare's ranges drift from what's in `nginx.conf`: nginx would
+   forward Cloudflare's edge IP (or a spoofable client-supplied header)
+   instead of the real visitor, and the per-IP rate limiter would
+   collapse every visitor into the same bucket — no error, no crash, just
+   a rate limiter that quietly stops doing its job. See
+   `configure-app.ts`'s comment on `trust proxy` for the full reasoning.
 4. Health check for the reverse proxy / uptime monitor to poll:
    `GET /api/v1/health` (already exists, does a real DB round-trip — see
    `backend/src/health/health.controller.ts`). Both Dockerfiles also

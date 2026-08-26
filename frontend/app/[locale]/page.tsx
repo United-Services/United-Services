@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import HomeClient from "./HomeClient"
 import type { ServicePreview } from "@/views/Home"
 import type { AppLocale } from "@/i18n/routing"
+import { SERVER_API_BASE_URL } from "@/lib/serverApiUrl"
 
 export const metadata: Metadata = {
   title: "United Services Egypt | Pipeline Integrity & Corrosion Control",
@@ -44,7 +45,7 @@ const structuredData = {
 // the same revalidate window as the backend's own cache.
 async function fetchInitialServices(locale: string): Promise<ServicePreview[] | undefined> {
   try {
-    const url = new URL("/services", process.env.NEXT_PUBLIC_API_URL)
+    const url = new URL("/services", SERVER_API_BASE_URL)
     if (locale !== "en") url.searchParams.set("locale", locale)
     const res = await fetch(url, { next: { revalidate: 300 } })
     if (!res.ok) return undefined

@@ -25,5 +25,34 @@ else
   echo "[entrypoint] KEK already present ($KEK_COUNT row(s)), skipping generation."
 fi
 
+# Refreshes the GeoLite2-Country database GeoService reads at
+# /app/geoip-db/GeoLite2-Country.mmdb (see docker-compose.yml's geoip-db
+# volume). geoipupdate itself is idempotent/cheap when the DB is already
+# current (conditional GET against MaxMind), so running this on every
+# container start is fine — it's how this stays fresh across redeploys
+# without a separate cron inside the container. Deliberately never fatal:
+# GEOIP_MAXMIND_ACCOUNT_ID/LICENSE_KEY not being set (e.g. local dev,
+# or this feature just not wired up yet in this environment) or the
+# download itself failing must not block the app from starting —
+# GeoService already falls back to 'en'/null on a missing/unreadable DB.
+if [ -n "${GEOIP_MAXMIND_ACCOUNT_ID:-}" ] && [ -n "${GEOIP_MAXMIND_LICENSE_KEY:-}" ]; then
+  echo "[entrypoint] updating GeoLite2-Country database..."
+  GEOIP_CONF="$(mktemp)"
+  {
+    echo "AccountID ${GEOIP_MAXMIND_ACCOUNT_ID}"
+    echo "LicenseKey ${GEOIP_MAXMIND_LICENSE_KEY}"
+    echo "EditionIDs ${GEOIP_MAXMIND_EDITION_IDS:-GeoLite2-Country}"
+    echo "DatabaseDirectory ${GEOIP_MAXMIND_DB_DIR:-/app/geoip-db}"
+  } > "$GEOIP_CONF"
+  if geoipupdate -f "$GEOIP_CONF" -d "${GEOIP_MAXMIND_DB_DIR:-/app/geoip-db}"; then
+    echo "[entrypoint] GeoLite2-Country database is up to date."
+  else
+    echo "[entrypoint] WARNING: geoipupdate failed — continuing without an updated GeoIP database (GeoService falls back to 'en'/null lookups)." >&2
+  fi
+  rm -f "$GEOIP_CONF"
+else
+  echo "[entrypoint] GEOIP_MAXMIND_ACCOUNT_ID/LICENSE_KEY not set — skipping GeoIP database update."
+fi
+
 echo "[entrypoint] starting the app..."
 exec node dist/main.js

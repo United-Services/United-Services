@@ -6,7 +6,7 @@ import type { IncidentAlertService } from '../../alerting/incident-alert.service
 // or raw error message (e.g. a Postgres constraint violation) into an API
 // response — a real information-disclosure risk, not just a UX concern.
 describe('AllExceptionsFilter', () => {
-  function makeHost() {
+  function makeHost(headers: Record<string, string> = {}) {
     const json = jest.fn();
     const status = jest.fn().mockReturnValue({ json });
     const host = {
@@ -15,7 +15,7 @@ describe('AllExceptionsFilter', () => {
         getRequest: () => ({
           method: 'GET',
           url: '/api/v1/whatever',
-          headers: {},
+          headers,
         }),
       }),
     } as unknown as ArgumentsHost;
@@ -55,6 +55,29 @@ describe('AllExceptionsFilter', () => {
     const body = json.mock.calls[0][0];
     expect(body.message).toBe('Internal server error');
     expect(JSON.stringify(body)).not.toContain('User_email_key');
+  });
+
+  it('includes the nginx-generated request id (X-Request-Id) in the 500 body when present, for a user to hand support', () => {
+    const filter = new AllExceptionsFilter(makeIncidentAlertService());
+    const { host, json } = makeHost({ 'x-request-id': 'abc123def456' });
+
+    filter.catch(new Error('boom'), host);
+
+    expect(json).toHaveBeenCalledWith({
+      statusCode: 500,
+      message: 'Internal server error',
+      requestId: 'abc123def456',
+    });
+  });
+
+  it('omits requestId from the body entirely when no X-Request-Id header was sent (never a null/undefined field)', () => {
+    const filter = new AllExceptionsFilter(makeIncidentAlertService());
+    const { host, json } = makeHost();
+
+    filter.catch(new Error('boom'), host);
+
+    const body = json.mock.calls[0][0];
+    expect(body).not.toHaveProperty('requestId');
   });
 
   it('still returns a safe generic body even when the thrown value is not an Error at all', () => {
@@ -103,6 +126,18 @@ describe('AllExceptionsFilter', () => {
           errorMessage:
             'duplicate key value violates unique constraint "User_email_key"',
         }),
+      );
+    });
+
+    it('passes the X-Request-Id header through to the on-call page as requestId', () => {
+      const incidentAlertService = makeIncidentAlertService();
+      const filter = new AllExceptionsFilter(incidentAlertService);
+      const { host } = makeHost({ 'x-request-id': 'trace-9988' });
+
+      filter.catch(new Error('boom'), host);
+
+      expect(incidentAlertService.trigger).toHaveBeenCalledWith(
+        expect.objectContaining({ requestId: 'trace-9988' }),
       );
     });
 

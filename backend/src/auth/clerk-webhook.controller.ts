@@ -39,9 +39,15 @@ export class ClerkWebhookController {
     if (!secret) throw new BadRequestException('Webhook not configured');
     if (!req.rawBody) throw new BadRequestException('Missing raw body');
 
-    const webhook = new Webhook(secret);
     let event: { type: string; data: ClerkUserPayload };
     try {
+      // Webhook's own constructor decodes `secret` (stripping the
+      // 'whsec_' prefix and base64-decoding the rest) and throws
+      // synchronously on a malformed value — this must be inside the
+      // same try/catch as verify() below, not before it, or a bad
+      // CLERK_WEBHOOK_SECRET turns into an unhandled 500 instead of a
+      // clean 400.
+      const webhook = new Webhook(secret);
       event = webhook.verify(req.rawBody, {
         'svix-id': headers['svix-id'],
         'svix-timestamp': headers['svix-timestamp'],
