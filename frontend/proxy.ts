@@ -19,7 +19,27 @@ const intlMiddleware = createIntlMiddleware(routing)
 // server-side auth()+role re-check and redirect before rendering (see
 // docs/BUSINESS_RULES.md) — that per-page check was always the real gate;
 // this file only ever added a redundant, incompletely-covered pre-filter.
-export default clerkMiddleware((_auth, req) => intlMiddleware(req))
+// intlMiddleware only ever makes sense for page routes — it exists to
+// resolve/redirect to a locale-prefixed path. Running it against
+// /internal-log (browser-side Betterstack log shipping — see
+// instrumentation-client.ts) or /api/* rewrites the request to a
+// locale-prefixed path that doesn't exist there (e.g. /en/internal-log),
+// which 404s since these routes intentionally live outside app/[locale].
+// The "/(api|trpc)(.*)" matcher entry below is Clerk's, not next-intl's
+// — it needs every request (API routes included) to run through
+// clerkMiddleware for auth context, but that doesn't mean intlMiddleware
+// should also run on them. (/api/* itself is proxied straight to the
+// backend container by nginx/nginx.conf's `location /api/` and never
+// actually reaches this app at all in the real deployment — this
+// exclusion only matters for whatever hits this middleware directly,
+// e.g. local `next dev` with no nginx in front.)
+const NON_PAGE_PATHS = ["/api/", "/internal-log"]
+
+export default clerkMiddleware((_auth, req) => {
+  const { pathname } = req.nextUrl
+  if (NON_PAGE_PATHS.some((p) => pathname.startsWith(p))) return
+  return intlMiddleware(req)
+})
 
 export const config = {
   matcher: [

@@ -93,34 +93,19 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       S3_BUCKET_NAME: ${S3_BUCKET_NAME}
       BETTERSTACK_SOURCE_TOKEN: ${BETTERSTACK_SOURCE_TOKEN}
-      # Phone-paging on-call alerting for 5xx errors — see
-      # backend/src/alerting/ and docs/DEPLOYMENT.md's "On-call alerting"
-      # section. Defaults to disabled: ALERTING_ENABLED must be explicitly
-      # set to "true" in .env (the real production one, never local dev)
-      # for this to do anything at all.
+      BETTERSTACK_INGEST_URL: ${BETTERSTACK_INGEST_URL}
       ALERTING_ENABLED: ${ALERTING_ENABLED:-false}
       NTFY_TOPIC_URL: ${NTFY_TOPIC_URL}
       WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-localhost}
       WEBAUTHN_RP_ORIGIN: ${WEBAUTHN_RP_ORIGIN:-http://localhost}
       TOTP_KEK_PROVIDER: local
       KEK_KEYS_DIR: /app/secrets/kek
-      # Internal Docker service name — resolves for `backend` (a
-      # container on the same network) even though the host-mapped
-      # 127.0.0.1:5000 above is what backend/.env uses for host-run dev.
       LIBRETRANSLATE_URL: ${LIBRETRANSLATE_URL:-http://libretranslate:5000}
       TRANSLATION_MONTHLY_CHAR_BUDGET: ${TRANSLATION_MONTHLY_CHAR_BUDGET:-2000000}
       TRANSLATION_LOCK_TTL_MS: ${TRANSLATION_LOCK_TTL_MS:-30000}
       TRANSLATION_SYNC_WAIT_MS: ${TRANSLATION_SYNC_WAIT_MS:-2500}
-      # Powers GeoService's country-based locale/analytics lookups (admin
-      # dashboard's requests-by-country map). Optional: unset means
-      # docker-entrypoint.sh skips the GeoLite2 download entirely and
-      # GeoService falls back to 'en'/null lookups — nothing breaks, that
-      # feature just doesn't work until these are set.
       GEOIP_MAXMIND_ACCOUNT_ID: ${GEOIP_MAXMIND_ACCOUNT_ID:-}
       GEOIP_MAXMIND_LICENSE_KEY: ${GEOIP_MAXMIND_LICENSE_KEY:-}
-      # GeoService only ever reads GeoLite2-Country.mmdb, but this stays
-      # overridable rather than hardcoded — matches the account's actual
-      # MaxMind license, which may cover additional editions.
       GEOIP_MAXMIND_EDITION_IDS: ${GEOIP_MAXMIND_EDITION_IDS:-GeoLite2-Country}
       GEOIP_MAXMIND_DB_DIR: /app/geoip-db
     volumes:
@@ -146,14 +131,11 @@ services:
     environment:
       PORT: 3000
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api/v1}
-      # Server Components run inside this container, not the browser —
-      # NEXT_PUBLIC_API_URL above goes through nginx (only reachable from
-      # outside), so server-side fetches need the backend's internal
-      # container-to-container address instead. See frontend/lib/api.ts's
-      # and frontend/lib/serverApiUrl.ts's comments for the full reasoning.
       INTERNAL_API_URL: http://backend:3002/api/v1
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
+      BETTERSTACK_SOURCE_TOKEN: ${BETTERSTACK_SOURCE_TOKEN}
+      BETTERSTACK_INGEST_URL: ${BETTERSTACK_INGEST_URL}
     networks: [internal]
 
   nginx:
