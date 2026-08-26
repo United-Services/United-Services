@@ -4,10 +4,13 @@ import { Role } from '../generated/prisma';
 import type { PrismaService } from '../prisma/prisma.service';
 
 const verifyMock = jest.fn();
+const webhookCtorMock = jest.fn().mockImplementation(() => ({
+  verify: (...args: unknown[]) => verifyMock(...args),
+}));
 jest.mock('svix', () => ({
-  Webhook: jest.fn().mockImplementation(() => ({
-    verify: (...args: unknown[]) => verifyMock(...args),
-  })),
+  Webhook: jest
+    .fn()
+    .mockImplementation((...args: unknown[]) => webhookCtorMock(...args)),
 }));
 
 // This is the ONLY place in the app a user's role is ever set from Clerk
@@ -26,6 +29,10 @@ describe('ClerkWebhookController', () => {
 
   beforeEach(() => {
     verifyMock.mockReset();
+    webhookCtorMock.mockReset();
+    webhookCtorMock.mockImplementation(() => ({
+      verify: (...args: unknown[]) => verifyMock(...args),
+    }));
     prisma = { user: { upsert: jest.fn().mockResolvedValue({}) } };
     controller = new ClerkWebhookController(prisma as unknown as PrismaService);
     process.env.CLERK_WEBHOOK_SECRET = 'whsec_test';
@@ -42,6 +49,19 @@ describe('ClerkWebhookController', () => {
     await expect(controller.handle({}, headers)).rejects.toThrow(
       BadRequestException,
     );
+  });
+
+  it('rejects with a clean 400 when CLERK_WEBHOOK_SECRET itself is malformed (constructing Webhook throws)', async () => {
+    // svix's Webhook constructor decodes the secret and throws
+    // synchronously on a malformed value — this must surface as the same
+    // BadRequestException as a bad signature, never an unhandled 500.
+    webhookCtorMock.mockImplementation(() => {
+      throw new Error('Base64Coder: incorrect characters for decoding');
+    });
+    await expect(
+      controller.handle({ rawBody: Buffer.from('{}') }, headers),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.user.upsert).not.toHaveBeenCalled();
   });
 
   it('rejects when svix signature verification fails', async () => {
