@@ -39,7 +39,8 @@ export function requestLoggingMiddleware(
   res.on('finish', () => {
     const durationMs = Date.now() - start;
     const userId = (req as Request & { user?: User }).user?.id;
-    const line = `${req.method} ${req.originalUrl} -> ${res.statusCode} (${durationMs}ms)${userId ? ` [user:${userId}]` : ''}`;
+    const requestId = req.headers['x-request-id'] as string | undefined;
+    const line = `${req.method} ${req.originalUrl} -> ${res.statusCode} (${durationMs}ms)${userId ? ` [user:${userId}]` : ''}${requestId ? ` [req:${requestId}]` : ''}`;
 
     if (res.statusCode >= 500) logger.error(line);
     else if (res.statusCode >= 400) logger.warn(line);

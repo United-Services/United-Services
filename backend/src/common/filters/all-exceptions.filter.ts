@@ -29,13 +29,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
+    const requestId = request.headers['x-request-id'] as string | undefined;
+    const idSuffix = requestId ? ` [req:${requestId}]` : '';
+
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       // Still log 5xx HttpExceptions (rare, but possible) — 4xx are
       // expected client-driven outcomes and too noisy to log every time.
       if (status >= 500) {
         this.logger.error(
-          `${request.method} ${request.url} -> ${status}`,
+          `${request.method} ${request.url} -> ${status}${idSuffix}`,
           exception.stack,
         );
         this.pageOnCall(request, status, exception);
@@ -47,7 +50,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const error =
       exception instanceof Error ? exception : new Error(String(exception));
     this.logger.error(
-      `${request.method} ${request.url} -> unhandled: ${error.message}`,
+      `${request.method} ${request.url} -> unhandled: ${error.message}${idSuffix}`,
       error.stack,
     );
     this.pageOnCall(request, HttpStatus.INTERNAL_SERVER_ERROR, error);
@@ -55,6 +58,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
       message: 'Internal server error',
+      // Same opaque, non-sensitive value already in the X-Request-Id
+      // response header (set by nginx) — included in the body too so a
+      // user reporting a failure has something to hand support without
+      // needing to open devtools to find the header.
+      ...(requestId ? { requestId } : {}),
     });
   }
 
