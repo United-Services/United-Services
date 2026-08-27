@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useSignUp, useAuth } from "@clerk/nextjs"
 import { useTranslations } from "next-intl"
 import { InlineSpinner } from "../components/Spinner"
@@ -47,6 +47,15 @@ export default function CandidateSignup({ onNavigate, positionId }: Props) {
   const set =
     (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((f) => ({ ...f, [k]: e.target.value }))
+
+  // Same auto-redirect pattern as ClientSignup.tsx — the "what's next"
+  // checklist stays readable for a few seconds, but the candidate lands on
+  // their dashboard automatically instead of relying on the manual button.
+  useEffect(() => {
+    if (!submitted) return
+    const timer = setTimeout(() => onNavigate("candidate-dashboard"), 5000)
+    return () => clearTimeout(timer)
+  }, [submitted, onNavigate])
 
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault()
