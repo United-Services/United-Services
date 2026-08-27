@@ -6,7 +6,9 @@
 // AdminSecuritySection.tsx — this file only owns navigation, the shared
 // error banner, and wiring the right section component to `section`.
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import Image from "next/image"
+import { useAuth } from "@clerk/nextjs"
 import { useTranslations } from "next-intl"
 import { palette } from "../theme"
 import {
@@ -38,6 +40,7 @@ import AdminRfqsSection from "./AdminRfqsSection"
 import AdminBookingsSection from "./AdminBookingsSection"
 import AdminAuditSection from "./AdminAuditSection"
 import AdminTicketsSection from "./AdminTicketsSection"
+import { prefetchSpecs } from "../lib/specsPrefetch"
 
 interface Props {
   onLogout: () => void
@@ -47,7 +50,21 @@ interface Props {
 export default function AdminDashboard({ onLogout, onNavigate }: Props) {
   const t = useTranslations("adminDashboard")
   const tCommon = useTranslations("common")
+  const { getToken } = useAuth()
   const [section, setSection] = useState("overview")
+
+  // Warms the Specs section's data and images in the background as soon
+  // as the dashboard mounts, whichever section the admin actually lands
+  // on first — by the time they click "Specs" it's usually already
+  // cached (see lib/specsPrefetch.ts), instead of starting a fresh fetch
+  // (and a blank skeleton) only once they navigate there.
+  useEffect(() => {
+    prefetchSpecs(getToken).catch(() => {
+      // Silent — AdminSpecsSection does its own real fetch (with real
+      // error handling) if this warm-up didn't pan out.
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   // Every section's load/action functions set this on failure instead of
   // letting a rejected axios promise propagate unhandled — previously a
   // 4xx/5xx/network error left whatever section triggered it silently
@@ -113,9 +130,11 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
               gap: 8,
             }}
           >
-            <img
+            <Image
               src="/images/logo-footer.webp"
               alt="United Services Egypt"
+              width={89}
+              height={64}
               style={{ height: 26, width: "auto", objectFit: "contain" }}
             />
             <div className="sidebar-label">

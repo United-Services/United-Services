@@ -289,6 +289,7 @@ export default function Home({ onNavigate, initialServices }: Props) {
                   key={i}
                   src={c.img}
                   alt={c.name}
+                  loading="lazy"
                   style={{
                     height: 40,
                     width: "auto",

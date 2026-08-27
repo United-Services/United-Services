@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
 import { GeoService } from '../geo/geo.service';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -13,10 +14,19 @@ import {
   AnalyticsEventTypePrefix,
 } from './analytics-event-type.enums';
 
+// Both admin-overview endpoints below run 10-11 aggregate/count/groupBy
+// queries apiece and are hit on every admin dashboard load — this data
+// doesn't need to be real-time, so a short cache turns "every visit
+// re-runs 11 queries" into "at most once every 30s across all admins."
+const OVERVIEW_CACHE_TTL_SECONDS = 30;
+const OVERVIEW_CACHE_KEY = 'analytics:overview';
+const GEO_OVERVIEW_CACHE_KEY = 'analytics:geo-overview';
+
 @Controller('analytics')
 export class AnalyticsController {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
     private readonly geo: GeoService,
   ) {}
 
@@ -44,6 +54,23 @@ export class AnalyticsController {
   @Roles(Role.admin)
   @Get('overview')
   async overview() {
+    const cached = await this.redis.get(OVERVIEW_CACHE_KEY);
+    if (cached)
+      return JSON.parse(cached) as Awaited<
+        ReturnType<AnalyticsController['computeOverview']>
+      >;
+
+    const result = await this.computeOverview();
+    await this.redis.set(
+      OVERVIEW_CACHE_KEY,
+      JSON.stringify(result),
+      'EX',
+      OVERVIEW_CACHE_TTL_SECONDS,
+    );
+    return result;
+  }
+
+  private async computeOverview() {
     const [
       clientCount,
       companies,
@@ -123,7 +150,17 @@ export class AnalyticsController {
   // resolved visitor country, most recent 90 days of `page_view` events.
   @Roles(Role.admin)
   @Get('geo-overview')
-  async geoOverview() {
+  async geoOverview(): Promise<{
+    since: string;
+    countries: { country: string; count: number }[];
+  }> {
+    const cached = await this.redis.get(GEO_OVERVIEW_CACHE_KEY);
+    if (cached)
+      return JSON.parse(cached) as {
+        since: string;
+        countries: { country: string; count: number }[];
+      };
+
     const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
     const grouped = await this.prisma.analyticsEvent.groupBy({
       by: ['country'],
@@ -134,12 +171,19 @@ export class AnalyticsController {
       },
       _count: true,
     });
-    return {
+    const result = {
       since: since.toISOString(),
       countries: grouped
         .filter((g) => g.country)
         .map((g) => ({ country: g.country as string, count: g._count }))
         .sort((a, b) => b.count - a.count),
     };
+    await this.redis.set(
+      GEO_OVERVIEW_CACHE_KEY,
+      JSON.stringify(result),
+      'EX',
+      OVERVIEW_CACHE_TTL_SECONDS,
+    );
+    return result;
   }
 }

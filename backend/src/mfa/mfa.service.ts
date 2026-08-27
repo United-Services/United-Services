@@ -181,6 +181,29 @@ export class MfaService {
     return { success: true };
   }
 
+  // Self-service delete of the admin's authenticator app enrollment
+  // (Security page) — same "never strand the account with zero working MFA
+  // methods" guard as deleteWebauthnCredential below.
+  async deleteTotpCredential(user: User) {
+    const [totp, webauthnCount] = await Promise.all([
+      this.prisma.totpCredential.findUnique({ where: { userId: user.id } }),
+      this.prisma.webAuthnCredential.count({ where: { userId: user.id } }),
+    ]);
+    if (!totp?.confirmedAt) {
+      throw new BadRequestException(
+        'No confirmed authenticator app enrollment',
+      );
+    }
+    if (webauthnCount === 0) {
+      throw new ConflictException(
+        'This is your only MFA method — add another authenticator before removing this one',
+      );
+    }
+
+    await this.prisma.totpCredential.delete({ where: { userId: user.id } });
+    return { success: true };
+  }
+
   async verifyTotp(user: User, code: string): Promise<boolean> {
     const credential = await this.prisma.totpCredential.findUnique({
       where: { userId: user.id },

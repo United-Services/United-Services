@@ -203,6 +203,28 @@ export default function AdminSecuritySection() {
     }
   }
 
+  // Self-service delete of the authenticator app enrollment — same
+  // never-strand-the-account guard as deleteWebAuthn (see
+  // mfa.service.ts's deleteTotpCredential).
+  const deleteTotp = async () => {
+    if (!window.confirm(t("confirmDeleteAuthenticator"))) return
+    setBusy("totp-delete")
+    setMessage(null)
+    try {
+      const token = await getToken()
+      await axios.delete("/mfa/totp", { headers: authHeader(token) })
+      setMessage({ type: "ok", text: t("messages.authenticatorDeleted") })
+      await loadStatus()
+    } catch (err) {
+      setMessage({
+        type: "error",
+        text: webauthnOrApiErrorMessage(err, t("messages.authenticatorDeleteFailed")),
+      })
+    } finally {
+      setBusy(null)
+    }
+  }
+
   const resetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
     setBusy("reset")
@@ -329,13 +351,49 @@ export default function AdminSecuritySection() {
         >
           {t("authenticatorApp")}
         </div>
-        <div style={{ fontSize: 13, color: palette.muted, marginBottom: 16 }}>
-          {t("status")}{" "}
-          <strong
-            style={{ color: status.totpEnrolled ? "#16A34A" : palette.muted }}
-          >
-            {status.totpEnrolled ? t("enabled") : t("notEnrolled")}
-          </strong>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            fontSize: 13,
+            color: palette.muted,
+            marginBottom: 16,
+          }}
+        >
+          <span>
+            {t("status")}{" "}
+            <strong
+              style={{ color: status.totpEnrolled ? "#16A34A" : palette.muted }}
+            >
+              {status.totpEnrolled ? t("enabled") : t("notEnrolled")}
+            </strong>
+          </span>
+          {status.totpEnrolled && (
+            <button
+              type="button"
+              onClick={deleteTotp}
+              disabled={busy === "totp-delete"}
+              style={{
+                border: "none",
+                background: "none",
+                color: "#DC2626",
+                fontWeight: 600,
+                fontSize: 12,
+                cursor: "pointer",
+                fontFamily: "Poppins, sans-serif",
+                padding: "4px 8px",
+                flexShrink: 0,
+              }}
+            >
+              {busy === "totp-delete" ? (
+                <InlineSpinner size={12} />
+              ) : (
+                t("deleteAuthenticator")
+              )}
+            </button>
+          )}
         </div>
 
         {totpQr ? (

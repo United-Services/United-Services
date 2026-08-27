@@ -1,9 +1,16 @@
 import { AnalyticsController } from './analytics.controller';
 import type { PrismaService } from '../prisma/prisma.service';
+import type { RedisService } from '../redis/redis.service';
 import type { GeoService } from '../geo/geo.service';
 
 describe('AnalyticsController', () => {
   function makeController(country: string | null = 'EG') {
+    // Always a cache miss — these tests exercise the actual query logic,
+    // not the cache layer (see the dedicated caching describe block below).
+    const redis = {
+      get: jest.fn().mockResolvedValue(null),
+      set: jest.fn().mockResolvedValue('OK'),
+    } as unknown as RedisService;
     const prisma = {
       analyticsEvent: {
         create: jest.fn().mockResolvedValue({}),
@@ -22,7 +29,12 @@ describe('AnalyticsController', () => {
     const geo = {
       countryForIp: jest.fn().mockReturnValue(country),
     } as unknown as GeoService;
-    return { controller: new AnalyticsController(prisma, geo), prisma, geo };
+    return {
+      controller: new AnalyticsController(prisma, redis, geo),
+      prisma,
+      redis,
+      geo,
+    };
   }
 
   const fakeReq = (ip = '203.0.113.5') =>
@@ -141,6 +153,45 @@ describe('AnalyticsController', () => {
       const result = await controller.geoOverview();
 
       expect(result.countries).toEqual([]);
+    });
+  });
+
+  describe('overview/geoOverview caching', () => {
+    it('overview returns the cached value without querying the database on a cache hit', async () => {
+      const { controller, prisma, redis } = makeController();
+      const cached = { clientCount: 999 };
+      (redis.get as jest.Mock).mockResolvedValue(JSON.stringify(cached));
+
+      const result = await controller.overview();
+
+      expect(result).toEqual(cached);
+      expect(prisma.user.count).not.toHaveBeenCalled();
+    });
+
+    it('overview writes the freshly computed result to the cache on a miss', async () => {
+      const { controller, prisma, redis } = makeController();
+      (prisma.user.count as jest.Mock).mockResolvedValue(7);
+
+      const result = await controller.overview();
+
+      expect(result.clientCount).toBe(7);
+      expect(redis.set).toHaveBeenCalledWith(
+        'analytics:overview',
+        JSON.stringify(result),
+        'EX',
+        30,
+      );
+    });
+
+    it('geoOverview returns the cached value without querying the database on a cache hit', async () => {
+      const { controller, prisma, redis } = makeController();
+      const cached = { since: 'x', countries: [{ country: 'EG', count: 1 }] };
+      (redis.get as jest.Mock).mockResolvedValue(JSON.stringify(cached));
+
+      const result = await controller.geoOverview();
+
+      expect(result).toEqual(cached);
+      expect(prisma.analyticsEvent.groupBy).not.toHaveBeenCalled();
     });
   });
 });

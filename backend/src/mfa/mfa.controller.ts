@@ -57,6 +57,21 @@ export class MfaController {
     return this.mfa.confirmTotp(user, dto.code);
   }
 
+  // Self-service: an admin removing their own authenticator app enrollment.
+  // MfaService rejects this if it would leave the account with zero
+  // working MFA methods.
+  @Delete('totp')
+  async deleteTotp(@CurrentUser() user: User) {
+    const result = await this.mfa.deleteTotpCredential(user);
+    await this.auditLog.record({
+      actorUserId: user.id,
+      action: 'admin.totp_credential_deleted',
+      targetType: 'TotpCredential',
+      targetId: user.id,
+    });
+    return result;
+  }
+
   @Post('webauthn/register-options')
   webauthnRegisterOptions(@CurrentUser() user: User) {
     return this.mfa.webauthnRegisterOptions(user);
