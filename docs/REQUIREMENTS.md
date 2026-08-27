@@ -148,14 +148,27 @@ Fax: (+2) 0227033656
       #46 — see note below for what's intentionally still
       unmocked/untested) — no minimum coverage percentage enforced as a
       CI gate
-- [~] Mobile-responsive throughout — retrofitted breakpoints for the
+- [x] Mobile-responsive throughout — retrofitted breakpoints for the
       worst-broken layouts (ClientSignup's 50/50 split collapses to
       form-only under 860px, the 3-col service/spec-file card grids fall
       back to 1–2 cols, both dashboard sidebars shrink to an icon rail
-      under 780px). Verified at the code/build level (classes render in
-      HTML, media queries land in compiled CSS) — not pixel-verified in
-      an actual mobile browser, no browser/screenshot tool available.
-      Smaller 2-field form grids (e.g. first/last name pairs) left as-is,
+      under 780px). Pixel-verified with Playwright at a 390×664 mobile
+      viewport (iPhone 13 profile) across the public pages, sign-in,
+      client-signup (step 1), and candidate-signup — confirmed all three
+      of the claims above render as described, with zero horizontal
+      overflow on any page after the fixes below. Two real mobile bugs
+      found and fixed in the process (see CHANGELOG): the sign-in page's
+      split-screen photo panel didn't actually hide on mobile (an
+      unguarded `display: none` lost to the panel's own inline
+      `display: "flex"`), and the shared `.responsive-card-grid` class's
+      bare `1fr` mobile track let a wide child blow out the single
+      column and push the whole page (and the fixed header) into
+      horizontal scroll — fixed with `minmax(0, 1fr)`. Client-dashboard
+      and admin-dashboard could only be reached as far as the sign-in
+      redirect (Clerk auth blocks further access in this session) — the
+      authenticated dashboard shell/sidebar itself was not pixel-checked,
+      only confirmed via the sidebar CSS rule and code review. Smaller
+      2-field form grids (e.g. first/last name pairs) left as-is,
       acceptable degradation rather than broken.
 - [x] Strong-password enforcement with password-manager/autofill support
       (`autocomplete="new-password"` etc. throughout signup/reset forms)
