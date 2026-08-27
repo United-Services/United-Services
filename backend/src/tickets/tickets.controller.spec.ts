@@ -169,6 +169,69 @@ describe('TicketsController', () => {
       });
     });
 
+    // This is the most public, least-authenticated surface in the app —
+    // @Public() plus a tight 5/min @Throttle specifically because anyone
+    // on the internet can hit it with arbitrary text. The backend's own
+    // job here is narrow: don't choke on adversarial input. Rejecting
+    // over-limit strings is CreateTicketDto's @MaxLength (enforced by the
+    // global ValidationPipe before create() ever runs — bypassed here
+    // since these tests call the controller method directly, so the
+    // DTO-level rejection itself is covered separately in
+    // create-ticket.dto.spec.ts). Unicode/HTML content, by contrast,
+    // should pass straight through unmolested: Prisma parameterizes every
+    // query, so nothing here is ever concatenated into SQL, and escaping
+    // HTML for safe display is React's job on the admin dashboard
+    // (default JSX escaping), not this endpoint's — a raw <script> tag is
+    // just inert stored data as far as the backend is concerned.
+    it('stores unicode/emoji in name and details without alteration', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.ticket.create as jest.Mock).mockResolvedValue({ id: 't-emoji' });
+
+      const unicodeName = '日本語テスト 🎉🔥 Ñoño';
+      const unicodeDetails = 'Emoji stress test: 😀😃😄🚀💥 — 中文测试 — मानक';
+
+      await controller.create({
+        ...baseDto,
+        name: unicodeName,
+        details: unicodeDetails,
+      });
+
+      expect(prisma.ticket.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          name: unicodeName,
+          details: unicodeDetails,
+        }),
+      });
+    });
+
+    it('stores HTML/script-shaped strings as inert literal data rather than rejecting or interpreting them', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.ticket.create as jest.Mock).mockResolvedValue({ id: 't-html' });
+
+      const scriptName = '<script>alert(document.cookie)</script>';
+      const scriptDetails =
+        '"><img src=x onerror=alert(1)>\' OR 1=1; DROP TABLE tickets; --';
+
+      const result = await controller.create({
+        ...baseDto,
+        name: scriptName,
+        details: scriptDetails,
+      });
+
+      expect(result).toEqual({ id: 't-html' });
+      // Passed through to Prisma verbatim, as a plain parameterized value
+      // — not stripped, escaped, or otherwise transformed. Prisma's
+      // parameterization means this is stored as inert text; sanitizing
+      // it here would be redundant with (and no substitute for) React's
+      // default escaping on render.
+      expect(prisma.ticket.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          name: scriptName,
+          details: scriptDetails,
+        }),
+      });
+    });
+
     it('promotes a valid screenshot (right type and size) and updates the ticket row', async () => {
       const { controller, prisma, s3 } = makeController();
       (prisma.ticket.create as jest.Mock).mockResolvedValue({ id: 't-5' });
