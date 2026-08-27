@@ -455,7 +455,7 @@ export default function AdminSecuritySection() {
                 }`,
                 background:
                   resetMethod === "totp" ? palette.accentLight : "#fff",
-                color: resetMethod === "totp" ? palette.accent : palette.muted,
+                color: resetMethod === "totp" ? palette.navy : palette.muted,
                 fontWeight: 600,
                 fontSize: 12.5,
                 cursor: "pointer",
@@ -477,7 +477,7 @@ export default function AdminSecuritySection() {
                 background:
                   resetMethod === "webauthn" ? palette.accentLight : "#fff",
                 color:
-                  resetMethod === "webauthn" ? palette.accent : palette.muted,
+                  resetMethod === "webauthn" ? palette.navy : palette.muted,
                 fontWeight: 600,
                 fontSize: 12.5,
                 cursor: "pointer",
