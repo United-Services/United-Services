@@ -96,6 +96,7 @@ model User {
 
   @@index([role])
   @@index([companyName])
+  @@index([createdAt])
 }
 
 // One TOTP secret per admin. `confirmedAt` is null until the admin proves
@@ -229,6 +230,7 @@ model FileAccessRequest {
   @@index([serviceFileId])
   @@index([status])
   @@index([decidedByAdminId])
+  @@index([requestedAt])
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -253,6 +255,7 @@ model ServiceRequest {
   @@index([clientId, createdAt])
   @@index([status])
   @@index([serviceId])
+  @@index([createdAt])
 }
 
 // ─────────────────────────────────────────────────────────────────────────
