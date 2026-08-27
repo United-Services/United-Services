@@ -46,6 +46,15 @@ interface MfaStatus {
 // instrumentation-client.ts), so a real failure is now traceable.
 function webauthnOrApiErrorMessage(err: unknown, fallback: string): string {
   console.error("[AdminSecuritySection] WebAuthn/API call failed:", err)
+  // @simplewebauthn/browser throws this exact message when
+  // window.PublicKeyCredential is unavailable, which happens on any
+  // insecure context (plain http:// on a non-localhost origin, e.g. a
+  // LAN IP) — the browser itself hides the WebAuthn API there, nothing
+  // the app can work around. The stock message reads like a browser
+  // compatibility problem, so replace it with the actual cause.
+  if (err instanceof Error && err.message === "WebAuthn is not supported in this browser") {
+    return "Biometric sign-in requires a secure connection (HTTPS). This page was loaded over plain HTTP, so your browser has disabled it — use the authenticator code method instead, or access this site over HTTPS."
+  }
   if (isAxiosError(err)) return getErrorMessage(err, fallback)
   if (err instanceof Error && err.message) return err.message
   return fallback
