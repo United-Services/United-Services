@@ -9,7 +9,7 @@ on:
 
 jobs:
   load-test:
-    name: k6 load test (public endpoints + rate limiter)
+    name: k6 load test (public endpoints + rate limiter + WebSocket gateway)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -73,8 +73,12 @@ jobs:
       - uses: grafana/setup-k6-action@v1
       - name: Baseline (public endpoints)
         run: k6 run loadtest/public-endpoints.js
-      - name: Rate limiter enforcement
+      - name: Rate limiter enforcement (global)
         run: k6 run loadtest/rate-limit-enforcement.js
+      - name: Rate limiter enforcement (public POST endpoints)
+        run: k6 run loadtest/public-write-rate-limits.js
+      - name: Appointments live-updates gateway (WebSocket)
+        run: k6 run -e WS_URL=ws://localhost:3002 loadtest/appointments-websocket.js
       - name: Stop the app
         if: always()
         run: kill "$(cat app.pid)" || true

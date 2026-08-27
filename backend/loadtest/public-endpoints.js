@@ -34,6 +34,8 @@ const BASE_URL = __ENV.BASE_URL ?? 'http://localhost:3002/api/v1';
 const errorRate = new Rate('errors');
 const healthDuration = new Trend('health_duration', true);
 const servicesDuration = new Trend('services_duration', true);
+const positionsDuration = new Trend('positions_duration', true);
+const geoLocaleDuration = new Trend('geo_locale_duration', true);
 
 export const options = {
   scenarios: {
@@ -69,6 +71,29 @@ export default function () {
   check(services, {
     'services is 200': (r) => r.status === 200,
     'services returns an array': (r) => Array.isArray(r.json()),
+  });
+
+  // Careers page — same cache-aside pattern as /services (Redis, 300s
+  // TTL, per-locale bucket), added when PositionsController grew that
+  // cache. Not previously exercised by this baseline.
+  const positions = http.get(`${BASE_URL}/positions`);
+  positionsDuration.add(positions.timings.duration);
+  errorRate.add(positions.status !== 200);
+  check(positions, {
+    'positions is 200': (r) => r.status === 200,
+    'positions returns an array': (r) => Array.isArray(r.json()),
+  });
+
+  // Cheap, uncached, IP-derived locale lookup — hit on every first page
+  // load to pick a default language. No DB/Redis involved, but it's still
+  // public surface the baseline hadn't touched.
+  const geoLocale = http.get(`${BASE_URL}/geo/locale`);
+  geoLocaleDuration.add(geoLocale.timings.duration);
+  errorRate.add(geoLocale.status !== 200);
+  check(geoLocale, {
+    'geo/locale is 200': (r) => r.status === 200,
+    'geo/locale has a locale field': (r) =>
+      typeof r.json('locale') === 'string',
   });
 
   sleep(2);
