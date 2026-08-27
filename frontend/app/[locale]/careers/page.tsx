@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 // client-side fetch, same as before this existed.
 async function fetchInitialPositions(locale: string): Promise<OpenPosition[] | undefined> {
   try {
-    const url = new URL("/positions", SERVER_API_BASE_URL)
+    const url = new URL("positions", SERVER_API_BASE_URL)
     if (locale !== "en") url.searchParams.set("locale", locale)
     const res = await fetch(url, { next: { revalidate: 300 } })
     if (!res.ok) return undefined

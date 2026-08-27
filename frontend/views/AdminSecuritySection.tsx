@@ -13,6 +13,7 @@ import { useTranslations } from "next-intl"
 import { startAuthentication, startRegistration } from "@simplewebauthn/browser"
 import { palette, inputStyle } from "../theme"
 import { SkeletonPanel } from "../components/Skeleton"
+import { isAxiosError } from "axios"
 import { axios, authHeader } from "../lib/api"
 import { getErrorMessage } from "../lib/errors"
 import { useRequestGuard } from "../lib/useRequestGuard"
@@ -29,6 +30,26 @@ interface MfaStatus {
   totpEnrolled: boolean
   webauthnCredentials: WebAuthnCredentialSummary[]
 }
+
+// Both addWebAuthn() and resetPassword()'s webauthn branch call into
+// @simplewebauthn/browser's startRegistration()/startAuthentication(),
+// which already wraps the raw DOMException a browser/authenticator
+// throws (cancelled, timed out, "already registered", etc.) into a
+// WebAuthnError with a specific, genuinely useful .message — e.g. "The
+// authenticator was previously registered" is exactly what actually
+// happens when re-registering the same device as a second credential.
+// Previously this was discarded entirely (a bare `catch {}` with no
+// error binding at all), always showing one generic message regardless
+// of cause, and never logging anything — nothing to diagnose from, by
+// design, not by accident. console.error here ships to Betterstack (see
+// instrumentation-client.ts), so a real failure is now traceable.
+function webauthnOrApiErrorMessage(err: unknown, fallback: string): string {
+  console.error("[AdminSecuritySection] WebAuthn/API call failed:", err)
+  if (isAxiosError(err)) return getErrorMessage(err, fallback)
+  if (err instanceof Error && err.message) return err.message
+  return fallback
+}
+
 export default function AdminSecuritySection() {
   const { getToken } = useAuth()
   const t = useTranslations("adminSecurity")
@@ -137,8 +158,11 @@ export default function AdminSecuritySection() {
       })
       setMessage({ type: "ok", text: t("messages.credentialRegistered") })
       await loadStatus()
-    } catch {
-      setMessage({ type: "error", text: t("messages.credentialFailed") })
+    } catch (err) {
+      setMessage({
+        type: "error",
+        text: webauthnOrApiErrorMessage(err, t("messages.credentialFailed")),
+      })
     } finally {
       setBusy(null)
     }
@@ -172,10 +196,10 @@ export default function AdminSecuritySection() {
       setNewPassword("")
       setResetTotpCode("")
       setMessage({ type: "ok", text: t("messages.passwordUpdated") })
-    } catch (err: any) {
+    } catch (err) {
       setMessage({
         type: "error",
-        text: err?.response?.data?.message ?? t("messages.passwordResetFailed"),
+        text: webauthnOrApiErrorMessage(err, t("messages.passwordResetFailed")),
       })
     } finally {
       setBusy(null)
@@ -455,7 +479,7 @@ export default function AdminSecuritySection() {
                 }`,
                 background:
                   resetMethod === "totp" ? palette.accentLight : "#fff",
-                color: resetMethod === "totp" ? palette.accent : palette.muted,
+                color: resetMethod === "totp" ? palette.navy : palette.muted,
                 fontWeight: 600,
                 fontSize: 12.5,
                 cursor: "pointer",
@@ -477,7 +501,7 @@ export default function AdminSecuritySection() {
                 background:
                   resetMethod === "webauthn" ? palette.accentLight : "#fff",
                 color:
-                  resetMethod === "webauthn" ? palette.accent : palette.muted,
+                  resetMethod === "webauthn" ? palette.navy : palette.muted,
                 fontWeight: 600,
                 fontSize: 12.5,
                 cursor: "pointer",
