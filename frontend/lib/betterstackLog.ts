@@ -1,3 +1,5 @@
+import { serializeForLog } from "./serializeForLog"
+
 // Server-only. Mirrors backend/src/logging/betterstack.logger.ts's
 // shipping shape (same Betterstack ingest contract), service: 'frontend'
 // so the two are distinguishable in Betterstack. Never called from the
@@ -21,7 +23,8 @@ export function shipLog(level: string, message: unknown, context?: string): void
     body: JSON.stringify({
       dt: new Date().toISOString().replace("T", " ").replace("Z", " UTC"),
       level,
-      message: typeof message === "string" ? message : JSON.stringify(message),
+      message:
+        typeof message === "string" ? message : JSON.stringify(serializeForLog(message)),
       context,
       service: "frontend",
     }),

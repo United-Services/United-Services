@@ -6,6 +6,8 @@
 // server-side, keeping BETTERSTACK_SOURCE_TOKEN out of client code
 // entirely. Same "no console, ever" contract as the backend and the
 // server-side instrumentation.ts.
+import { serializeForLog } from "./lib/serializeForLog"
+
 const levels = ["log", "info", "warn", "error", "debug"] as const
 
 for (const level of levels) {
@@ -13,7 +15,8 @@ for (const level of levels) {
     const message = args.length === 1 ? args[0] : args
     const payload = {
       level: level === "log" ? "info" : level,
-      message: typeof message === "string" ? message : safeStringify(message),
+      message:
+        typeof message === "string" ? message : safeStringify(serializeForLog(message)),
       context: "browser",
     }
     // Fire-and-forget, deliberately not awaited — this must never block
