@@ -483,6 +483,7 @@ export default function AdminSpecsSection({ setError }: Props) {
                   <img
                     src={svc.imageUrl}
                     alt={svc.name}
+                    loading="lazy"
                     style={{
                       width: "100%",
                       height: "100%",

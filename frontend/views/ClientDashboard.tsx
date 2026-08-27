@@ -2,6 +2,7 @@
  
 /* Sidebar */ /* Main */ /* ── SERVICES ── */ /* ── RFQ ── */ /* ── APPOINTMENTS ── */ /* ── PROFILE ── */
 import { useEffect, useState } from "react"
+import Image from "next/image"
 import { useAuth } from "@clerk/nextjs"
 import { useLocale, useTranslations } from "next-intl"
 import { palette, inputStyle } from "../theme"
@@ -280,9 +281,11 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
               gap: 8,
             }}
           >
-            <img
+            <Image
               src="/images/logo-footer.webp"
               alt="United Services Egypt"
+              width={89}
+              height={64}
               style={{ height: 28, width: "auto", objectFit: "contain" }}
             />
             <div className="sidebar-label">
@@ -492,6 +495,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                         <img
                           src={s.imageUrl}
                           alt={s.name}
+                          loading="lazy"
                           style={{
                             width: "100%",
                             height: 140,
