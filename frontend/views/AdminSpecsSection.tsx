@@ -735,7 +735,7 @@ export default function AdminSpecsSection({ setError }: Props) {
                   width: "100%",
                   padding: "9px",
                   background: latest ? "#F3F2EE" : palette.accent,
-                  color: latest ? palette.slate : "#fff",
+                  color: latest ? palette.slate : palette.navy,
                   border: "none",
                   borderRadius: 9999,
                   fontWeight: 600,
