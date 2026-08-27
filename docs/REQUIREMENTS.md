@@ -58,6 +58,16 @@ Fax: (+2) 0227033656
       link (`POST /mfa/admin-password-reset`)
 - [x] Admin MFA management screen (re-verify, replace credential) — Admin
       Dashboard → Security
+- [x] Admin WebAuthn credentials can be deleted, not just added — `DELETE
+      /mfa/webauthn/:id`, refuses to leave the account with zero working
+      MFA methods (PR #28/#29)
+- [x] Sign-in redirect bug fixed: `docker-compose.yml` wasn't passing
+      Clerk's post-auth redirect vars as Docker **build** args, so
+      `NEXT_PUBLIC_*` redirect URLs baked in as `undefined` and signed-in
+      users landed on the homepage instead of `/dashboard` — fixed by
+      adding them as Dockerfile `ARG`/`ENV` (PR #35)
+- [x] Logout available from every error page and both admin MFA screens,
+      without a duplicate/floating button (PRs #33, #34, #39)
 
 ### Client dashboard
 - [x] Browse services
@@ -80,10 +90,20 @@ Fax: (+2) 0227033656
       marking that `[x]` — now genuinely DB-driven, and "Apply Now"
       passes the real position id through to candidate signup
 - [x] Manage appointment time slots (create slots; list/search bookings)
-- [x] Add/disable any user account (`/admin/users`) — admin **password
-      reset** for clients/candidates still goes through Clerk's own flow;
-      no dedicated backend endpoint for an admin to reset another user's
-      password
+- [x] Add/disable any user account (`/admin/users`)
+- [x] Admin can reset a *different* user's password — `POST
+      /admin/users/:id/reset-password`
+      (`AdminUsersController.resetPassword()`): issues a temp password via
+      Clerk and forces a change on next login (`mustChangePassword`),
+      audit-logged as `user.password_reset_by_admin`. Distinct from the
+      MFA-gated *self*-reset flow above.
+- [x] Admins cannot change their own role —
+      `AdminUsersController.updateRole()` (`backend/src/admin-users/
+      admin-users.controller.ts`) throws `BadRequestException` when
+      `id === admin.id`, before any role mutation happens. Confirmed by
+      the maintainer this restriction (carried over from an earlier
+      employee-portal spec) still applies, and it's already correctly
+      enforced.
 - [x] Analytics & charts (single consistent accent color for KPIs) —
       `GET /analytics/overview`
 - [x] Audit log with search (replaces "Recent Activity" widget)
@@ -92,8 +112,18 @@ Fax: (+2) 0227033656
 ## Non-functional requirements
 - [x] OWASP Top 10 coverage (see `docs/BUSINESS_RULES.md` + Phase 4 table)
 - [x] HttpOnly + Secure cookies; parameterized queries only (Prisma)
-- [x] Redis caching (public services list) + per-route-class rate limiting
-      (global throttler + tighter limit on `/analytics/track`)
+- [x] Redis caching (public services list, `/analytics/overview` +
+      `/analytics/geo-overview`, `/positions`, with safe-cache fallback so
+      a Redis blip 500s neither the admin dashboard nor the public
+      Careers/Services pages — PRs #37, #46) + per-route-class rate
+      limiting (global throttler + tighter limit on `/analytics/track`
+      and, after a full rate-limit/caching audit, on `/webhooks/clerk`,
+      20/60s — PR #42)
+- [x] Missing-index pass: covering indexes added for all 7 unindexed
+      admin-attribution foreign-key columns (PR #40) and for the sort
+      columns backing the admin list endpoints' default (no-filter)
+      queries — `FileAccessRequest.requestedAt`, `ServiceRequest.
+      createdAt`, `User.createdAt` (PR #41)
 - [~] Automated backups + documented disaster recovery plan — runbook
       written (`docs/DISASTER_RECOVERY.md`); S3 bucket versioning now
       enabled (2026-08-13); still open: a noncurrent-version lifecycle
@@ -103,14 +133,21 @@ Fax: (+2) 0227033656
       configured (2026-08-13) — not independently re-verified from this
       session (Betterstack-console-only action, no API credential here)
 - [~] TDD from first commit; unit + integration + stress suites; CI
-      coverage gate — 107 backend unit/integration tests + 10 frontend
-      unit tests, all required in CI, plus k6 load/rate-limit tests
-      (on-demand workflow); coverage spans every controller/service with
-      real business logic (auth guard, Clerk webhook, MFA incl. WebAuthn,
-      envelope encryption, RFQ/candidates/positions/services/uploads/
-      admin-users/audit-log/analytics/geo — see note below for what's
-      intentionally still unmocked/untested) — no minimum coverage
-      percentage enforced as a CI gate
+      coverage gate — 425 backend unit/integration tests (up from ~370
+      this session, PR #46) + 10 frontend unit tests, all required in CI,
+      plus k6 load/rate-limit tests (on-demand workflow); coverage spans
+      every controller/service with real business logic (auth guard,
+      Clerk webhook, MFA incl. WebAuthn, envelope encryption, RFQ/
+      candidates/positions/services/uploads/admin-users/audit-log/
+      analytics/geo), plus a round of edge-case hardening — guarded
+      Redis/LibreTranslate failure paths so a Redis or LibreTranslate
+      outage degrades gracefully instead of 500ing public pages, a
+      candidate-application decision state-machine guard (404 on a stale
+      id, conflict on re-deciding an already-decided application), upload
+      ownership test coverage, and pagination-helper boundary tests (PR
+      #46 — see note below for what's intentionally still
+      unmocked/untested) — no minimum coverage percentage enforced as a
+      CI gate
 - [~] Mobile-responsive throughout — retrofitted breakpoints for the
       worst-broken layouts (ClientSignup's 50/50 split collapses to
       form-only under 860px, the 3-col service/spec-file card grids fall
@@ -146,32 +183,33 @@ Fax: (+2) 0227033656
 ## Explicitly deferred — not attempted this session
 
 - **Coverage gate/threshold**: unit + integration tests run in CI as
-  required steps (backend: 105 unit + 2 e2e against real Postgres+Redis;
-  frontend: 10 unit tests, Vitest) and k6 load/rate-limit tests run on
-  demand (`.github/workflows/load-test.yml`), but no minimum coverage
-  percentage is enforced anywhere. Every backend controller/service with
-  real business logic has a spec file now (auth guard + self-heal
-  provisioning, the Clerk webhook — the sole place a role is ever
-  assigned, TOTP envelope encryption + KEK rotation, WebAuthn
-  register/verify with challenge-replay and cross-user-credential checks,
-  admin password reset, RFQ/candidates/positions/services/uploads/
-  admin-users/audit-log/analytics/geo). Left deliberately untested as
-  thin wrappers with no real logic of their own: S3Service (AWS SDK
-  passthrough), RedisService (ioredis subclass), PrismaService
-  (connection bootstrap), BetterstackLogger (log transport), and main.ts
-  (covered indirectly by the e2e app-boot test instead).
-- **Admin resetting another user's password**: exists for admins
-  resetting *their own* password (MFA-gated); there's no endpoint for an
-  admin to force-reset a client/candidate's password. Explicitly out of
-  scope per instruction — not attempted.
-- **Actual deployment**: `docs/DEPLOYMENT.md` now documents the plan
-  (architecture, hosting options, env vars, release process, rollback,
-  scaling) but neither app has actually been deployed anywhere — no
-  domain chosen, no Cloudflare zone created, everything still runs from
-  local dev against real cloud services (Supabase/S3/Redis/Clerk/
-  Betterstack).
+  required steps (backend: 425 unit + integration tests against real
+  Postgres+Redis; frontend: 10 unit tests, Vitest) and k6 load/rate-limit
+  tests run on demand (`.github/workflows/load-test.yml`), but no minimum
+  coverage percentage is enforced anywhere. Every backend
+  controller/service with real business logic has a spec file now (auth
+  guard + self-heal provisioning, the Clerk webhook — the sole place a
+  role is ever assigned, TOTP envelope encryption + KEK rotation, WebAuthn
+  register/verify/delete with challenge-replay and cross-user-credential
+  checks, admin password reset (both self and admin-on-other-user),
+  RFQ/candidates/positions/services/uploads/admin-users/audit-log/
+  analytics/geo). Left deliberately untested as thin wrappers with no real
+  logic of their own: S3Service (AWS SDK passthrough), RedisService
+  (ioredis subclass), PrismaService (connection bootstrap),
+  BetterstackLogger (log transport), and main.ts (covered indirectly by
+  the e2e app-boot test instead).
+- **Actual deployment — domain still pending**: `docs/DEPLOYMENT.md`
+  documents the plan (architecture, hosting options, env vars, release
+  process, rollback, scaling), and the app is now genuinely running as a
+  live Docker Compose stack (backend, frontend, nginx) against real cloud
+  services (Supabase/S3/Redis/Clerk/Betterstack) — this session's PRs were
+  routinely built, redeployed, and verified live through that stack, not
+  just locally. What's still missing is a public domain: no domain has
+  been acquired, no Cloudflare zone/TLS exists yet. Domain acquisition is
+  being handled by an external IT contact, not a task item for whoever
+  picks up this doc next.
 
 ## Open questions for the team
-- [ ] Confirm whether "admins cannot change their own role" restriction
-      (carried over from an earlier employee-portal spec) still applies to
-      this app's admin model.
+- None open as of 2026-08-27. The only standing question ("admins
+  cannot change their own role") was confirmed by the maintainer and
+  moved into Admin dashboard above.
