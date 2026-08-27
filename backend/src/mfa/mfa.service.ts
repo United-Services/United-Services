@@ -327,6 +327,39 @@ export class MfaService {
     return { success: true };
   }
 
+  // Self-service delete of one of the admin's own WebAuthn credentials
+  // (Security page) — never lets the account end up with zero working MFA
+  // methods, which would otherwise strand the admin on their *next*
+  // sign-in: MfaSessionVerifiedGuard demands a fresh challenge every new
+  // session, and there'd be nothing left to challenge with. "Replace" is
+  // just delete-then-add from the UI's perspective — enrolling a new one
+  // first, then removing the old, always keeps at least one valid during
+  // the swap.
+  async deleteWebauthnCredential(user: User, credentialId: string) {
+    const credential = await this.prisma.webAuthnCredential.findUnique({
+      where: { id: credentialId },
+    });
+    if (!credential || credential.userId !== user.id) {
+      throw new BadRequestException('Credential not found');
+    }
+
+    const [totp, remainingCount] = await Promise.all([
+      this.prisma.totpCredential.findUnique({ where: { userId: user.id } }),
+      this.prisma.webAuthnCredential.count({ where: { userId: user.id } }),
+    ]);
+    const wouldHaveNoMethodsLeft = !totp?.confirmedAt && remainingCount <= 1;
+    if (wouldHaveNoMethodsLeft) {
+      throw new ConflictException(
+        'This is your only MFA method — add another authenticator before removing this one',
+      );
+    }
+
+    await this.prisma.webAuthnCredential.delete({
+      where: { id: credentialId },
+    });
+    return { success: true };
+  }
+
   async webauthnAuthOptions(
     user: User,
   ): Promise<PublicKeyCredentialRequestOptionsJSON> {

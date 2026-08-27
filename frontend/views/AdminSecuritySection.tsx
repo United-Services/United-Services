@@ -13,6 +13,7 @@ import { useTranslations } from "next-intl"
 import { startAuthentication, startRegistration } from "@simplewebauthn/browser"
 import { palette, inputStyle } from "../theme"
 import { SkeletonPanel } from "../components/Skeleton"
+import { InlineSpinner } from "../components/Spinner"
 import { isAxiosError } from "axios"
 import { axios, authHeader } from "../lib/api"
 import { getErrorMessage } from "../lib/errors"
@@ -162,6 +163,31 @@ export default function AdminSecuritySection() {
       setMessage({
         type: "error",
         text: webauthnOrApiErrorMessage(err, t("messages.credentialFailed")),
+      })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  // Self-service delete of one of the admin's own credentials — the
+  // backend rejects this if it would leave the account with zero working
+  // MFA methods (see mfa.service.ts's deleteWebauthnCredential), so
+  // "replace" is just enroll-a-new-one-then-delete-the-old from here.
+  const deleteWebAuthn = async (credentialId: string) => {
+    if (!window.confirm(t("confirmDeleteCredential"))) return
+    setBusy(`delete-${credentialId}`)
+    setMessage(null)
+    try {
+      const token = await getToken()
+      await axios.delete(`/mfa/webauthn/${credentialId}`, {
+        headers: authHeader(token),
+      })
+      setMessage({ type: "ok", text: t("messages.credentialDeleted") })
+      await loadStatus()
+    } catch (err) {
+      setMessage({
+        type: "error",
+        text: webauthnOrApiErrorMessage(err, t("messages.credentialDeleteFailed")),
       })
     } finally {
       setBusy(null)
@@ -410,16 +436,44 @@ export default function AdminSecuritySection() {
               <li
                 key={c.id}
                 style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
                   fontSize: 13,
                   color: palette.slate,
                   padding: "8px 0",
                   borderTop: "1px solid #F3F2EE",
                 }}
               >
-                {c.label || c.deviceType} —{" "}
-                {t("addedOn", {
-                  date: new Date(c.createdAt).toLocaleDateString(),
-                })}
+                <span>
+                  {c.label || c.deviceType} —{" "}
+                  {t("addedOn", {
+                    date: new Date(c.createdAt).toLocaleDateString(),
+                  })}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => deleteWebAuthn(c.id)}
+                  disabled={busy === `delete-${c.id}`}
+                  style={{
+                    border: "none",
+                    background: "none",
+                    color: "#DC2626",
+                    fontWeight: 600,
+                    fontSize: 12,
+                    cursor: "pointer",
+                    fontFamily: "Poppins, sans-serif",
+                    padding: "4px 8px",
+                    flexShrink: 0,
+                  }}
+                >
+                  {busy === `delete-${c.id}` ? (
+                    <InlineSpinner size={12} />
+                  ) : (
+                    t("deleteCredential")
+                  )}
+                </button>
               </li>
             ))}
           </ul>
@@ -439,7 +493,9 @@ export default function AdminSecuritySection() {
             fontFamily: "Poppins, sans-serif",
           }}
         >
-          {t("addAnotherCredential")}
+          {status.webauthnCredentials.length === 0
+            ? t("addCredential")
+            : t("addAnotherCredential")}
         </button>
       </div>
 
