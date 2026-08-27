@@ -20,12 +20,13 @@ describe('FileAccessController', () => {
   const admin = { id: 'admin-1', role: Role.admin } as User;
 
   function makeController(
-    overrides: { findUnique?: any; findFirst?: any } = {},
+    overrides: { findUnique?: any; findFirst?: any; findMany?: any } = {},
   ) {
     const prisma = {
       fileAccessRequest: {
         findFirst: overrides.findFirst ?? jest.fn().mockResolvedValue(null),
         findUnique: overrides.findUnique ?? jest.fn(),
+        findMany: overrides.findMany ?? jest.fn().mockResolvedValue([]),
         create: jest.fn().mockResolvedValue({ id: 'req-1' }),
         update: jest
           .fn()
@@ -96,6 +97,155 @@ describe('FileAccessController', () => {
       expect(prisma.fileAccessRequest.create).toHaveBeenCalledWith({
         data: { clientId: client.id, serviceFileId: 'file-1' },
       });
+    });
+  });
+
+  describe('decide', () => {
+    it('throws 404 for a nonexistent request id rather than a raw Prisma error', async () => {
+      const { controller, prisma } = makeController({
+        findUnique: jest.fn().mockResolvedValue(null),
+      });
+
+      await expect(
+        controller.decide(admin, 'missing', { approve: true }),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.fileAccessRequest.update).not.toHaveBeenCalled();
+    });
+
+    // A decision is final — the admin UI already hides the approve/deny
+    // buttons once status !== 'pending' (adminShared.tsx's ActionPair, used
+    // by AdminRequestsSection), so a second decide() call reaching the
+    // backend means either a replayed request or two admins racing on the
+    // same request. Either way it must not silently overwrite the original
+    // decidedByAdminId/decidedAt. Same bug class fixed in
+    // candidates.controller.ts's decide().
+    it('rejects deciding a request that has already been approved', async () => {
+      const { controller, prisma } = makeController({
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'req-1',
+          status: FileAccessStatus.approved,
+          clientId: client.id,
+          serviceFileId: 'file-1',
+        }),
+      });
+
+      await expect(
+        controller.decide(admin, 'req-1', { approve: false }),
+      ).rejects.toThrow(ConflictException);
+      expect(prisma.fileAccessRequest.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects deciding a request that has already been denied', async () => {
+      const { controller, prisma } = makeController({
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'req-1',
+          status: FileAccessStatus.denied,
+          clientId: client.id,
+          serviceFileId: 'file-1',
+        }),
+      });
+
+      await expect(
+        controller.decide(admin, 'req-1', { approve: true }),
+      ).rejects.toThrow(ConflictException);
+      expect(prisma.fileAccessRequest.update).not.toHaveBeenCalled();
+    });
+
+    it('approves a pending request and records decidedByAdminId + audit entry', async () => {
+      const { controller, prisma, auditLog } = makeController({
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'req-1',
+          status: FileAccessStatus.pending,
+          clientId: client.id,
+          serviceFileId: 'file-1',
+        }),
+      });
+
+      const result = await controller.decide(admin, 'req-1', {
+        approve: true,
+      });
+
+      expect(result.status).toBe(FileAccessStatus.approved);
+      expect(result.decidedByAdminId).toBe(admin.id);
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'file_access.approved' }),
+      );
+      expect(prisma.fileAccessRequest.update).toHaveBeenCalledTimes(1);
+    });
+
+    it('denies a pending request and records the corresponding audit action', async () => {
+      const { controller, prisma, auditLog } = makeController({
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'req-1',
+          status: FileAccessStatus.pending,
+          clientId: client.id,
+          serviceFileId: 'file-1',
+        }),
+      });
+
+      const result = await controller.decide(admin, 'req-1', {
+        approve: false,
+      });
+
+      expect(result.status).toBe(FileAccessStatus.denied);
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'file_access.denied' }),
+      );
+      expect(prisma.fileAccessRequest.update).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // Lock-in test, not a fix: this endpoint is admin-only via the class-level
+  // @Roles(Role.admin) (enforced by RolesGuard) and intentionally has no
+  // additional per-row ownership filter — every request belongs to *some*
+  // client, but every admin is meant to see every request across all
+  // clients. This pins that as the intended access model so a future
+  // accidental scoping-down (e.g. someone adding a `where: { ... }` that
+  // narrows results) or scoping-up (e.g. exposing this to non-admins)
+  // doesn't slip by unnoticed. Mirrors the equivalent lock-in test on
+  // CandidatesController.list.
+  describe('list', () => {
+    it('returns requests across all clients with no per-row ownership filter, and q fuzzy-searches within that full set', async () => {
+      const findMany = jest.fn().mockResolvedValue([
+        {
+          id: 'req-1',
+          client: {
+            firstName: 'Alice',
+            lastName: 'Anders',
+            email: 'alice@a.com',
+            companyName: null,
+          },
+          serviceFile: {
+            originalFilename: 'brief.pdf',
+            service: { name: 'Consulting', slug: 'consulting' },
+          },
+        },
+        {
+          id: 'req-2',
+          client: {
+            firstName: 'Bob',
+            lastName: 'Baker',
+            email: 'bob@b.com',
+            companyName: null,
+          },
+          serviceFile: {
+            originalFilename: 'spec.pdf',
+            service: { name: 'Consulting', slug: 'consulting' },
+          },
+        },
+      ]);
+      const { controller } = makeController({ findMany });
+
+      // No where clause scoping to any particular client id — every admin
+      // sees every request.
+      const all = await controller.list(undefined, undefined, 0, 20);
+      expect(findMany.mock.calls[0][0].where).toEqual({});
+      expect(all.items.map((r: any) => r.id)).toEqual(['req-1', 'req-2']);
+
+      // q filters within that full, unscoped set — not re-scoped to any
+      // particular client.
+      const filtered = await controller.list('Alice', undefined, 0, 20);
+      expect(filtered.items.map((r: any) => r.id)).toEqual(['req-1']);
     });
   });
 

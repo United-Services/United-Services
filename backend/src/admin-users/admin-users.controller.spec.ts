@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { AdminUsersController } from './admin-users.controller';
-import { Role, type User } from '../generated/prisma';
+import { Prisma, Role, type User } from '../generated/prisma';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { AuditLogService } from '../audit-log/audit-log.service';
 
@@ -221,6 +221,58 @@ describe('AdminUsersController.disable', () => {
         ConflictException,
       );
       expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+
+    // The previously-tested P2002 case is the *sequential* story: one
+    // caller's local insert fails against a row a completed, prior
+    // create() already committed. This test is the genuinely concurrent
+    // shape instead — two admins double-submitting the same new-user form
+    // (or a retried request racing its own original) so both callers pass
+    // Clerk's createUser (Clerk doesn't see the two calls as conflicting
+    // with each other the way our own unique index does) and only then
+    // race each other into the local unique constraint on email. Whichever
+    // call's prisma.user.create loses the race must still get a clean
+    // ConflictException — not an unhandled 500 — and its own now-orphaned
+    // Clerk account must be cleaned up so ClerkAuthGuard's self-heal can't
+    // later resurrect it as a stray 'client' row with the wrong role.
+    it('cleans up its own Clerk account and returns Conflict when it loses a concurrent double-submission race on email', async () => {
+      const { controller, prisma } = makeController();
+      // Two concurrent calls each successfully create a distinct Clerk
+      // user (Clerk has no idea these are "the same" email collision yet).
+      createUserMock
+        .mockResolvedValueOnce({ id: 'clerk-winner' })
+        .mockResolvedValueOnce({ id: 'clerk-loser' });
+      // The winner's local insert commits first; the loser's hits the
+      // unique constraint the winner just created.
+      (prisma.user.create as jest.Mock)
+        .mockResolvedValueOnce({
+          id: 'user-winner',
+          role: Role.client,
+          email: dto.email,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+        })
+        .mockRejectedValueOnce(
+          new Prisma.PrismaClientKnownRequestError(
+            'Unique constraint failed on the fields: (`email`)',
+            { code: 'P2002', clientVersion: 'test' },
+          ),
+        );
+
+      const [winnerResult, loserResult] = await Promise.allSettled([
+        controller.create(admin, dto),
+        controller.create(admin, dto),
+      ]);
+
+      expect(winnerResult.status).toBe('fulfilled');
+      expect(loserResult.status).toBe('rejected');
+      if (loserResult.status === 'rejected') {
+        expect(loserResult.reason).toBeInstanceOf(ConflictException);
+      }
+      // The loser's own Clerk-side orphan (not the winner's account) is
+      // the one cleaned up.
+      expect(deleteUserMock).toHaveBeenCalledWith('clerk-loser');
+      expect(deleteUserMock).not.toHaveBeenCalledWith('clerk-winner');
     });
   });
 

@@ -32,6 +32,53 @@ describe('CandidatesController', () => {
     };
   }
 
+  // Lock-in test, not a fix: this whole controller is admin-only via the
+  // class-level @Roles(Role.admin) (enforced by RolesGuard) and
+  // intentionally has no additional per-row ownership filter — every
+  // application belongs to some candidate, but every admin is meant to see
+  // every application. This pins that as the intended access model so a
+  // future accidental scoping-down (e.g. someone adding a `where` that
+  // narrows results) or scoping-up doesn't slip by unnoticed. Mirrors the
+  // equivalent lock-in test on FileAccessController.list.
+  describe('list', () => {
+    it('returns applications across all candidates with no per-row ownership filter, and q fuzzy-searches within that full set', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.candidateApplication.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'app-1',
+          candidateUser: {
+            firstName: 'Alice',
+            lastName: 'Anders',
+            email: 'alice@a.com',
+          },
+          position: { title: 'Engineer', department: 'Eng' },
+        },
+        {
+          id: 'app-2',
+          candidateUser: {
+            firstName: 'Bob',
+            lastName: 'Baker',
+            email: 'bob@b.com',
+          },
+          position: { title: 'Engineer', department: 'Eng' },
+        },
+      ]);
+
+      // No where clause scoping to any particular candidate id — every
+      // admin sees every application.
+      const all = await controller.list(undefined, undefined, 0, 20);
+      expect(
+        (prisma.candidateApplication.findMany as jest.Mock).mock.calls[0][0]
+          .where,
+      ).toEqual({});
+      expect(all.items.map((a: any) => a.id)).toEqual(['app-1', 'app-2']);
+
+      // q filters within that full, unscoped set.
+      const filtered = await controller.list('Alice', undefined, 0, 20);
+      expect(filtered.items.map((a: any) => a.id)).toEqual(['app-1']);
+    });
+  });
+
   describe('decide', () => {
     it('approves and records reviewer + audit entry', async () => {
       const { controller, prisma, auditLog } = makeController();
