@@ -16,8 +16,25 @@ COPY . .
 # real key is supplied at container runtime via docker-compose env vars.
 ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_Y2ktcGxhY2Vob2xkZXIta2V5LmNsZXJrLmFjY291bnRzLmRldiQ
 ARG NEXT_PUBLIC_API_URL=http://localhost:3002/api/v1
+# These four are fixed route constants, not secrets/environment-specific
+# values — unlike the two above, they never need to vary per deployment,
+# so they're defaulted here rather than plumbed through
+# docker-compose.yml's build args. Without them, Next.js inlines
+# `undefined` for every NEXT_PUBLIC_* var at build time (these are
+# read at build time, not runtime, despite living in docker-compose's
+# `environment:` block too) and Clerk's <SignIn/>/<SignUp/> silently
+# fall back to their own default post-auth redirect (home), not
+# /dashboard's role-based redirect.
+ARG NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+ARG NEXT_PUBLIC_CLERK_SIGN_UP_URL=/client-signup
+ARG NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/dashboard
+ARG NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/dashboard
 ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_CLERK_SIGN_IN_URL=$NEXT_PUBLIC_CLERK_SIGN_IN_URL
+ENV NEXT_PUBLIC_CLERK_SIGN_UP_URL=$NEXT_PUBLIC_CLERK_SIGN_UP_URL
+ENV NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=$NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL
+ENV NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=$NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL
 RUN npm run build
 
 # ── runtime ──────────────────────────────────────────────────────────────
