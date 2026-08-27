@@ -26,6 +26,7 @@ describe('MfaController.resetPassword', () => {
       webauthnAuthVerify: jest.fn(),
       markSessionVerified: jest.fn().mockResolvedValue(undefined),
       deleteWebauthnCredential: jest.fn(),
+      deleteTotpCredential: jest.fn(),
     } as unknown as MfaService;
     const auditLog = {
       record: jest.fn().mockResolvedValue(undefined),
@@ -109,6 +110,7 @@ describe('MfaController — per-session MFA challenge', () => {
       webauthnAuthVerify: jest.fn(),
       markSessionVerified: jest.fn().mockResolvedValue(undefined),
       deleteWebauthnCredential: jest.fn(),
+      deleteTotpCredential: jest.fn(),
     } as unknown as MfaService;
     const auditLog = {
       record: jest.fn().mockResolvedValue(undefined),
@@ -199,6 +201,40 @@ describe('MfaController — per-session MFA challenge', () => {
       await expect(
         controller.deleteWebauthn(user, 'cred-row-1'),
       ).rejects.toThrow('only method left');
+      expect(auditLog.record).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('MfaController.deleteTotp', () => {
+    it('deletes the TOTP credential and records an audit log entry', async () => {
+      const { controller, mfa, auditLog } = makeController();
+      (mfa.deleteTotpCredential as jest.Mock).mockResolvedValue({
+        success: true,
+      });
+
+      const result = await controller.deleteTotp(user);
+
+      expect(mfa.deleteTotpCredential).toHaveBeenCalledWith(user);
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorUserId: user.id,
+          action: 'admin.totp_credential_deleted',
+          targetType: 'TotpCredential',
+          targetId: user.id,
+        }),
+      );
+      expect(result).toEqual({ success: true });
+    });
+
+    it('never logs an audit entry when the service rejects the delete (e.g. last remaining method)', async () => {
+      const { controller, mfa, auditLog } = makeController();
+      (mfa.deleteTotpCredential as jest.Mock).mockRejectedValue(
+        new Error('only method left'),
+      );
+
+      await expect(controller.deleteTotp(user)).rejects.toThrow(
+        'only method left',
+      );
       expect(auditLog.record).not.toHaveBeenCalled();
     });
   });

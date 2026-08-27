@@ -1039,6 +1039,8 @@
     "verifyAndSave": "Verify & Save",
     "replaceAuthenticator": "Replace Authenticator App",
     "setUpAuthenticator": "Set Up Authenticator App",
+    "deleteAuthenticator": "Delete",
+    "confirmDeleteAuthenticator": "Remove your authenticator app? You'll need to sign in with a different method next time, and this can't be undone.",
     "biometricCredentials": "بيانات اعتماد المصادقة البيومترية",
     "noneRegistered": "None registered.",
     "registeredCount": "{count} registered.",
@@ -1064,6 +1066,8 @@
       "credentialFailed": "Could not register the credential.",
       "credentialDeleted": "Credential removed.",
       "credentialDeleteFailed": "Could not remove the credential.",
+      "authenticatorDeleted": "Authenticator app removed.",
+      "authenticatorDeleteFailed": "Could not remove the authenticator app.",
       "passwordUpdated": "Password updated. You have been signed out of other sessions.",
       "passwordResetFailed": "Could not reset password.",
       "statusLoadFailed": "تعذر تحميل حالة المصادقة الثنائية. حاول مرة أخرى."
