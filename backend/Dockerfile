@@ -1,62 +1,43 @@
 # syntax=docker/dockerfile:1
 
-# ── deps ─────────────────────────────────────────────────────────────────
-FROM node:22-slim AS deps
+# Single-stage: the image itself only carries source code + system/global
+# tooling. `npm install`, `npm run build`, secret-fetching, migrations, and
+# starting the app all happen at container start (docker-entrypoint.sh),
+# not baked into the image at `docker build` time. Trade-off, deliberate:
+# slower container starts (a real npm install + nest build every start) in
+# exchange for secrets being available before the app ever needs them and
+# nothing environment-specific ever being baked into an image layer.
+FROM node:22-slim
 WORKDIR /app
-# node:22-slim has no OpenSSL — Prisma's query engine needs it to detect
-# the right libssl variant, and silently guesses (and can fail to load
-# at runtime) without it. See https://pris.ly/d/engine-not-found-openssl.
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
-COPY package.json package-lock.json ./
-RUN npm ci
 
-# ── build ────────────────────────────────────────────────────────────────
-FROM node:22-slim AS build
-WORKDIR /app
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-# Prisma client generation only needs a schema-valid DATABASE_URL — it
-# doesn't connect. Real migrations run as a separate step at deploy time
-# (`npm run prisma:deploy`), never baked into the image.
-RUN DATABASE_URL="postgresql://user:password@localhost:5432/build" \
-    DIRECT_URL="postgresql://user:password@localhost:5432/build" \
-    npx prisma generate
-RUN npm run build
-
-# ── runtime ──────────────────────────────────────────────────────────────
-FROM node:22-slim AS runtime
-WORKDIR /app
-# geoipupdate: downloads the GeoLite2-Country database GeoService reads
-# (see docker-entrypoint.sh) — a missing/stale DB doesn't break anything
-# (GeoService falls back to 'en'/null on a failed open), but without this
-# the admin dashboard's country analytics would just silently never work
-# in any Docker deployment. It lives in Debian's "contrib" component
-# (not "main"), which node:22-slim's default sources.list.d/debian.sources
-# doesn't enable — sed it in before apt-get update, or `apt-get install`
-# reports "no installation candidate" even though the package exists.
+# openssl: Prisma's query engine needs it to detect the right libssl
+# variant (https://pris.ly/d/engine-not-found-openssl). geoipupdate: lives
+# in Debian's "contrib" component, not "main" — sed it into sources.list.d
+# before apt-get update or "no installation candidate" even though the
+# package exists.
 RUN sed -i 's/^Components: main$/Components: main contrib/' /etc/apt/sources.list.d/debian.sources \
-    && apt-get update -y && apt-get install -y openssl geoipupdate && rm -rf /var/lib/apt/lists/* \
+    # ca-certificates: node:22-slim has no system root CA bundle. Node's
+    # own HTTPS calls (Prisma, S3, etc.) don't need it — Node bundles its
+    # own CA store — but geoipupdate is a separate Go binary that uses the
+    # *system* store, and fails outright without this package
+    # ("x509: certificate signed by unknown authority", confirmed live
+    # the first time this path ran with real GeoIP credentials).
+    && apt-get update -y && apt-get install -y openssl ca-certificates geoipupdate && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 1001 nodejs \
-    && useradd --system --uid 1001 --gid nodejs nestjs
+    # --create-home: without it, this system user has no $HOME at all, and
+    # `npm install` (which now runs as this user at container start, not
+    # as root at image-build time) fails outright trying to create its
+    # cache/log directory under a nonexistent /home/nestjs. Confirmed live.
+    && useradd --system --create-home --uid 1001 --gid nodejs nestjs
 
-COPY package.json package-lock.json ./
-# Full install (not --omit=dev): the entrypoint needs the `prisma` CLI
-# (migrate deploy) and `ts-node` (one-time kek:generate bootstrap on a
-# fresh DB) at container start, both devDependencies. Trades a larger
-# image for a simple, reliable entrypoint over a fragile separate
-# compile-scripts-with-a-second-tsc-invocation step.
-# NODE_ENV is deliberately NOT set yet — npm skips devDependencies
-# entirely when NODE_ENV=production is already set at install time.
-RUN npm ci
-ENV NODE_ENV=production
+# Global CLI tooling for the core frameworks this app is built on — `npm
+# install` below still installs @nestjs/cli/typescript as local
+# devDependencies too (that's what `npm run build`/`nest build` actually
+# resolve and use), but these globals make the same commands runnable
+# directly by name inside the container, not just through `npm run`.
+RUN npm install -g @nestjs/cli typescript
 
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/src/generated ./src/generated
-COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/prisma.config.ts ./prisma.config.ts
-COPY --from=build /app/scripts ./scripts
-COPY --from=build /app/tsconfig.json ./tsconfig.json
+COPY . .
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x docker-entrypoint.sh
 
@@ -70,8 +51,10 @@ USER nestjs
 EXPOSE 3002
 
 # The app's own /api/v1/health does a real DB round-trip — good enough as
-# a container healthcheck without adding a separate dependency.
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+# a container healthcheck without adding a separate dependency. A longer
+# start-period than the old multi-stage image's, since npm install + nest
+# build now happen inside this window too, not before the image existed.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
   CMD node -e "fetch('http://localhost:'+(process.env.PORT||3002)+'/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 ENTRYPOINT ["./docker-entrypoint.sh"]

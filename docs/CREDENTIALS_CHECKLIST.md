@@ -12,6 +12,61 @@ to copy; create `.env` yourself using that section as the reference.
 
 ---
 
+## Docker/server deployment: secrets come from AWS SSM, not a local .env
+
+Everything below this point (the per-service sections, the `.env.example`
+shape) describes running the app **directly on the host** (`npm run
+start:dev`, no Docker) — each app reads its own `backend/.env` /
+`frontend/.env` directly.
+
+The `docker compose` deployment (`docker-compose.yml` at the repo root) is
+different on purpose: the repo-root `.env` it reads holds only four
+variables —
+
+```
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_REGION=
+APP_ENV=staging   # or production — selects the SSM path below
+NGINX_PORT=80
+```
+
+— and every other secret/config value (`DATABASE_URL`, Clerk keys, S3
+bucket, Betterstack tokens, WebAuthn RP config, GeoIP account, translation
+budget, etc.) is fetched at container start from **AWS Systems Manager
+Parameter Store**, under `/united-services/${APP_ENV}/<VAR_NAME>` — one
+`SecureString` parameter per variable, using the exact same names as the
+`.env.example` shape below. See `backend/scripts/fetch-secrets.sh` /
+`frontend/scripts/fetch-secrets.mjs` for the mechanics, and both
+`docker-entrypoint.sh` files for where in the startup sequence this runs
+(after `npm install`, before anything that needs the secrets — for
+frontend specifically, before `npm run build`, since `NEXT_PUBLIC_*` vars
+get inlined into the compiled JS at build time, not read at request time).
+
+**Pushing a new/updated secret to SSM:**
+
+```bash
+aws ssm put-parameter \
+  --name "/united-services/staging/DATABASE_URL" \
+  --value "postgresql://..." \
+  --type SecureString \
+  --overwrite
+```
+
+The IAM user behind `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` needs
+`ssm:GetParametersByPath` (read, used by `fetch-secrets.sh`) and, for
+whoever pushes updates, `ssm:PutParameter` — this is a different
+permission scope than the same IAM user's S3 object-level access (see
+§3), and neither implies the other.
+
+**Nothing environment-specific is ever hardcoded** in `docker-compose.yml`
+or either `Dockerfile` — the only literal, non-`.env`-sourced values that
+remain are pure container-topology constants tied to a `volumes:` mount or
+an internal-network hostname (e.g. `KEK_KEYS_DIR=/app/secrets/kek`,
+`INTERNAL_API_URL=http://backend:3002/api/v1`), never a secret.
+
+---
+
 ## 0. Free tier limits — check this before adding anything new
 
 | Service | Free tier | Watch out for |
@@ -25,6 +80,7 @@ to copy; create `.env` yourself using that section as the reference.
 | MaxMind GeoLite2 | Free forever (downloaded DB, not billed per request) | None |
 | Cloudflare | Free plan covers WAF/CDN/DDoS basics | Fine for this project's needs |
 | Domain registration | Never free | Small unavoidable annual cost |
+| AWS SSM Parameter Store | Free for standard (non-advanced) `SecureString` parameters, KMS-encrypted at rest | Stay under 10,000 standard parameters per account/region — this app uses ~40, far under it |
 
 ---
 
