@@ -495,6 +495,25 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
             )}
           </div>
         )}
+        <button
+          onClick={() => signOut(() => onNavigate("home"))}
+          style={{
+            display: "block",
+            width: "100%",
+            marginTop: 20,
+            background: "none",
+            border: "1.5px solid #DC2626",
+            borderRadius: 9999,
+            padding: "9px 20px",
+            fontWeight: 600,
+            fontSize: 13,
+            color: "#DC2626",
+            cursor: "pointer",
+            fontFamily: "Poppins, sans-serif",
+          }}
+        >
+          {t("logout")}
+        </button>
       </div>
       <button
         onClick={() => signOut(() => onNavigate("home"))}
