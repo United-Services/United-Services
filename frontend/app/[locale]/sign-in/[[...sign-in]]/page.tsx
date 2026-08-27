@@ -1,14 +1,13 @@
 "use client"
 
 import { SignIn } from "@clerk/nextjs"
+import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { palette } from "@/theme"
 import PublicNav from "@/components/PublicNav"
 import { useAppNavigate } from "@/lib/navigate"
 
-// Same photo used for the client-signup split panel (views/ClientSignup.tsx).
-const worldImg =
-  "https://images.unsplash.com/photo-1602860109208-613d39362844?w=1200&q=85"
+const worldImg = "/images/login.jpg"
 
 // No client-side "already signed in" redirect here — Clerk's <SignIn/>
 // already refuses to render for a signed-in single-session user and
@@ -45,23 +44,21 @@ export default function SignInPage() {
             padding: 56,
           }}
         >
-          <img
+          <Image
             src={worldImg}
             alt="Industrial energy infrastructure"
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              opacity: 0.75,
-            }}
+            fill
+            priority
+            style={{ objectFit: "cover" }}
           />
+          {/* Plain dark scrim (no accent tint) — keeps the tagline/quote
+              readable over the photo without color-washing the image. */}
           <div
             style={{
               position: "absolute",
               inset: 0,
-              background: `linear-gradient(135deg, ${palette.accent}bb 0%, rgba(15,23,42,0.85) 100%)`,
+              background:
+                "linear-gradient(180deg, rgba(15,23,42,0.05) 0%, rgba(15,23,42,0.85) 100%)",
             }}
           />
           <p
