@@ -1,6 +1,56 @@
 #!/bin/sh
 set -e
 
+# Single-stage workflow, everything happens here at container start rather
+# than baked into the image at `docker build` time:
+#   install deps -> build -> fetch secrets from SSM -> migrate -> KEK ->
+#   geoip -> start
+# The order matters: secrets have to land in the environment (fetch-secrets)
+# before anything that needs them (migrations need DATABASE_URL, the app
+# itself needs everything) — nothing after that step should assume a var
+# came from anywhere else.
+#
+# node_modules/dist only exist here at all if a previous start on this same
+# container already produced them (single-stage: `COPY . .` at image build
+# time never includes them) — `docker compose restart backend` reuses the
+# same container/filesystem, so a plain restart finds them already built and
+# skips straight to fetching fresh secrets + starting the app. A real
+# redeploy (`docker compose up -d --build`) always gets a brand-new
+# container with neither present, so the full install+build still runs
+# then. Set FORCE_INSTALL=1 / FORCE_BUILD=1 to force either step on a
+# restart (e.g. after hand-editing files in a running container).
+if [ -d node_modules ] && [ "${FORCE_INSTALL:-}" != "1" ]; then
+  echo "[entrypoint] node_modules already present, skipping npm install (set FORCE_INSTALL=1 to force)."
+else
+  echo "[entrypoint] installing backend dependencies..."
+  npm install
+fi
+
+if [ -d dist ] && [ "${FORCE_BUILD:-}" != "1" ]; then
+  echo "[entrypoint] dist/ already present, skipping npm run build (set FORCE_BUILD=1 to force)."
+else
+  echo "[entrypoint] building backend..."
+  npm run build
+fi
+
+echo "[entrypoint] fetching secrets from AWS SSM Parameter Store..."
+# Captured *before* sourcing fetch-secrets.sh, not after — SSM's
+# /united-services/<env>/ path is a single flat namespace shared by both
+# backend and frontend (confirmed live — it holds NEXT_PUBLIC_* vars
+# alongside backend-only ones), so a PORT value meant for one service
+# silently wins for the other once sourced. docker-compose.yml's own
+# environment block is the actual source of truth for which port this
+# container's healthcheck/nginx upstream expect it on — re-asserted
+# below, after sourcing, so it can't be clobbered by SSM's copy.
+OWN_PORT="$PORT"
+# Only AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION need to exist
+# in this container's environment already (passed straight through from
+# the host's .env by docker-compose.yml, with no defaults) — every other
+# secret this app needs is pulled from SSM here, not hardcoded anywhere
+# in the Docker files. See scripts/fetch-secrets.sh.
+. ./scripts/fetch-secrets.sh
+export PORT="$OWN_PORT"
+
 echo "[entrypoint] applying database migrations..."
 node_modules/.bin/prisma migrate deploy
 
@@ -55,4 +105,12 @@ else
 fi
 
 echo "[entrypoint] starting the app..."
-exec node dist/main.js
+# Set only now, not earlier/baked into the image — `npm install` above
+# needs devDependencies (nest CLI, ts-node, prisma CLI, typescript) to
+# actually be installed, and npm skips them entirely when NODE_ENV is
+# already "production" at install time.
+export NODE_ENV=production
+# start:prod (not `start`, which is `nest start` — recompiles from source
+# via the Nest CLI, ignoring the dist/ output `npm run build` just
+# produced above) — this runs the actual built artifact.
+exec npm run start:prod

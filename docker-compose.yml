@@ -1,33 +1,35 @@
 # Local/self-hosted deployment stack — see docs/DEPLOYMENT.md "Option A".
-# `docker compose up` gives you a fully working stack with local Postgres
-# + Redis containers out of the box. To use managed services instead
-# (Supabase/Upstash, as this project runs in dev — see
-# docs/CREDENTIALS_CHECKLIST.md), just override DATABASE_URL/DIRECT_URL/
-# REDIS_URL in .env and drop the `postgres`/`redis` services (or leave
-# them running unused — backend/frontend only ever talk to whatever URL
-# is in the env vars, not directly to these container names).
 #
-# Required .env at the repo root — see docs/CREDENTIALS_CHECKLIST.md's
-# "`.env.example` shape" section for the full list. This file
-# intentionally does NOT hardcode any secret values.
+# Secrets model: the host's .env at the repo root supplies ONLY
+# AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_REGION / APP_ENV — those
+# four are passed straight through to backend/frontend below with no
+# defaults. Every other secret/config value (DATABASE_URL, CLERK keys,
+# S3 bucket, Betterstack tokens, WebAuthn RP config, translation budget,
+# GeoIP account, etc.) is fetched at container start from AWS SSM
+# Parameter Store under /united-services/${APP_ENV}/ — see
+# backend/scripts/fetch-secrets.sh and frontend/scripts/fetch-secrets.sh.
+# Nothing environment-specific is hardcoded in this file or either
+# Dockerfile; see docs/CREDENTIALS_CHECKLIST.md for how to populate SSM.
+#
+# `postgres`/`redis` below are local-dev-only opt-in containers (the
+# "local-db" profile) for running entirely without any managed service —
+# backend never talks to these container names directly, only to whatever
+# DATABASE_URL/REDIS_URL comes back from SSM, so leaving these stopped is
+# always safe.
 
 services:
-  # Both local containers are opt-in via the "local-db" profile
-  # (`docker compose --profile local-db up`) — when DATABASE_URL/
-  # DIRECT_URL/REDIS_URL point at managed services (Supabase/Upstash, as
-  # in .env.prod), these never start and backend never waits on them.
   postgres:
     image: postgres:16
     restart: unless-stopped
     profiles: ["local-db"]
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-united_services}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -46,20 +48,16 @@ services:
       retries: 10
     networks: [internal]
 
-  # Self-hosted machine translation for OpenPosition content (Careers page)
-  # — see TranslationsModule. Genuinely free: no billing account, no API
-  # key, unlike Google Cloud Translation. Not published to the host by
-  # default (only `backend`, over the internal Docker network, needs it —
-  # matches how `postgres`/`redis` above have no ports: mapping either).
-  # `127.0.0.1:5001:5000` below is the one deliberate exception: this
-  # project's own local dev runs `backend` directly on the host rather
-  # than inside this compose stack, so that loopback-only mapping is what
-  # lets host-run local dev reach it at all — still never reachable from
-  # outside the machine either way. Host side is 5001, not the container's
-  # native 5000: macOS's built-in AirPlay Receiver (Control Center) also
-  # listens on 5000 and answers any request there with a bare 403 before
-  # it ever reaches this container — LIBRETRANSLATE_URL in backend/.env
-  # must point at 5001 to actually reach LibreTranslate.
+  # Self-hosted machine translation for OpenPosition/Service content — see
+  # TranslationsModule. Genuinely free: no billing account, no API key.
+  # Not published to the host by default — only `backend`, over the
+  # internal Docker network, needs it. `127.0.0.1:5001:5000` is the one
+  # deliberate exception: local dev runs `backend` directly on the host
+  # rather than inside this compose stack, so that loopback-only mapping
+  # is what lets host-run local dev reach it at all. Host side is 5001,
+  # not the container's native 5000: macOS's built-in AirPlay Receiver
+  # also listens on 5000 and answers with a bare 403 first — the
+  # LIBRETRANSLATE_URL secret in SSM must point at 5001.
   libretranslate:
     image: libretranslate/libretranslate:latest
     command: ["--load-only", "en,ar,zh"]
@@ -67,9 +65,6 @@ services:
     ports:
       - "127.0.0.1:5001:5000"
     volumes:
-      # Persists downloaded Argos Translate language models across
-      # restarts — first startup is slower than subsequent ones while
-      # these download.
       - libretranslate-models:/home/libretranslate/.local
     networks: [internal]
 
@@ -80,33 +75,19 @@ services:
     restart: unless-stopped
     depends_on: [libretranslate]
     environment:
+      # Only these four ever come from the host .env — everything else
+      # this app needs is fetched from SSM at container start (see
+      # docker-entrypoint.sh / scripts/fetch-secrets.sh).
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID in .env}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY in .env}
+      AWS_REGION: ${AWS_REGION:?set AWS_REGION in .env}
+      APP_ENV: ${APP_ENV:?set APP_ENV in .env (e.g. staging, production) — selects the /united-services/<APP_ENV>/ SSM path}
+      # Fixed by this file's own topology (the port this service listens
+      # on inside the internal network, and the two paths the volumes
+      # below mount into) — not secrets, not environment-specific, so
+      # these stay literal rather than round-tripping through SSM.
       PORT: 3002
-      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-united_services}}
-      DIRECT_URL: ${DIRECT_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-united_services}}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
-      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?set CLERK_SECRET_KEY in .env}
-      CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
-      CLERK_WEBHOOK_SECRET: ${CLERK_WEBHOOK_SECRET}
-      AWS_REGION: ${AWS_REGION}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
-      BETTERSTACK_SOURCE_TOKEN: ${BETTERSTACK_SOURCE_TOKEN}
-      BETTERSTACK_INGEST_URL: ${BETTERSTACK_INGEST_URL}
-      ALERTING_ENABLED: ${ALERTING_ENABLED:-false}
-      NTFY_TOPIC_URL: ${NTFY_TOPIC_URL}
-      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-localhost}
-      WEBAUTHN_RP_ORIGIN: ${WEBAUTHN_RP_ORIGIN:-http://localhost}
-      TOTP_KEK_PROVIDER: local
       KEK_KEYS_DIR: /app/secrets/kek
-      LIBRETRANSLATE_URL: ${LIBRETRANSLATE_URL:-http://libretranslate:5000}
-      TRANSLATION_MONTHLY_CHAR_BUDGET: ${TRANSLATION_MONTHLY_CHAR_BUDGET:-2000000}
-      TRANSLATION_LOCK_TTL_MS: ${TRANSLATION_LOCK_TTL_MS:-30000}
-      TRANSLATION_SYNC_WAIT_MS: ${TRANSLATION_SYNC_WAIT_MS:-2500}
-      GEOIP_MAXMIND_ACCOUNT_ID: ${GEOIP_MAXMIND_ACCOUNT_ID:-}
-      GEOIP_MAXMIND_LICENSE_KEY: ${GEOIP_MAXMIND_LICENSE_KEY:-}
-      GEOIP_MAXMIND_EDITION_IDS: ${GEOIP_MAXMIND_EDITION_IDS:-GeoLite2-Country}
       GEOIP_MAXMIND_DB_DIR: /app/geoip-db
     volumes:
       # TOTP KEK private keys must survive container restarts/redeploys —
@@ -123,19 +104,24 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY:?set CLERK_PUBLISHABLE_KEY in .env}
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api/v1}
     restart: unless-stopped
     depends_on: [backend]
     environment:
+      # Same four-var contract as backend above — every NEXT_PUBLIC_*
+      # build-time value and every other secret comes from SSM at
+      # container start, fetched *before* `next build` runs (see
+      # docker-entrypoint.sh) since those get inlined into the compiled
+      # JS at build time, not read at request time.
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID in .env}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY in .env}
+      AWS_REGION: ${AWS_REGION:?set AWS_REGION in .env}
+      APP_ENV: ${APP_ENV:?set APP_ENV in .env (e.g. staging, production) — selects the /united-services/<APP_ENV>/ SSM path}
+      # Fixed by this file's own topology — the port this service listens
+      # on, and the backend's address on the internal Docker network
+      # (only reachable from other containers in this compose project,
+      # never a secret).
       PORT: 3000
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api/v1}
       INTERNAL_API_URL: http://backend:3002/api/v1
-      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
-      BETTERSTACK_SOURCE_TOKEN: ${BETTERSTACK_SOURCE_TOKEN}
-      BETTERSTACK_INGEST_URL: ${BETTERSTACK_INGEST_URL}
     networks: [internal]
 
   nginx:
@@ -143,7 +129,7 @@ services:
     restart: unless-stopped
     depends_on: [backend, frontend]
     ports:
-      - "${NGINX_PORT:-80}:80"
+      - "${NGINX_PORT:?set NGINX_PORT in .env (e.g. 80)}:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     networks: [internal]
