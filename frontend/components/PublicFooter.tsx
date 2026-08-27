@@ -61,6 +61,7 @@ export default function PublicFooter({ onNavigate }: Props) {
               <img
                 src={footerLogo}
                 alt="United Services Egypt"
+                loading="lazy"
                 style={{ height: 48, width: "auto", objectFit: "contain" }}
               />
             </div>

@@ -7,6 +7,7 @@
 // error banner, and wiring the right section component to `section`.
 
 import { useState } from "react"
+import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { palette } from "../theme"
 import {
@@ -113,9 +114,11 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
               gap: 8,
             }}
           >
-            <img
+            <Image
               src="/images/logo-footer.webp"
               alt="United Services Egypt"
+              width={89}
+              height={64}
               style={{ height: 26, width: "auto", objectFit: "contain" }}
             />
             <div className="sidebar-label">

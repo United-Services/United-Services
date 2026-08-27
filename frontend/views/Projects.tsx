@@ -335,6 +335,7 @@ export default function Projects({ onNavigate, company }: Props) {
                   <img
                     src={c.logo}
                     alt={c.name}
+                    loading="lazy"
                     style={{ height: 16, width: "auto", objectFit: "contain" }}
                   />
                 )}
@@ -371,6 +372,7 @@ export default function Projects({ onNavigate, company }: Props) {
                   <img
                     src={c.logo}
                     alt={c.name}
+                    loading="lazy"
                     style={{ height: 32, width: "auto", objectFit: "contain" }}
                   />
                 )}
