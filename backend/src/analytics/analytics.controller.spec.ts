@@ -193,5 +193,41 @@ describe('AnalyticsController', () => {
       expect(result).toEqual(cached);
       expect(prisma.analyticsEvent.groupBy).not.toHaveBeenCalled();
     });
+
+    // A Redis outage must degrade the admin dashboard to "every query
+    // re-runs," never take it down entirely — this is the real-world
+    // scenario the whole caching layer added this session needs to
+    // survive without becoming a new single point of failure.
+    it('overview falls back to a fresh computation when redis.get rejects', async () => {
+      const { controller, prisma, redis } = makeController();
+      (redis.get as jest.Mock).mockRejectedValue(new Error('ECONNREFUSED'));
+      (prisma.user.count as jest.Mock).mockResolvedValue(3);
+
+      const result = await controller.overview();
+
+      expect(result.clientCount).toBe(3);
+    });
+
+    it('overview still returns the computed result when redis.set rejects', async () => {
+      const { controller, prisma, redis } = makeController();
+      (redis.set as jest.Mock).mockRejectedValue(new Error('ECONNREFUSED'));
+      (prisma.user.count as jest.Mock).mockResolvedValue(4);
+
+      const result = await controller.overview();
+
+      expect(result.clientCount).toBe(4);
+    });
+
+    it('geoOverview falls back to a fresh computation when redis.get rejects', async () => {
+      const { controller, prisma, redis } = makeController();
+      (redis.get as jest.Mock).mockRejectedValue(new Error('ECONNREFUSED'));
+      (prisma.analyticsEvent.groupBy as jest.Mock).mockResolvedValue([
+        { country: 'EG', _count: 5 },
+      ]);
+
+      const result = await controller.geoOverview();
+
+      expect(result.countries).toEqual([{ country: 'EG', count: 5 }]);
+    });
   });
 });

@@ -129,6 +129,46 @@ describe('PositionsController', () => {
         },
       ]);
     });
+
+    // The public Careers page must degrade to an uncached DB read on a
+    // Redis outage, never 500 — this is the real-world failure mode the
+    // whole cache-aside pattern needs to survive.
+    it('falls back to a fresh DB read when redis.get rejects', async () => {
+      const { controller, prisma, redis } = makeController();
+      (redis.get as jest.Mock).mockRejectedValue(new Error('ECONNREFUSED'));
+      const positions = [{ id: 'pos-1', title: 'Engineer' }];
+      (prisma.openPosition.findMany as jest.Mock).mockResolvedValue(positions);
+
+      const result = await controller.listOpen();
+
+      expect(result).toBe(positions);
+    });
+
+    it('still returns the result when redis.set rejects after a cache miss', async () => {
+      const { controller, prisma, redis } = makeController();
+      (redis.set as jest.Mock).mockRejectedValue(new Error('ECONNREFUSED'));
+      const positions = [{ id: 'pos-1', title: 'Engineer' }];
+      (prisma.openPosition.findMany as jest.Mock).mockResolvedValue(positions);
+
+      const result = await controller.listOpen();
+
+      expect(result).toBe(positions);
+    });
+
+    // LibreTranslate being unreachable must fall back to the untranslated
+    // (English-field) response, not 500 the page for 'ar'/'zh' visitors.
+    it('falls back to the untranslated positions when TranslationService rejects', async () => {
+      const { controller, prisma, translations } = makeController();
+      const positions = [{ id: 'pos-1', title: 'Engineer' }];
+      (prisma.openPosition.findMany as jest.Mock).mockResolvedValue(positions);
+      (translations.getTranslatedPositions as jest.Mock).mockRejectedValue(
+        new Error('LibreTranslate unreachable'),
+      );
+
+      const result = await controller.listOpen('ar');
+
+      expect(result).toBe(positions);
+    });
   });
 
   it('the admin listAll endpoint has no isOpen filter', async () => {
@@ -193,6 +233,27 @@ describe('PositionsController', () => {
       });
 
       expect(translations.triggerAsync).not.toHaveBeenCalled();
+    });
+
+    // The DB write already succeeded by the time cache invalidation runs
+    // — one locale's redis.del rejecting must not turn a successful
+    // create into a 500 response to the admin.
+    it("still returns the created position when one locale's cache invalidation fails", async () => {
+      const { controller, prisma, redis } = makeController();
+      const created = { id: 'pos-1', isOpen: true };
+      (prisma.openPosition.create as jest.Mock).mockResolvedValue(created);
+      (redis.del as jest.Mock)
+        .mockResolvedValueOnce(1)
+        .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+        .mockResolvedValueOnce(1);
+
+      const result = await controller.create(admin, {
+        title: 'Engineer',
+        department: 'Engineering',
+        description: 'desc',
+      });
+
+      expect(result).toBe(created);
     });
   });
 

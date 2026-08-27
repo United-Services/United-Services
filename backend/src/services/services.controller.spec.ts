@@ -168,6 +168,51 @@ describe('ServicesController', () => {
 
       expect(translations.getTranslatedServices).not.toHaveBeenCalled();
     });
+
+    // The public services page must degrade to an uncached DB read on a
+    // Redis outage, never 500 — this is the real-world failure mode the
+    // cache-aside pattern needs to survive.
+    it('falls back to a fresh DB read when redis.get rejects', async () => {
+      const { controller, prisma, redis } = makeController();
+      (redis.get as jest.Mock).mockRejectedValue(new Error('ECONNREFUSED'));
+      (prisma.service.findMany as jest.Mock).mockResolvedValue([
+        { id: 'svc-1', imageS3Key: null },
+      ]);
+
+      const result = await controller.list();
+
+      expect(result).toEqual([{ id: 'svc-1', imageUrl: null }]);
+    });
+
+    it('still returns the result when redis.set rejects after a cache miss', async () => {
+      const { controller, prisma, redis } = makeController();
+      (redis.get as jest.Mock).mockResolvedValue(null);
+      (redis.set as jest.Mock).mockRejectedValue(new Error('ECONNREFUSED'));
+      (prisma.service.findMany as jest.Mock).mockResolvedValue([
+        { id: 'svc-1', imageS3Key: null },
+      ]);
+
+      const result = await controller.list();
+
+      expect(result).toEqual([{ id: 'svc-1', imageUrl: null }]);
+    });
+
+    // LibreTranslate being unreachable must fall back to the
+    // untranslated (English-field) response, not 500 the page for
+    // 'ar'/'zh' visitors.
+    it('falls back to the untranslated services when TranslationService rejects', async () => {
+      const { controller, redis, translations } = makeController();
+      (redis.get as jest.Mock).mockResolvedValue(
+        JSON.stringify([{ id: 'svc-1', name: 'GRE Lining', imageS3Key: null }]),
+      );
+      (translations.getTranslatedServices as jest.Mock).mockRejectedValue(
+        new Error('LibreTranslate unreachable'),
+      );
+
+      const result = await controller.list('ar');
+
+      expect(result[0].name).toBe('GRE Lining');
+    });
   });
 
   describe('bySlug', () => {
