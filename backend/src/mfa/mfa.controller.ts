@@ -2,7 +2,9 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
+  Param,
   Post,
 } from '@nestjs/common';
 import { createClerkClient } from '@clerk/backend';
@@ -70,6 +72,21 @@ export class MfaController {
       dto.response as RegistrationResponseJSON,
       dto.label,
     );
+  }
+
+  // Self-service: an admin removing one of their own credentials, e.g. to
+  // replace it (enroll a new one, then delete the old). MfaService rejects
+  // this if it would leave the account with zero working MFA methods.
+  @Delete('webauthn/:id')
+  async deleteWebauthn(@CurrentUser() user: User, @Param('id') id: string) {
+    const result = await this.mfa.deleteWebauthnCredential(user, id);
+    await this.auditLog.record({
+      actorUserId: user.id,
+      action: 'admin.webauthn_credential_deleted',
+      targetType: 'WebAuthnCredential',
+      targetId: id,
+    });
+    return result;
   }
 
   @Post('webauthn/auth-options')

@@ -50,6 +50,11 @@ describe('MfaService — WebAuthn', () => {
         findUnique: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
+        delete: jest.fn(),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      totpCredential: {
+        findUnique: jest.fn().mockResolvedValue(null),
       },
       user: { update: jest.fn() },
       $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
@@ -265,6 +270,95 @@ describe('MfaService — WebAuthn', () => {
         service.webauthnAuthVerify(user, { id: 'cred-1' } as any),
       ).rejects.toThrow('boom');
       expect(redis.del).toHaveBeenCalledWith('webauthn:auth:admin-1');
+    });
+  });
+
+  describe('deleteWebauthnCredential', () => {
+    it('rejects deleting a credential belonging to a different user', async () => {
+      prisma.webAuthnCredential.findUnique.mockResolvedValue({
+        id: 'row-1',
+        userId: 'someone-else',
+      });
+
+      await expect(
+        service.deleteWebauthnCredential(user, 'row-1'),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.webAuthnCredential.delete).not.toHaveBeenCalled();
+    });
+
+    it('rejects deleting a nonexistent credential', async () => {
+      prisma.webAuthnCredential.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.deleteWebauthnCredential(user, 'row-missing'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    // The core safety guarantee: never let this leave the account with
+    // zero working MFA methods, which would strand the admin on their
+    // next sign-in (MfaSessionVerifiedGuard demands a fresh per-session
+    // challenge, and there'd be nothing left to challenge with).
+    it("rejects deleting the account's only credential when TOTP isn't enrolled either", async () => {
+      prisma.webAuthnCredential.findUnique.mockResolvedValue({
+        id: 'row-1',
+        userId: user.id,
+      });
+      prisma.webAuthnCredential.count.mockResolvedValue(1);
+      prisma.totpCredential.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.deleteWebauthnCredential(user, 'row-1'),
+      ).rejects.toThrow(ConflictException);
+      expect(prisma.webAuthnCredential.delete).not.toHaveBeenCalled();
+    });
+
+    it('allows deleting one of several WebAuthn credentials, keeping at least one', async () => {
+      prisma.webAuthnCredential.findUnique.mockResolvedValue({
+        id: 'row-1',
+        userId: user.id,
+      });
+      prisma.webAuthnCredential.count.mockResolvedValue(2);
+      prisma.totpCredential.findUnique.mockResolvedValue(null);
+
+      const result = await service.deleteWebauthnCredential(user, 'row-1');
+
+      expect(result).toEqual({ success: true });
+      expect(prisma.webAuthnCredential.delete).toHaveBeenCalledWith({
+        where: { id: 'row-1' },
+      });
+    });
+
+    it('allows deleting the only WebAuthn credential when TOTP is confirmed as a fallback', async () => {
+      prisma.webAuthnCredential.findUnique.mockResolvedValue({
+        id: 'row-1',
+        userId: user.id,
+      });
+      prisma.webAuthnCredential.count.mockResolvedValue(1);
+      prisma.totpCredential.findUnique.mockResolvedValue({
+        confirmedAt: new Date(),
+      });
+
+      const result = await service.deleteWebauthnCredential(user, 'row-1');
+
+      expect(result).toEqual({ success: true });
+      expect(prisma.webAuthnCredential.delete).toHaveBeenCalledWith({
+        where: { id: 'row-1' },
+      });
+    });
+
+    it('still rejects when TOTP exists but was never confirmed (enrollment left incomplete)', async () => {
+      prisma.webAuthnCredential.findUnique.mockResolvedValue({
+        id: 'row-1',
+        userId: user.id,
+      });
+      prisma.webAuthnCredential.count.mockResolvedValue(1);
+      prisma.totpCredential.findUnique.mockResolvedValue({
+        confirmedAt: null,
+      });
+
+      await expect(
+        service.deleteWebauthnCredential(user, 'row-1'),
+      ).rejects.toThrow(ConflictException);
     });
   });
 });

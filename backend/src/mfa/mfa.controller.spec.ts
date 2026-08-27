@@ -25,6 +25,7 @@ describe('MfaController.resetPassword', () => {
       verifyTotp: jest.fn(),
       webauthnAuthVerify: jest.fn(),
       markSessionVerified: jest.fn().mockResolvedValue(undefined),
+      deleteWebauthnCredential: jest.fn(),
     } as unknown as MfaService;
     const auditLog = {
       record: jest.fn().mockResolvedValue(undefined),
@@ -107,11 +108,12 @@ describe('MfaController — per-session MFA challenge', () => {
       verifyTotp: jest.fn(),
       webauthnAuthVerify: jest.fn(),
       markSessionVerified: jest.fn().mockResolvedValue(undefined),
+      deleteWebauthnCredential: jest.fn(),
     } as unknown as MfaService;
     const auditLog = {
       record: jest.fn().mockResolvedValue(undefined),
     } as unknown as AuditLogService;
-    return { controller: new MfaController(mfa, auditLog), mfa };
+    return { controller: new MfaController(mfa, auditLog), mfa, auditLog };
   }
 
   describe('challengeTotp', () => {
@@ -161,6 +163,43 @@ describe('MfaController — per-session MFA challenge', () => {
 
       expect(mfa.markSessionVerified).not.toHaveBeenCalled();
       expect(result).toEqual({ verified: false });
+    });
+  });
+
+  describe('MfaController.deleteWebauthn', () => {
+    it('deletes the credential and records an audit log entry', async () => {
+      const { controller, mfa, auditLog } = makeController();
+      (mfa.deleteWebauthnCredential as jest.Mock).mockResolvedValue({
+        success: true,
+      });
+
+      const result = await controller.deleteWebauthn(user, 'cred-row-1');
+
+      expect(mfa.deleteWebauthnCredential).toHaveBeenCalledWith(
+        user,
+        'cred-row-1',
+      );
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorUserId: user.id,
+          action: 'admin.webauthn_credential_deleted',
+          targetType: 'WebAuthnCredential',
+          targetId: 'cred-row-1',
+        }),
+      );
+      expect(result).toEqual({ success: true });
+    });
+
+    it('never logs an audit entry when the service rejects the delete (e.g. last remaining method)', async () => {
+      const { controller, mfa, auditLog } = makeController();
+      (mfa.deleteWebauthnCredential as jest.Mock).mockRejectedValue(
+        new Error('only method left'),
+      );
+
+      await expect(
+        controller.deleteWebauthn(user, 'cred-row-1'),
+      ).rejects.toThrow('only method left');
+      expect(auditLog.record).not.toHaveBeenCalled();
     });
   });
 });
