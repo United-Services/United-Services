@@ -6,6 +6,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { Webhook } from 'svix';
+import { Throttle } from '@nestjs/throttler';
 import { Public } from '../common/decorators/public.decorator';
 import { CsrfExempt } from '../common/decorators/csrf-exempt.decorator';
 import { PrismaService } from '../prisma/prisma.service';
@@ -28,8 +29,15 @@ interface ClerkUserPayload {
 export class ClerkWebhookController {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Legitimate traffic is exclusively Clerk's own servers, and never
+  // bursty at this app's scale — signature verification below (via svix)
+  // already rejects anything not actually from Clerk before touching the
+  // DB, but it still costs an HMAC computation per request, so a tighter
+  // limit than the global default closes off using this as a cheap
+  // unauthenticated hammer.
   @Public()
   @CsrfExempt()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post()
   async handle(
     @Req() req: { rawBody?: Buffer },
