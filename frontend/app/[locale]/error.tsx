@@ -6,6 +6,7 @@
 // context to render defeats the purpose of a safety net.
 
 import { useEffect } from "react"
+import { useClerk, useAuth } from "@clerk/nextjs"
 import { palette } from "@/theme"
 export default function LocaleError({
   error,
@@ -14,6 +15,9 @@ export default function LocaleError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const { signOut } = useClerk()
+  const { isSignedIn } = useAuth()
+
   useEffect(() => {
     console.error(error)
   }, [error])
@@ -102,6 +106,24 @@ export default function LocaleError({
           Return home
         </button>
       </div>
+      {isSignedIn && (
+        <button
+          onClick={() => signOut(() => { window.location.href = "/" })}
+          style={{
+            background: "none",
+            border: "1.5px solid #DC2626",
+            borderRadius: 9999,
+            padding: "9px 20px",
+            fontWeight: 600,
+            fontSize: 13,
+            color: "#DC2626",
+            cursor: "pointer",
+            fontFamily: "Poppins, sans-serif",
+          }}
+        >
+          Log out
+        </button>
+      )}
     </div>
   )
 }

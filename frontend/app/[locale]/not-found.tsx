@@ -1,10 +1,16 @@
+"use client"
+
 import Link from "next/link"
+import { useClerk, useAuth } from "@clerk/nextjs"
 import { palette } from "@/theme"
 
 // Hardcoded English, same reasoning as error.tsx — a 404 page must never
 // itself depend on data/context that could be the reason the route
 // resolution failed in the first place.
 export default function LocaleNotFound() {
+  const { signOut } = useClerk()
+  const { isSignedIn } = useAuth()
+
   return (
     <div
       style={{
@@ -58,6 +64,24 @@ export default function LocaleNotFound() {
       >
         Return home
       </Link>
+      {isSignedIn && (
+        <button
+          onClick={() => signOut(() => { window.location.href = "/" })}
+          style={{
+            background: "none",
+            border: "1.5px solid #DC2626",
+            borderRadius: 9999,
+            padding: "9px 20px",
+            fontWeight: 600,
+            fontSize: 13,
+            color: "#DC2626",
+            cursor: "pointer",
+            fontFamily: "Poppins, sans-serif",
+          }}
+        >
+          Log out
+        </button>
+      )}
     </div>
   )
 }

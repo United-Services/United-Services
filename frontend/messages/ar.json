@@ -1025,7 +1025,8 @@
     },
     "copy": "نسخ",
     "copied": "تم النسخ",
-    "continueSetup": "متابعة"
+    "continueSetup": "متابعة",
+    "logout": "تسجيل الخروج"
   },
   "adminSecurity": {
     "loading": "Loading…",
@@ -1244,6 +1245,7 @@
     "webauthnPrompt": "استخدم Touch ID أو Face ID أو Windows Hello على هذا الجهاز لتأكيد هويتك.",
     "waiting": "جارٍ الانتظار…",
     "verifyWithBiometric": "تحقق باستخدام البصمة",
+    "logout": "تسجيل الخروج",
     "errors": {
       "invalidCode": "رمز غير صالح. حاول مرة أخرى.",
       "webauthnFailed": "تعذر التحقق من بيانات الاعتماد الخاصة بك. حاول مرة أخرى، أو استخدم تطبيق مصادقة بدلاً من ذلك.",
