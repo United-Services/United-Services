@@ -21,6 +21,26 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 ENVIRONMENT="${ENVIRONMENT:-staging}"
 OUT="$REPO_ROOT/backend/.env"
+
+# The aws CLI needs its own working credentials to reach SSM in the first
+# place — those aren't something this script can fetch from SSM itself.
+# If the caller's shell doesn't already have a working AWS identity (no
+# active SSO session, no exported keys), fall back to the AWS_* keys
+# already sitting in backend/.env from a previous run/manual setup, rather
+# than failing with an opaque "security token invalid" from the aws CLI.
+#
+# Deliberately not `source <(...)` here: macOS still ships bash 3.2 at
+# /bin/bash (Apple froze it there over the GPLv3 relicense), and that
+# version doesn't reliably propagate variables out of a process
+# substitution piped into `source` — they'd end up silently unset, with
+# the aws CLI then falling back to whatever's in ~/.aws/credentials
+# instead. A plain read loop over a here-string has no such issue.
+if [ -z "${AWS_ACCESS_KEY_ID:-}" ] && [ -f "$OUT" ]; then
+  AWS_ENV_LINES="$(grep -E '^AWS_(ACCESS_KEY_ID|SECRET_ACCESS_KEY|REGION)=' "$OUT")"
+  while IFS='=' read -r key value; do
+    [ -n "$key" ] && export "$key=$value"
+  done <<< "$AWS_ENV_LINES"
+fi
 # Build into a temp file first and only replace the real target at the very
 # end, once everything has actually succeeded — an aws CLI failure partway
 # through (bad creds, network blip, wrong path) must never leave whatever
