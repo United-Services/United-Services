@@ -9,7 +9,12 @@ import { axios, authHeader } from "../lib/api"
 import { getErrorMessage } from "../lib/errors"
 import { putToPresignedUrl, PresignedUploadError } from "../lib/uploadToS3"
 import { fieldLabelStyle, fieldInputStyle } from "./adminShared"
-import { SkeletonCard } from "../components/Skeleton"
+import { Skeleton, SkeletonCard } from "../components/Skeleton"
+import {
+  getCachedSpecs,
+  prefetchSpecs,
+  invalidateSpecsCache,
+} from "../lib/specsPrefetch"
 
 interface Service {
   id: string
@@ -38,9 +43,6 @@ export default function AdminSpecsSection({ setError }: Props) {
   const tCommon = useTranslations("common")
   const authed = async () => authHeader(await getToken())
 
-  const [services, setServices] = useState<Service[]>([])
-  const [serviceFiles, setServiceFiles] =
-    useState<Record<string, ServiceFile[]>>({})
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const [uploadingImageId, setUploadingImageId] = useState<string | null>(
@@ -68,34 +70,31 @@ export default function AdminSpecsSection({ setError }: Props) {
     longDescription: "",
     specs: "",
   })
+  // Pre-seeded from AdminDashboard.tsx's background prefetch (see
+  // lib/specsPrefetch.ts) when it's already warm by the time this section
+  // mounts — servicesLoading starts false and the grid renders instantly
+  // instead of a skeleton flash for data that already arrived.
+  const cachedOnMount = getCachedSpecs()
+  const [services, setServices] = useState<Service[]>(
+    cachedOnMount?.services ?? [],
+  )
+  const [serviceFiles, setServiceFiles] = useState<Record<string, ServiceFile[]>>(
+    cachedOnMount?.serviceFiles ?? {},
+  )
   const [creatingService, setCreatingService] = useState(false)
-  const [servicesLoading, setServicesLoading] = useState(true)
+  const [servicesLoading, setServicesLoading] = useState(!cachedOnMount)
+  // Per-image load state for the skeleton overlay below — an <img> that's
+  // still downloading shows a skeleton in its place instead of a
+  // partially-decoded/streaming-in image, which reads as broken rather
+  // than "loading."
+  const [imageReady, setImageReady] = useState<Record<string, boolean>>({})
 
-  const loadServices = async () => {
+  const loadServices = async (force = false) => {
+    if (force) invalidateSpecsCache()
     try {
-      const headers = await authed()
-      const { data } = await axios.get("/services", { headers })
-      setServices(data)
-
-      // Batched — the card list only ever displays each service's latest
-      // file (see `files[0]` below), so one request for all of them
-      // replaces what used to be one /services/:id/files round trip per
-      // card. A single service's full version history is still fetched
-      // individually, but only right after that one service's own
-      // upload/edit action, never at page load.
-      if (data.length > 0) {
-        const ids = data.map((s: Service) => s.id).join(",")
-        const { data: latestFiles } = await axios.get("/services/latest-files", {
-          headers,
-          params: { ids },
-        })
-        const entries: [string, ServiceFile[]][] = Object.entries(
-          latestFiles as Record<string, ServiceFile>,
-        ).map(([serviceId, file]) => [serviceId, [file]])
-        setServiceFiles(Object.fromEntries(entries))
-      } else {
-        setServiceFiles({})
-      }
+      const { services, serviceFiles } = await prefetchSpecs(getToken)
+      setServices(services)
+      setServiceFiles(serviceFiles)
     } catch (err) {
       setError(getErrorMessage(err, tCommon("errors.loadFailed")))
     } finally {
@@ -104,8 +103,12 @@ export default function AdminSpecsSection({ setError }: Props) {
   }
 
   useEffect(() => {
+    // Already served from cache above — still worth confirming/refreshing
+    // in the background (e.g. the prefetch was still in flight, or this
+    // is a direct visit with no prior dashboard warm-up at all).
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadServices()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const uploadSpec = (serviceId: string) =>
@@ -137,6 +140,7 @@ export default function AdminSpecsSection({ setError }: Props) {
         headers,
       })
       setServiceFiles((prev) => ({ ...prev, [serviceId]: files }))
+      invalidateSpecsCache()
     } catch (err) {
       setError(
         err instanceof PresignedUploadError
@@ -172,6 +176,7 @@ export default function AdminSpecsSection({ setError }: Props) {
       setServices((prev) =>
         prev.map((s) => (s.id === serviceId ? { ...s, ...updated } : s)),
       )
+      invalidateSpecsCache()
     } catch (err) {
       setError(
         err instanceof PresignedUploadError
@@ -215,6 +220,7 @@ export default function AdminSpecsSection({ setError }: Props) {
       setServices((prev) =>
         prev.map((s) => (s.id === serviceId ? { ...s, ...updated } : s)),
       )
+      invalidateSpecsCache()
       setEditingServiceId(null)
     } catch (err) {
       setError(getErrorMessage(err, tCommon("errors.actionFailed")))
@@ -235,6 +241,7 @@ export default function AdminSpecsSection({ setError }: Props) {
         delete next[svc.id]
         return next
       })
+      invalidateSpecsCache()
     } catch (err) {
       // The backend's message is specific and actionable here (e.g. "has
       // existing RFQs against it") — worth showing over the generic
@@ -272,6 +279,7 @@ export default function AdminSpecsSection({ setError }: Props) {
         { headers },
       )
       setServices((prev) => [...prev, created])
+      invalidateSpecsCache()
       setNewServiceForm({
         slug: "",
         name: "",
@@ -470,6 +478,7 @@ export default function AdminSpecsSection({ setError }: Props) {
             >
               <div
                 style={{
+                  position: "relative",
                   width: "100%",
                   aspectRatio: "16/9",
                   borderRadius: 10,
@@ -479,17 +488,40 @@ export default function AdminSpecsSection({ setError }: Props) {
                 }}
               >
                 {svc.imageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element -- admin-only tool, S3 presigned URL not known to next/image at build time
-                  <img
-                    src={svc.imageUrl}
-                    alt={svc.name}
-                    loading="lazy"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
-                  />
+                  <>
+                    {/* Shown until the image below fires onLoad — a
+                        partially-downloaded/streaming-in image reads as
+                        broken, not "loading," so this fully occludes it
+                        instead of letting it render progressively. Usually
+                        invisible in practice: AdminDashboard.tsx's
+                        background prefetch (lib/specsPrefetch.ts) already
+                        warmed the browser's cache for this exact URL
+                        before the admin ever opened this section. */}
+                    {!imageReady[svc.id] && (
+                      <div style={{ position: "absolute", inset: 0 }}>
+                        <Skeleton height="100%" radius={0} />
+                      </div>
+                    )}
+                    {/* eslint-disable-next-line @next/next/no-img-element -- admin-only tool, S3 presigned URL not known to next/image at build time */}
+                    <img
+                      src={svc.imageUrl}
+                      alt={svc.name}
+                      loading="lazy"
+                      onLoad={() =>
+                        setImageReady((prev) => ({ ...prev, [svc.id]: true }))
+                      }
+                      onError={() =>
+                        setImageReady((prev) => ({ ...prev, [svc.id]: true }))
+                      }
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        opacity: imageReady[svc.id] ? 1 : 0,
+                        transition: "opacity 0.15s ease",
+                      }}
+                    />
+                  </>
                 )}
               </div>
               <input
