@@ -55,6 +55,7 @@ describe('MfaService — WebAuthn', () => {
       },
       totpCredential: {
         findUnique: jest.fn().mockResolvedValue(null),
+        delete: jest.fn(),
       },
       user: { update: jest.fn() },
       $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
@@ -359,6 +360,55 @@ describe('MfaService — WebAuthn', () => {
       await expect(
         service.deleteWebauthnCredential(user, 'row-1'),
       ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('deleteTotpCredential', () => {
+    it('rejects when there is no confirmed TOTP enrollment', async () => {
+      prisma.totpCredential.findUnique.mockResolvedValue(null);
+
+      await expect(service.deleteTotpCredential(user)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(prisma.totpCredential.delete).not.toHaveBeenCalled();
+    });
+
+    it('rejects an unconfirmed (in-progress) TOTP enrollment', async () => {
+      prisma.totpCredential.findUnique.mockResolvedValue({
+        confirmedAt: null,
+      });
+
+      await expect(service.deleteTotpCredential(user)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(prisma.totpCredential.delete).not.toHaveBeenCalled();
+    });
+
+    // Same never-strand-the-account guarantee as deleteWebauthnCredential.
+    it('rejects deleting TOTP when it is the only MFA method', async () => {
+      prisma.totpCredential.findUnique.mockResolvedValue({
+        confirmedAt: new Date(),
+      });
+      prisma.webAuthnCredential.count.mockResolvedValue(0);
+
+      await expect(service.deleteTotpCredential(user)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(prisma.totpCredential.delete).not.toHaveBeenCalled();
+    });
+
+    it('allows deleting TOTP when a WebAuthn credential remains as a fallback', async () => {
+      prisma.totpCredential.findUnique.mockResolvedValue({
+        confirmedAt: new Date(),
+      });
+      prisma.webAuthnCredential.count.mockResolvedValue(1);
+
+      const result = await service.deleteTotpCredential(user);
+
+      expect(result).toEqual({ success: true });
+      expect(prisma.totpCredential.delete).toHaveBeenCalledWith({
+        where: { userId: user.id },
+      });
     });
   });
 });
