@@ -1,5 +1,6 @@
 "use client" /* Stepper */
 import { useEffect, useState } from "react"
+import Image from "next/image"
 import { useSignUp } from "@clerk/nextjs"
 import { useTranslations } from "next-intl"
 import { palette, inputStyle } from "../theme"
@@ -8,8 +9,7 @@ import PublicNav from "../components/PublicNav"
 import PhoneInput from "../components/PhoneInput"
 import OtpInput from "../components/OtpInput"
 import { validatePhoneNumber } from "../lib/validatePhone"
-const worldImg =
-  "https://images.unsplash.com/photo-1602860109208-613d39362844?w=1200&q=85"
+const worldImg = "/images/signup.jpg"
 
 interface Props {
   onNavigate: (page: string) => void
@@ -259,33 +259,28 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
         className="signup-split-panel"
         style={{ position: "relative", overflow: "hidden", background: "#111" }}
       >
-        <img
+        <Image
           src={worldImg}
           alt="Industrial energy infrastructure"
-          style={{
-            // Absolutely positioned like the overlay divs right below it —
-            // without this, height:100% can't resolve against this
-            // column's indefinite height (it's sized by the grid, which
-            // in turn depends on this very column), so the browser falls
-            // back to the image's natural aspect-ratio height. At this
-            // column's width that's over 1000px tall, which then stretches
-            // the *entire* grid row (both columns, via the default
-            // align-items:stretch) to match — this was the real reason
-            // the form kept sitting far lower than any padding/margin
-            // tuning on the form side alone could ever fix.
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            opacity: 0.75,
-          }}
+          fill
+          priority
+          // fill resolves against the nearest positioned ancestor
+          // (signup-split-panel, position:relative) instead of this
+          // column's own indefinite height — same fix as the plain <img>
+          // it replaces needed via position:absolute+inset:0, see the
+          // longer explanation that used to live here about why a
+          // non-absolute image stretched the entire grid row.
+          style={{ objectFit: "cover" }}
         />
+        {/* Plain dark scrim (no accent tint), uniform rather than a
+            top/bottom gradient — this panel's text block is vertically
+            centered, not bottom-anchored, so a directional gradient would
+            leave uneven contrast across the heading vs. the perk list. */}
         <div
           style={{
             position: "absolute",
             inset: 0,
-            background: `linear-gradient(135deg, ${palette.accent}bb 0%, rgba(15,23,42,0.85) 100%)`,
+            background: "rgba(15,23,42,0.6)",
           }}
         />
         <div
