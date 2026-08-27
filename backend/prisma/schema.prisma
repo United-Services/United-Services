@@ -190,6 +190,7 @@ model Service {
   serviceRequests ServiceRequest[]
 
   @@index([order])
+  @@index([updatedByAdminId])
 }
 
 // Always private; never publicly resolvable. Only ever reachable through
@@ -208,6 +209,7 @@ model ServiceFile {
   accessRequests FileAccessRequest[]
 
   @@index([serviceId])
+  @@index([uploadedByAdminId])
 }
 
 model FileAccessRequest {
@@ -226,6 +228,7 @@ model FileAccessRequest {
   @@index([clientId, requestedAt])
   @@index([serviceFileId])
   @@index([status])
+  @@index([decidedByAdminId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -249,6 +252,7 @@ model ServiceRequest {
 
   @@index([clientId, createdAt])
   @@index([status])
+  @@index([serviceId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -275,6 +279,7 @@ model AppointmentSlot {
 
   @@index([date])
   @@index([isBooked])
+  @@index([createdByAdminId])
 }
 
 model Appointment {
@@ -318,6 +323,7 @@ model OpenPosition {
   // WHERE isOpen, added via raw SQL in the migration (Prisma's schema DSL
   // can't express a partial index's WHERE clause) — see
   // migrations/*_add_open_position_partial_index/migration.sql.
+  @@index([createdByAdminId])
 }
 
 model CandidateApplication {
@@ -352,6 +358,7 @@ model CandidateApplication {
 
   @@index([positionId])
   @@index([status])
+  @@index([reviewedByAdminId])
 }
 
 model CandidateDocument {
