@@ -5,6 +5,7 @@ import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { InlineSpinner } from "../components/Spinner"
 import { axios } from "../lib/api"
+import { putToPresignedUrl, PresignedUploadError } from "../lib/uploadToS3"
 import { TEXT, MUTED, LIME, HEAD, BODY, PublicTag, publicBtnLime } from "../lib/publicTheme"
 
 type TicketType = "technical" | "disabled_account" | "non_technical"
@@ -85,11 +86,7 @@ export default function Tickets({ onNavigate, initialType }: Props) {
         const { data: presign } = await axios.post("/tickets/presign", {
           contentType: screenshot.type,
         })
-        await fetch(presign.url, {
-          method: "PUT",
-          body: screenshot,
-          headers: { "Content-Type": screenshot.type },
-        })
+        await putToPresignedUrl(presign.url, screenshot, screenshot.type)
         screenshotS3Key = presign.key
       }
       await axios.post("/tickets", {
@@ -101,8 +98,12 @@ export default function Tickets({ onNavigate, initialType }: Props) {
         screenshotS3Key,
       })
       setDone(true)
-    } catch {
-      setError("Something went wrong submitting your report — please try again in a moment.")
+    } catch (err) {
+      setError(
+        err instanceof PresignedUploadError
+          ? `${err.message} You can try submitting again without the screenshot, or retry in a moment.`
+          : "Something went wrong submitting your report — please try again in a moment.",
+      )
     } finally {
       setSubmitting(false)
     }

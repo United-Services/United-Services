@@ -85,6 +85,46 @@ Dashboard → your app → **Webhooks** → create an endpoint pointing at
 4. On that IAM user, generate an **access key** (Security credentials tab →
    Create access key → "Application running outside AWS") and copy the key
    ID + secret **once** (AWS only shows the secret at creation time).
+5. **Required, not optional** — configure the bucket's CORS policy. Every
+   upload (service spec files/images, candidate ID/CV/documents, ticket
+   screenshots) is a presigned PUT the *browser* sends directly to S3, not
+   through this app's backend — without CORS configured, every one of
+   those fails with "No 'Access-Control-Allow-Origin' header is present"
+   (a browser-enforced block, invisible in any server-side log). Confirmed
+   live: this exact gap was silently breaking every direct-to-S3 upload.
+   AWS Console → **S3** → your bucket → **Permissions** tab → **Cross-origin
+   resource sharing (CORS)** → paste:
+   ```json
+   {
+     "CORSRules": [
+       {
+         "AllowedOrigins": ["https://your-production-domain.com"],
+         "AllowedMethods": ["PUT", "GET", "HEAD"],
+         "AllowedHeaders": ["*"],
+         "ExposeHeaders": ["ETag"],
+         "MaxAgeSeconds": 3000
+       }
+     ]
+   }
+   ```
+   `ExposeHeaders: ["ETag"]` is load-bearing, not decorative —
+   `lib/resumableUpload.ts`'s chunked-upload path reads the `ETag` response
+   header per part to complete a multipart upload, which is blocked by
+   the browser (not just the value being empty) without this. Add every
+   origin the app is actually served from — production domain, and any
+   LAN IP/localhost used for testing — as a separate entry in
+   `AllowedOrigins`; `*` is not usable together with
+   `AllowedCredentials`/cookie-carrying requests, and none of these
+   uploads need credentials anyway (the presigned URL itself is the
+   auth), so the safer fix is listing real origins rather than reaching
+   for a wildcard.
+   Or via CLI: `aws s3api put-bucket-cors --bucket <your-bucket-name>
+   --cors-configuration file://cors.json` (same JSON shape) — requires
+   `s3:PutBucketCORS`, a bucket-configuration permission deliberately
+   **not** included in the app's own IAM policy in step 3 above (that
+   policy is scoped to object-level actions only), so this has to be
+   applied with a broader/admin AWS credential or console access, not the
+   app's own runtime key.
 
 **Cost note:** if this AWS account was created after July 2025, S3 usage
 draws from a one-time $200/6-month credit shared across all AWS services

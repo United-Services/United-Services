@@ -7,6 +7,7 @@ import { palette } from "../theme"
 import { InlineSpinner } from "../components/Spinner"
 import { axios, authHeader } from "../lib/api"
 import { getErrorMessage } from "../lib/errors"
+import { putToPresignedUrl, PresignedUploadError } from "../lib/uploadToS3"
 import { fieldLabelStyle, fieldInputStyle } from "./adminShared"
 import { SkeletonCard } from "../components/Skeleton"
 
@@ -122,11 +123,11 @@ export default function AdminSpecsSection({ setError }: Props) {
         },
         { headers },
       )
-      await fetch(presign.url, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type || "application/octet-stream" },
-      })
+      await putToPresignedUrl(
+        presign.url,
+        file,
+        file.type || "application/octet-stream",
+      )
       await axios.post(
         `/services/${serviceId}/files`,
         { s3Key: presign.key, originalFilename: file.name },
@@ -137,7 +138,11 @@ export default function AdminSpecsSection({ setError }: Props) {
       })
       setServiceFiles((prev) => ({ ...prev, [serviceId]: files }))
     } catch (err) {
-      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+      setError(
+        err instanceof PresignedUploadError
+          ? err.message
+          : getErrorMessage(err, tCommon("errors.actionFailed")),
+      )
     } finally {
       setUploadingId(null)
     }
@@ -158,11 +163,7 @@ export default function AdminSpecsSection({ setError }: Props) {
         { contentType: file.type },
         { headers },
       )
-      await fetch(presign.url, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
-      })
+      await putToPresignedUrl(presign.url, file, file.type)
       const { data: updated } = await axios.post(
         `/services/${serviceId}/image`,
         { s3Key: presign.key },
@@ -172,7 +173,11 @@ export default function AdminSpecsSection({ setError }: Props) {
         prev.map((s) => (s.id === serviceId ? { ...s, ...updated } : s)),
       )
     } catch (err) {
-      setError(getErrorMessage(err, tCommon("errors.actionFailed")))
+      setError(
+        err instanceof PresignedUploadError
+          ? err.message
+          : getErrorMessage(err, tCommon("errors.actionFailed")),
+      )
     } finally {
       setUploadingImageId(null)
     }
