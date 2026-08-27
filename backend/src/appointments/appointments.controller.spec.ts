@@ -2,12 +2,17 @@ import { ConflictException } from '@nestjs/common';
 import { AppointmentsController } from './appointments.controller';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { AuditLogService } from '../audit-log/audit-log.service';
+import type { AppointmentsGateway } from './appointments.gateway';
 import type { User } from '../generated/prisma';
 
 function makeAuditLog() {
   return {
     record: jest.fn().mockResolvedValue(undefined),
   } as unknown as AuditLogService;
+}
+
+function makeGateway() {
+  return { slotsChanged: jest.fn() } as unknown as AppointmentsGateway;
 }
 
 // Booking must be race-safe: two clients hitting POST /book for the same
@@ -54,7 +59,12 @@ describe('AppointmentsController.book', () => {
 
   it('books the slot when it is still open', async () => {
     const { prisma, tx } = makePrisma(1);
-    const controller = new AppointmentsController(prisma, makeAuditLog());
+    const gateway = makeGateway();
+    const controller = new AppointmentsController(
+      prisma,
+      makeAuditLog(),
+      gateway,
+    );
 
     const result = await controller.book(client, { slotId: 'slot-1' });
 
@@ -67,16 +77,29 @@ describe('AppointmentsController.book', () => {
       include: { slot: true },
     });
     expect(result).toMatchObject({ id: 'appt-1' });
+    // The live-updates channel must fire on a real booking — this is
+    // what lets a second client's open-slots list drop the taken slot
+    // without waiting for their next poll/reload.
+    expect(gateway.slotsChanged).toHaveBeenCalledTimes(1);
   });
 
   it('rejects the booking when the slot was already taken (race lost)', async () => {
     const { prisma, tx } = makePrisma(0);
-    const controller = new AppointmentsController(prisma, makeAuditLog());
+    const gateway = makeGateway();
+    const controller = new AppointmentsController(
+      prisma,
+      makeAuditLog(),
+      gateway,
+    );
 
     await expect(controller.book(client, { slotId: 'slot-1' })).rejects.toThrow(
       ConflictException,
     );
     expect(tx.appointment.create).not.toHaveBeenCalled();
+    // Never broadcast a "changed" signal for a booking that didn't
+    // actually happen — that would send every connected client on a
+    // pointless refetch for nothing.
+    expect(gateway.slotsChanged).not.toHaveBeenCalled();
   });
 
   // A stricter simulation of rule 4's "no double-booking" guarantee: rather
@@ -126,7 +149,11 @@ describe('AppointmentsController.book', () => {
     }
 
     const prisma = makeRacyPrisma();
-    const controller = new AppointmentsController(prisma, makeAuditLog());
+    const controller = new AppointmentsController(
+      prisma,
+      makeAuditLog(),
+      makeGateway(),
+    );
 
     await expect(
       controller.book(client, { slotId: 'slot-1' }),
@@ -145,13 +172,47 @@ describe('AppointmentsController.book', () => {
   // a stale/guessed slotId for a since-closed slot can still book it.
 });
 
+describe('AppointmentsController.createSlot', () => {
+  const admin = { id: 'admin-1' } as User;
+
+  it('creates the slot and broadcasts a live-update signal', async () => {
+    const create = jest.fn().mockResolvedValue({
+      id: 'slot-new',
+      date: new Date('2026-09-01'),
+    });
+    const prisma = { appointmentSlot: { create } } as unknown as PrismaService;
+    const gateway = makeGateway();
+    const controller = new AppointmentsController(
+      prisma,
+      makeAuditLog(),
+      gateway,
+    );
+
+    const result = await controller.createSlot(admin, {
+      date: '2026-09-01',
+      startTime: '2026-09-01T10:00:00.000Z',
+      endTime: '2026-09-01T10:30:00.000Z',
+    });
+
+    expect(create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ createdByAdminId: admin.id }),
+    });
+    expect(result).toMatchObject({ id: 'slot-new' });
+    expect(gateway.slotsChanged).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('AppointmentsController.openSlots', () => {
   it('excludes booked and admin-closed slots from the public list', () => {
     const findMany = jest.fn();
     const prisma = {
       appointmentSlot: { findMany },
     } as unknown as PrismaService;
-    const controller = new AppointmentsController(prisma, makeAuditLog());
+    const controller = new AppointmentsController(
+      prisma,
+      makeAuditLog(),
+      makeGateway(),
+    );
 
     controller.openSlots();
 
@@ -167,7 +228,11 @@ describe('AppointmentsController.allSlots', () => {
     const prisma = {
       appointmentSlot: { findMany },
     } as unknown as PrismaService;
-    const controller = new AppointmentsController(prisma, makeAuditLog());
+    const controller = new AppointmentsController(
+      prisma,
+      makeAuditLog(),
+      makeGateway(),
+    );
 
     controller.allSlots();
 
@@ -187,7 +252,11 @@ describe('AppointmentsController.allSlots', () => {
     const prisma = {
       appointmentSlot: { findMany },
     } as unknown as PrismaService;
-    const controller = new AppointmentsController(prisma, makeAuditLog());
+    const controller = new AppointmentsController(
+      prisma,
+      makeAuditLog(),
+      makeGateway(),
+    );
 
     controller.allSlots();
 
@@ -207,7 +276,8 @@ describe('AppointmentsController.updateSlot', () => {
       appointmentSlot: { update },
     } as unknown as PrismaService;
     const auditLog = makeAuditLog();
-    const controller = new AppointmentsController(prisma, auditLog);
+    const gateway = makeGateway();
+    const controller = new AppointmentsController(prisma, auditLog, gateway);
 
     await controller.updateSlot(admin, 'slot-1', { isClosed: true });
 
@@ -221,6 +291,9 @@ describe('AppointmentsController.updateSlot', () => {
         targetId: 'slot-1',
       }),
     );
+    // Closing a slot removes it from the public picker — clients
+    // watching live must be told to refetch.
+    expect(gateway.slotsChanged).toHaveBeenCalledTimes(1);
   });
 
   it('edits the date/time fields when given', async () => {
@@ -228,7 +301,11 @@ describe('AppointmentsController.updateSlot', () => {
     const prisma = {
       appointmentSlot: { update },
     } as unknown as PrismaService;
-    const controller = new AppointmentsController(prisma, makeAuditLog());
+    const controller = new AppointmentsController(
+      prisma,
+      makeAuditLog(),
+      makeGateway(),
+    );
 
     await controller.updateSlot(admin, 'slot-1', {
       date: '2026-09-01',
@@ -252,7 +329,11 @@ describe('AppointmentsController.updateStatus', () => {
       const update = jest.fn().mockResolvedValue({ id: 'appt-1', status });
       const prisma = { appointment: { update } } as unknown as PrismaService;
       const auditLog = makeAuditLog();
-      const controller = new AppointmentsController(prisma, auditLog);
+      const controller = new AppointmentsController(
+        prisma,
+        auditLog,
+        makeGateway(),
+      );
 
       await controller.updateStatus(admin, 'appt-1', { status });
 

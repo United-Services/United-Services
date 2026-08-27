@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
+import { AppointmentsGateway } from './appointments.gateway';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreateSlotDto } from './dto/create-slot.dto';
@@ -28,12 +29,13 @@ export class AppointmentsController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLog: AuditLogService,
+    private readonly gateway: AppointmentsGateway,
   ) {}
 
   @Roles(Role.admin)
   @Post('slots')
-  createSlot(@CurrentUser() admin: User, @Body() dto: CreateSlotDto) {
-    return this.prisma.appointmentSlot.create({
+  async createSlot(@CurrentUser() admin: User, @Body() dto: CreateSlotDto) {
+    const slot = await this.prisma.appointmentSlot.create({
       data: {
         date: new Date(dto.date),
         startTime: new Date(dto.startTime),
@@ -41,6 +43,8 @@ export class AppointmentsController {
         createdByAdminId: admin.id,
       },
     });
+    this.gateway.slotsChanged();
+    return slot;
   }
 
   // Only open, non-closed slots are ever listed here — a booked or
@@ -119,6 +123,7 @@ export class AppointmentsController {
       targetId: id,
       metadata: { ...dto },
     });
+    this.gateway.slotsChanged();
     return updated;
   }
 
@@ -128,7 +133,7 @@ export class AppointmentsController {
   @Roles(Role.client)
   @Post('book')
   async book(@CurrentUser() client: User, @Body() dto: BookSlotDto) {
-    return this.prisma.$transaction(async (tx) => {
+    const appointment = await this.prisma.$transaction(async (tx) => {
       const { count } = await tx.appointmentSlot.updateMany({
         where: { id: dto.slotId, isBooked: false, isClosed: false },
         data: { isBooked: true },
@@ -143,6 +148,8 @@ export class AppointmentsController {
         include: { slot: true },
       });
     });
+    this.gateway.slotsChanged();
+    return appointment;
   }
 
   @Roles(Role.client)
