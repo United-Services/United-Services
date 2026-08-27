@@ -116,6 +116,7 @@ export default function SignInPage() {
         </div>
 
         <div
+          className="auth-form-panel"
           style={{
             flex: 1,
             minWidth: 380,
@@ -162,7 +163,18 @@ export default function SignInPage() {
 
       <style>{`
         @media (max-width: 860px) {
-          .auth-photo-panel { display: none; }
+          /* !important: the panel also carries an inline style prop with
+             its own display: "flex", which otherwise beats a plain class
+             rule regardless of the media query matching — this is why the
+             panel and the sign-in card were rendering on top of each
+             other on a phone instead of the panel actually hiding. */
+          .auth-photo-panel { display: none !important; }
+          /* The 380px minWidth (meant to keep the form from getting
+             squeezed too narrow in the two-column layout) is itself wider
+             than a phone viewport once the photo panel above is gone —
+             drop it so the panel can shrink to fit instead of overflowing
+             the page horizontally. */
+          .auth-form-panel { min-width: 0 !important; padding: 24px 16px !important; }
         }
       `}</style>
     </div>
