@@ -131,6 +131,16 @@ export class FileAccessController {
       where: { id },
     });
     if (!request) throw new NotFoundException('Request not found');
+    // A decision is final — the admin UI already hides the approve/deny
+    // buttons once status !== 'pending' (adminShared.tsx's ActionPair, used
+    // by AdminRequestsSection), so a second decide() call reaching the
+    // backend means either a replayed request or two admins racing on the
+    // same request. Either way it must not silently overwrite the original
+    // decidedByAdminId/decidedAt. Same bug class fixed in
+    // candidates.controller.ts's decide().
+    if (request.status !== FileAccessStatus.pending) {
+      throw new ConflictException('This request has already been decided.');
+    }
 
     const updated = await this.prisma.fileAccessRequest.update({
       where: { id },
