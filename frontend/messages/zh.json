@@ -1025,7 +1025,8 @@
     },
     "copy": "复制",
     "copied": "已复制",
-    "continueSetup": "继续"
+    "continueSetup": "继续",
+    "logout": "退出登录"
   },
   "adminSecurity": {
     "loading": "Loading…",
@@ -1244,6 +1245,7 @@
     "webauthnPrompt": "使用此设备上的 Touch ID、Face ID 或 Windows Hello 来确认是您本人。",
     "waiting": "等待中…",
     "verifyWithBiometric": "使用生物识别验证",
+    "logout": "退出登录",
     "errors": {
       "invalidCode": "验证码无效，请重试。",
       "webauthnFailed": "无法验证您的凭据。请重试，或改用身份验证器应用。",

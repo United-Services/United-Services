@@ -1025,7 +1025,8 @@
     },
     "copy": "Copy",
     "copied": "Copied",
-    "continueSetup": "Continue"
+    "continueSetup": "Continue",
+    "logout": "Log out"
   },
   "adminSecurity": {
     "loading": "Loading…",
@@ -1244,6 +1245,7 @@
     "webauthnPrompt": "Use Touch ID, Face ID, or Windows Hello on this device to confirm it's you.",
     "waiting": "Waiting…",
     "verifyWithBiometric": "Verify with Biometric",
+    "logout": "Log out",
     "errors": {
       "invalidCode": "Invalid code. Please try again.",
       "webauthnFailed": "Could not verify your credential. Please try again, or use an authenticator app instead.",

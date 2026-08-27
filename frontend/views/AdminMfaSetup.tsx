@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { useAuth } from "@clerk/nextjs"
+import { useAuth, useClerk } from "@clerk/nextjs"
 import { useTranslations } from "next-intl"
 import { startRegistration } from "@simplewebauthn/browser"
 import { Fingerprint } from "lucide-react"
@@ -23,6 +23,7 @@ interface Props {
 
 export default function AdminMfaSetup({ onNavigate }: Props) {
   const { getToken } = useAuth()
+  const { signOut } = useClerk()
   const t = useTranslations("adminMfaSetup")
   const [method, setMethod] = useState<"choose" | "totp" | "webauthn">("choose")
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null)
@@ -495,6 +496,24 @@ export default function AdminMfaSetup({ onNavigate }: Props) {
           </div>
         )}
       </div>
+      <button
+        onClick={() => signOut(() => onNavigate("home"))}
+        style={{
+          display: "block",
+          margin: "20px auto 0",
+          background: "none",
+          border: "1.5px solid #DC2626",
+          borderRadius: 9999,
+          padding: "9px 20px",
+          fontWeight: 600,
+          fontSize: 13,
+          color: "#DC2626",
+          cursor: "pointer",
+          fontFamily: "Poppins, sans-serif",
+        }}
+      >
+        {t("logout")}
+      </button>
       </div>
     </div>
   )

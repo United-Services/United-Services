@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from "react"
-import { useAuth } from "@clerk/nextjs"
+import { useAuth, useClerk } from "@clerk/nextjs"
 import { useTranslations } from "next-intl"
 import { startAuthentication } from "@simplewebauthn/browser"
 import { Fingerprint } from "lucide-react"
@@ -23,6 +23,7 @@ type Method = "totp" | "webauthn"
 // enrolled admin can reach any admin-scoped data (docs/BUSINESS_RULES.md).
 export default function AdminMfaChallenge({ onNavigate }: Props) {
   const { getToken } = useAuth()
+  const { signOut } = useClerk()
   const t = useTranslations("adminMfaChallenge")
   const [availableMethods, setAvailableMethods] = useState<Method[] | null>(null)
   const [method, setMethod] = useState<Method | null>(null)
@@ -346,6 +347,24 @@ export default function AdminMfaChallenge({ onNavigate }: Props) {
           </>
         )}
       </div>
+      <button
+        onClick={() => signOut(() => onNavigate("home"))}
+        style={{
+          display: "block",
+          margin: "20px auto 0",
+          background: "none",
+          border: "1.5px solid #DC2626",
+          borderRadius: 9999,
+          padding: "9px 20px",
+          fontWeight: 600,
+          fontSize: 13,
+          color: "#DC2626",
+          cursor: "pointer",
+          fontFamily: "Poppins, sans-serif",
+        }}
+      >
+        {t("logout")}
+      </button>
       </div>
     </div>
   )
