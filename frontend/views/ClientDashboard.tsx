@@ -3,6 +3,7 @@
 /* Sidebar */ /* Main */ /* ── SERVICES ── */ /* ── RFQ ── */ /* ── APPOINTMENTS ── */ /* ── PROFILE ── */
 import { useEffect, useState } from "react"
 import Image from "next/image"
+import { io } from "socket.io-client"
 import { useAuth } from "@clerk/nextjs"
 import { useLocale, useTranslations } from "next-intl"
 import { palette, inputStyle } from "../theme"
@@ -148,6 +149,33 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
     loadAll()
   }, [locale])
 
+  const refetchSlots = async () => {
+    const headers = await authed()
+    const { data } = await axios.get("/appointments/slots", { headers })
+    setSlots(data)
+  }
+
+  // Live updates for the open-slots picker — AppointmentsGateway
+  // broadcasts "slots:changed" whenever any slot's availability changes
+  // (booked, closed, or a new one added), so another client sees a taken
+  // slot disappear from the dropdown without waiting for their next visit
+  // or a failed booking attempt. Double-booking itself is still prevented
+  // by the backend's DB transaction regardless of this — this socket is
+  // purely a UX signal to refetch, not a source of truth.
+  useEffect(() => {
+    const socket = io("/appointments")
+    socket.on("slots:changed", () => {
+      refetchSlots().catch(() => {
+        // Best-effort — the next real fetch (page load, or the
+        // bookAppointment catch block) still keeps the list correct.
+      })
+    })
+    return () => {
+      socket.disconnect()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const statusForService = (
     serviceId: string,
   ): "none" | FileAccessStatus => {
@@ -230,9 +258,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
       setApptError(
         err?.response?.data?.message ?? t("appointments.slotTakenError"),
       )
-      const headers = await authed()
-      const { data } = await axios.get("/appointments/slots", { headers })
-      setSlots(data)
+      await refetchSlots()
     } finally {
       setApptLoading(false)
     }
