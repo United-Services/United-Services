@@ -4,10 +4,13 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts")
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Produces a self-contained .next/standalone/ folder (a minimal node_modules
-  // subset + server.js) so the Docker image doesn't need the full
-  // node_modules tree copied in at runtime. See Dockerfile.
-  output: "standalone",
+  // No longer "standalone" — the Dockerfile is single-stage now (full
+  // node_modules present at runtime either way, npm install/build happen
+  // in docker-entrypoint.sh at container start), and `next start` is
+  // incompatible with standalone's own server.js output ("next start"
+  // does not work with "output: standalone" — confirmed live, the app
+  // came up on the wrong invocation path). Plain `next build` + `next
+  // start` needs no special output mode.
   // Unsplash-sourced photography (project thumbnails in Projects.tsx,
   // the client-signup/sign-in split-panel photo) needs an explicit
   // remotePattern before next/image will optimize it — local /images/...
@@ -92,7 +95,12 @@ const nextConfig = {
               "form-action 'self'",
               "frame-ancestors 'none'",
               "object-src 'none'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://*.clerk.com",
+              // clerk.use-eg.com: this app's production Clerk instance uses
+              // a custom Frontend API domain, not the default
+              // *.clerk.accounts.dev. Confirmed live: clerk-js failed to
+              // load at all on the real production domain
+              // ("failed_to_load_clerk_js") without this.
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.use-eg.com",
               // clerk-js also spawns a Web Worker from a blob: URL. With no
               // worker-src set, browsers fall back to script-src for
               // worker creation too — but a blob: worker doesn't satisfy a
@@ -119,7 +127,7 @@ const nextConfig = {
               // bucket name, not hardcoded to the current one, but still
               // scoped to this AWS_REGION — update if that ever changes.
               [
-                "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://*.s3.us-east-1.amazonaws.com",
+                "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.use-eg.com https://*.s3.us-east-1.amazonaws.com",
                 process.env.NODE_ENV !== "production" ? "http://localhost:3002" : "",
               ]
                 .filter(Boolean)
