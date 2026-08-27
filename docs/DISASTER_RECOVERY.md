@@ -99,3 +99,83 @@ Betterstack-console-only action with no API credential available here.
 - Confirmed Supabase PITR tier: not verified.
 - Practice restore: never performed — targets above are estimates, not
   drilled numbers.
+
+## Setup instructions for the two S3 gaps above
+
+The app's own IAM user (`Service-Account`) is deliberately scoped to
+object-level S3 permissions only (`AccessDenied` confirmed live on both
+`s3:GetBucketVersioning` and `s3:GetLifecycleConfiguration` — this is
+correct least-privilege, not a bug). Both of these need to be applied via
+the AWS Console or CloudShell with a broader (account-admin or
+bucket-owner) credential — not something the app's own deployment
+pipeline should ever be able to do.
+
+### Lifecycle rule — expire noncurrent versions after 90 days
+
+Bounds storage cost from versioning (every overwrite/delete keeps the old
+version indefinitely otherwise). Apply via AWS CLI:
+
+```bash
+aws s3api put-bucket-lifecycle-configuration \
+  --bucket united-services \
+  --lifecycle-configuration '{
+    "Rules": [
+      {
+        "ID": "expire-noncurrent-versions",
+        "Status": "Enabled",
+        "Filter": {},
+        "NoncurrentVersionExpiration": { "NoncurrentDays": 90 }
+      }
+    ]
+  }'
+```
+
+Or in the Console: S3 → `united-services` → Management → Lifecycle rules
+→ Create rule → scope to "Apply to all objects in the bucket" → check
+only "Permanently delete noncurrent versions of objects" → 90 days.
+
+### Cross-region replication (CRR)
+
+Protects against a region-level AWS incident. This is more involved than
+the lifecycle rule — needs a destination bucket in a second region, an
+IAM role granting the source bucket permission to replicate into it, and
+a replication configuration tying them together. Steps:
+
+1. Create a destination bucket in a different region (e.g.
+   `united-services-dr` in `us-west-2` if the primary is `us-east-1`),
+   with versioning enabled (CRR requires versioning on both sides — the
+   source already has it).
+2. Create an IAM role for replication (AWS provides a wizard for this
+   when you set up CRR through the Console — S3 → `united-services` →
+   Management → Replication rules → Create replication rule — it offers
+   to create the IAM role automatically with the correct trust policy and
+   permissions).
+3. Replication rule: source = entire bucket (or prefix-scoped if only
+   spec files/candidate documents need DR coverage, not everything),
+   destination = the bucket from step 1, replicate existing objects
+   (S3 Batch Replication, a one-time backfill — new objects replicate
+   automatically going forward regardless).
+4. Once live, update this doc's "Full-bucket loss" restore step with the
+   destination bucket name and the procedure to re-point `S3_BUCKET_NAME`
+   at it (or restore by copying objects back to a newly created bucket
+   with the original name, to avoid an env-var/DNS change during an
+   actual incident).
+
+### Confirming Supabase PITR tier
+
+Supabase dashboard → Project Settings → Billing → confirms the current
+plan. Database → Backups shows whether continuous backups (PITR) are
+listed as available for this project specifically, versus only daily
+snapshots. No API credential was available in this session to check this
+programmatically — needs a one-time manual confirmation.
+
+### Practice restore
+
+Deliberately not performed from this session — restoring into a scratch
+Supabase project and diffing row counts is safe to automate, but actually
+exercising the *production* restore path (or even the scratch-project
+path) is a real action against real infrastructure that should be a
+deliberate, scheduled exercise with the maintainer present, not something
+run opportunistically mid-session. Recommend scheduling this once the
+lifecycle rule and CRR above are in place, so the drill exercises the
+complete, final setup rather than a partial one.

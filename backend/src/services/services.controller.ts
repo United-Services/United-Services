@@ -6,6 +6,7 @@ import {
   Delete,
   Get,
   Header,
+  Logger,
   NotFoundException,
   Param,
   Patch,
@@ -75,6 +76,40 @@ const ALLOWED_SERVICE_IMAGE_TYPES: Record<string, string> = {
 
 @Controller('services')
 export class ServicesController {
+  private readonly logger = new Logger(ServicesController.name);
+
+  // A Redis outage must degrade the public services page to "always a
+  // fresh DB read," never "500." Previously every redis.get/set/del call
+  // in this controller was unguarded.
+  private async safeCacheGet(key: string): Promise<string | null> {
+    try {
+      return await this.redis.get(key);
+    } catch (err) {
+      this.logger.warn(`Cache read failed for ${key}: ${err}`);
+      return null;
+    }
+  }
+
+  private async safeCacheSet(
+    key: string,
+    value: string,
+    ttlSeconds: number,
+  ): Promise<void> {
+    try {
+      await this.redis.set(key, value, 'EX', ttlSeconds);
+    } catch (err) {
+      this.logger.warn(`Cache write failed for ${key}: ${err}`);
+    }
+  }
+
+  private async safeCacheDel(key: string): Promise<void> {
+    try {
+      await this.redis.del(key);
+    } catch (err) {
+      this.logger.warn(`Cache invalidation failed for ${key}: ${err}`);
+    }
+  }
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly s3: S3Service,
@@ -118,11 +153,20 @@ export class ServicesController {
     locale?: string,
   ): Promise<Service[]> {
     if (!locale || !TRANSLATABLE_LOCALES.includes(locale)) return services;
-    const translated = await this.translations.getTranslatedServices(
-      services,
-      locale,
-    );
-    return services.map((s) => ({ ...s, ...translated.get(s.id) }));
+    // Falls back to the untranslated (English-field) response rather than
+    // 500ing the public services page when LibreTranslate is unreachable.
+    try {
+      const translated = await this.translations.getTranslatedServices(
+        services,
+        locale,
+      );
+      return services.map((s) => ({ ...s, ...translated.get(s.id) }));
+    } catch (err) {
+      this.logger.warn(
+        `Translation lookup failed for locale=${locale}: ${err}`,
+      );
+      return services;
+    }
   }
 
   // Public marketing content — read-heavy, low-churn, so it's cached in
@@ -146,7 +190,7 @@ export class ServicesController {
   )
   @Get()
   async list(@Query('locale') locale?: string) {
-    const cached = await this.redis.get(SERVICES_LIST_CACHE_KEY);
+    const cached = await this.safeCacheGet(SERVICES_LIST_CACHE_KEY);
     const services = cached
       ? (JSON.parse(cached) as Service[])
       : await this.fetchAndCacheServices();
@@ -158,10 +202,9 @@ export class ServicesController {
     const services = await this.prisma.service.findMany({
       orderBy: { order: 'asc' },
     });
-    await this.redis.set(
+    await this.safeCacheSet(
       SERVICES_LIST_CACHE_KEY,
       JSON.stringify(services),
-      'EX',
       CACHE_TTL_SECONDS,
     );
     return services;
@@ -244,7 +287,7 @@ export class ServicesController {
         updatedByAdminId: admin.id,
       },
     });
-    await this.redis.del(SERVICES_LIST_CACHE_KEY);
+    await this.safeCacheDel(SERVICES_LIST_CACHE_KEY);
     await this.auditLog.record({
       actorUserId: admin.id,
       action: 'service.created',
@@ -267,7 +310,7 @@ export class ServicesController {
       where: { id },
       data: { ...dto, updatedByAdminId: admin.id },
     });
-    await this.redis.del(SERVICES_LIST_CACHE_KEY);
+    await this.safeCacheDel(SERVICES_LIST_CACHE_KEY);
     await this.auditLog.record({
       actorUserId: admin.id,
       action: 'service.updated',
@@ -334,7 +377,7 @@ export class ServicesController {
       ),
     );
 
-    await this.redis.del(SERVICES_LIST_CACHE_KEY);
+    await this.safeCacheDel(SERVICES_LIST_CACHE_KEY);
     await this.auditLog.record({
       actorUserId: admin.id,
       action: 'service.deleted',
@@ -483,7 +526,7 @@ export class ServicesController {
       await this.s3.deleteObject(existing.imageS3Key).catch(() => undefined);
     }
 
-    await this.redis.del(SERVICES_LIST_CACHE_KEY);
+    await this.safeCacheDel(SERVICES_LIST_CACHE_KEY);
     await this.auditLog.record({
       actorUserId: admin.id,
       action: 'service.image_updated',

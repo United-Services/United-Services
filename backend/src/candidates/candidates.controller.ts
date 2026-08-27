@@ -1,5 +1,6 @@
 import {
   Controller,
+  ConflictException,
   DefaultValuePipe,
   Get,
   Param,
@@ -127,6 +128,17 @@ export class CandidatesController {
     @Param('id') id: string,
     @Body() dto: RequestDocumentsDto,
   ) {
+    // Without this check, a stale/tampered/typo'd id hits Prisma's P2025
+    // directly — an unhandled PrismaClientKnownRequestError isn't an
+    // HttpException, so the global exception filter's catch-all turns it
+    // into a generic 500 instead of a clean 404. Same bug class fixed
+    // elsewhere (see rfq.controller.ts's create()).
+    const existing = await this.prisma.candidateApplication.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException('Application not found');
+
     const updated = await this.prisma.candidateApplication.update({
       where: { id },
       data: {
@@ -150,6 +162,20 @@ export class CandidatesController {
     @Param('id') id: string,
     @Body() dto: DecideApplicationDto,
   ) {
+    const existing = await this.prisma.candidateApplication.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+    if (!existing) throw new NotFoundException('Application not found');
+    // A decision is final — re-deciding an already-approved/denied
+    // application would silently overwrite reviewedByAdminId/reviewedAt
+    // without a trace of the original decision (the audit log entry
+    // below is per-call, not a diff, so a second decide() reads as a
+    // fresh decision rather than a correction).
+    if (existing.status !== ApplicationStatus.pending) {
+      throw new ConflictException('This application has already been decided.');
+    }
+
     const updated = await this.prisma.candidateApplication.update({
       where: { id },
       data: {

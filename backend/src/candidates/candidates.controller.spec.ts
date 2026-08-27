@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { CandidatesController } from './candidates.controller';
 import { ApplicationStatus, type User } from '../generated/prisma';
 import type { PrismaService } from '../prisma/prisma.service';
@@ -35,6 +35,9 @@ describe('CandidatesController', () => {
   describe('decide', () => {
     it('approves and records reviewer + audit entry', async () => {
       const { controller, prisma, auditLog } = makeController();
+      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
+        status: ApplicationStatus.pending,
+      });
       (prisma.candidateApplication.update as jest.Mock).mockImplementation(
         ({ data }) => Promise.resolve({ id: 'app-1', ...data }),
       );
@@ -50,6 +53,9 @@ describe('CandidatesController', () => {
 
     it('denies and records the corresponding audit action', async () => {
       const { controller, prisma, auditLog } = makeController();
+      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
+        status: ApplicationStatus.pending,
+      });
       (prisma.candidateApplication.update as jest.Mock).mockImplementation(
         ({ data }) => Promise.resolve({ id: 'app-1', ...data }),
       );
@@ -72,6 +78,9 @@ describe('CandidatesController', () => {
     // into the body (e.g. a raw `status: 'approved'`).
     it('derives status only from the approve boolean, ignoring any other status-like field in the body', async () => {
       const { controller, prisma } = makeController();
+      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
+        status: ApplicationStatus.pending,
+      });
       (prisma.candidateApplication.update as jest.Mock).mockImplementation(
         ({ data }) => Promise.resolve({ id: 'app-1', ...data }),
       );
@@ -92,6 +101,9 @@ describe('CandidatesController', () => {
     // (rule 8) or, worse, a non-admin-authored id could slip through.
     it('always attributes the review to the authenticated admin, ignoring a body-supplied reviewer id', async () => {
       const { controller, prisma } = makeController();
+      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
+        status: ApplicationStatus.pending,
+      });
       (prisma.candidateApplication.update as jest.Mock).mockImplementation(
         ({ data }) => Promise.resolve({ id: 'app-1', ...data }),
       );
@@ -104,6 +116,51 @@ describe('CandidatesController', () => {
       const passedData = (prisma.candidateApplication.update as jest.Mock).mock
         .calls[0][0].data;
       expect(passedData.reviewedByAdminId).toBe(admin.id);
+    });
+
+    // Without this check, a stale/tampered/typo'd id hits Prisma's P2025
+    // directly — an unhandled PrismaClientKnownRequestError isn't an
+    // HttpException, so the global exception filter's catch-all turns it
+    // into a generic 500 instead of a clean 404.
+    it('throws 404 for a nonexistent application id rather than a raw Prisma error', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue(
+        null,
+      );
+
+      await expect(
+        controller.decide(admin, 'missing', { approve: true }),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.candidateApplication.update).not.toHaveBeenCalled();
+    });
+
+    // A decision is final — the admin UI already hides the approve/deny
+    // buttons once status !== 'pending' (adminShared.tsx's ActionPair), so
+    // a second decide() call reaching the backend means either a replayed
+    // request or two admins racing on the same application. Either way it
+    // must not silently overwrite the original decision.
+    it('rejects deciding an application that has already been approved', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
+        status: ApplicationStatus.approved,
+      });
+
+      await expect(
+        controller.decide(admin, 'app-1', { approve: false }),
+      ).rejects.toThrow(ConflictException);
+      expect(prisma.candidateApplication.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects deciding an application that has already been denied', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
+        status: ApplicationStatus.denied,
+      });
+
+      await expect(
+        controller.decide(admin, 'app-1', { approve: true }),
+      ).rejects.toThrow(ConflictException);
+      expect(prisma.candidateApplication.update).not.toHaveBeenCalled();
     });
   });
 
@@ -215,6 +272,9 @@ describe('CandidatesController', () => {
   describe('requestDocuments', () => {
     it('flags the application and records an audit entry', async () => {
       const { controller, prisma, auditLog } = makeController();
+      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
+        id: 'app-1',
+      });
       (prisma.candidateApplication.update as jest.Mock).mockImplementation(
         ({ data }) => Promise.resolve({ id: 'app-1', ...data }),
       );
@@ -233,6 +293,18 @@ describe('CandidatesController', () => {
           targetId: 'app-1',
         }),
       );
+    });
+
+    it('throws 404 for a nonexistent application id rather than a raw Prisma error', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue(
+        null,
+      );
+
+      await expect(
+        controller.requestDocuments(admin, 'missing', {}),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.candidateApplication.update).not.toHaveBeenCalled();
     });
   });
 });

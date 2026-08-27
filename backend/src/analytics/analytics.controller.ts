@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Logger, Post, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { PrismaService } from '../prisma/prisma.service';
@@ -24,11 +24,38 @@ const GEO_OVERVIEW_CACHE_KEY = 'analytics:geo-overview';
 
 @Controller('analytics')
 export class AnalyticsController {
+  private readonly logger = new Logger(AnalyticsController.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly geo: GeoService,
   ) {}
+
+  // A Redis outage must degrade the admin dashboard to "slightly
+  // slower" (every query re-runs), never "500." Previously an unguarded
+  // redis.get/set meant a Redis blip took the whole overview/geo-overview
+  // endpoint down even though Postgres was fine.
+  private async safeCacheGet(key: string): Promise<string | null> {
+    try {
+      return await this.redis.get(key);
+    } catch (err) {
+      this.logger.warn(`Cache read failed for ${key}: ${err}`);
+      return null;
+    }
+  }
+
+  private async safeCacheSet(
+    key: string,
+    value: string,
+    ttlSeconds: number,
+  ): Promise<void> {
+    try {
+      await this.redis.set(key, value, 'EX', ttlSeconds);
+    } catch (err) {
+      this.logger.warn(`Cache write failed for ${key}: ${err}`);
+    }
+  }
 
   // Fire-and-forget from the frontend. Tighter rate limit than the global
   // default since this is public and unauthenticated (Phase 4/10).
@@ -54,17 +81,16 @@ export class AnalyticsController {
   @Roles(Role.admin)
   @Get('overview')
   async overview() {
-    const cached = await this.redis.get(OVERVIEW_CACHE_KEY);
+    const cached = await this.safeCacheGet(OVERVIEW_CACHE_KEY);
     if (cached)
       return JSON.parse(cached) as Awaited<
         ReturnType<AnalyticsController['computeOverview']>
       >;
 
     const result = await this.computeOverview();
-    await this.redis.set(
+    await this.safeCacheSet(
       OVERVIEW_CACHE_KEY,
       JSON.stringify(result),
-      'EX',
       OVERVIEW_CACHE_TTL_SECONDS,
     );
     return result;
@@ -154,7 +180,7 @@ export class AnalyticsController {
     since: string;
     countries: { country: string; count: number }[];
   }> {
-    const cached = await this.redis.get(GEO_OVERVIEW_CACHE_KEY);
+    const cached = await this.safeCacheGet(GEO_OVERVIEW_CACHE_KEY);
     if (cached)
       return JSON.parse(cached) as {
         since: string;
@@ -178,10 +204,9 @@ export class AnalyticsController {
         .map((g) => ({ country: g.country as string, count: g._count }))
         .sort((a, b) => b.count - a.count),
     };
-    await this.redis.set(
+    await this.safeCacheSet(
       GEO_OVERVIEW_CACHE_KEY,
       JSON.stringify(result),
-      'EX',
       OVERVIEW_CACHE_TTL_SECONDS,
     );
     return result;

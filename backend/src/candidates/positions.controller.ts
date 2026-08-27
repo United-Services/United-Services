@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Header,
+  Logger,
   Param,
   Patch,
   Post,
@@ -28,6 +29,8 @@ const CACHE_TTL_SECONDS = 300;
 
 @Controller('positions')
 export class PositionsController {
+  private readonly logger = new Logger(PositionsController.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly translations: TranslationService,
@@ -50,8 +53,16 @@ export class PositionsController {
   @Get()
   async listOpen(@Query('locale') locale?: string) {
     const cacheKey = OPEN_POSITIONS_CACHE_KEY(locale ?? 'en');
-    const cached = await this.redis.get(cacheKey);
-    if (cached) return JSON.parse(cached) as unknown;
+    // This is the public Careers page — a Redis blip must degrade to an
+    // uncached DB read, never take the whole page down. Previously an
+    // unguarded `redis.get`/`set` meant a Redis outage 500'd this
+    // endpoint even though the actual data (Postgres) was fine.
+    try {
+      const cached = await this.redis.get(cacheKey);
+      if (cached) return JSON.parse(cached) as unknown;
+    } catch (err) {
+      this.logger.warn(`Cache read failed for ${cacheKey}: ${err}`);
+    }
 
     const positions = await this.prisma.openPosition.findMany({
       where: { isOpen: true },
@@ -60,19 +71,31 @@ export class PositionsController {
 
     let result: unknown = positions;
     if (locale && TRANSLATABLE_LOCALES.includes(locale)) {
-      const translated = await this.translations.getTranslatedPositions(
-        positions,
-        locale,
-      );
-      result = positions.map((p) => ({ ...p, ...translated.get(p.id) }));
+      try {
+        const translated = await this.translations.getTranslatedPositions(
+          positions,
+          locale,
+        );
+        result = positions.map((p) => ({ ...p, ...translated.get(p.id) }));
+      } catch (err) {
+        // Falls back to the untranslated (English-field) response rather
+        // than 500ing the whole page when LibreTranslate is unreachable.
+        this.logger.warn(
+          `Translation lookup failed for locale=${locale}: ${err}`,
+        );
+      }
     }
 
-    await this.redis.set(
-      cacheKey,
-      JSON.stringify(result),
-      'EX',
-      CACHE_TTL_SECONDS,
-    );
+    try {
+      await this.redis.set(
+        cacheKey,
+        JSON.stringify(result),
+        'EX',
+        CACHE_TTL_SECONDS,
+      );
+    } catch (err) {
+      this.logger.warn(`Cache write failed for ${cacheKey}: ${err}`);
+    }
     return result;
   }
 
@@ -119,12 +142,22 @@ export class PositionsController {
   // translated fields — clear every locale bucket rather than trying to
   // reason about which ones are stale. Cheap: the next listOpen() per
   // locale just repopulates it, and this only runs on admin writes.
+  // allSettled, not all — a create/update's DB write already succeeded by
+  // the time this runs; one locale's redis.del rejecting must not turn
+  // that into a 500 response to the admin (the write is real, only the
+  // cache is briefly stale, and the next listOpen() call for the
+  // failed-to-invalidate locale still repopulates it after its own TTL).
   private async invalidateListCache() {
-    await Promise.all(
+    const results = await Promise.allSettled(
       ['en', ...TRANSLATABLE_LOCALES].map((locale) =>
         this.redis.del(OPEN_POSITIONS_CACHE_KEY(locale)),
       ),
     );
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        this.logger.warn(`Cache invalidation failed: ${result.reason}`);
+      }
+    }
   }
 
   // Lets an admin force a specific translation to regenerate (e.g. to fix
