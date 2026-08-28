@@ -140,6 +140,8 @@ model KekRegistry {
   retiredAt DateTime?
 
   totpCredentials TotpCredential[]
+
+  @@index([status])
 }
 
 // An admin may register more than one authenticator (e.g. a laptop
