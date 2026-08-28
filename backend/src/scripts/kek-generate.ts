@@ -3,7 +3,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import sodium from 'libsodium-wrappers';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '../src/generated/prisma';
+import { PrismaClient } from '../generated/prisma';
 
 // `pnpm run kek:generate` — generates a new KEK keypair, writes the
 // private key to disk (0400), registers the public key in KekRegistry as

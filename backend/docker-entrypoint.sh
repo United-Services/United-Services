@@ -1,37 +1,12 @@
 #!/bin/sh
 set -e
 
-# Single-stage workflow, everything happens here at container start rather
-# than baked into the image at `docker build` time:
-#   install deps -> build -> fetch secrets from SSM -> migrate -> KEK ->
-#   geoip -> start
-# The order matters: secrets have to land in the environment (fetch-secrets)
-# before anything that needs them (migrations need DATABASE_URL, the app
-# itself needs everything) — nothing after that step should assume a var
-# came from anywhere else.
-#
-# node_modules/dist only exist here at all if a previous start on this same
-# container already produced them (single-stage: `COPY . .` at image build
-# time never includes them) — `docker compose restart backend` reuses the
-# same container/filesystem, so a plain restart finds them already built and
-# skips straight to fetching fresh secrets + starting the app. A real
-# redeploy (`docker compose up -d --build`) always gets a brand-new
-# container with neither present, so the full install+build still runs
-# then. Set FORCE_INSTALL=1 / FORCE_BUILD=1 to force either step on a
-# restart (e.g. after hand-editing files in a running container).
-if [ -d node_modules ] && [ "${FORCE_INSTALL:-}" != "1" ]; then
-  echo "[entrypoint] node_modules already present, skipping npm install (set FORCE_INSTALL=1 to force)."
-else
-  echo "[entrypoint] installing backend dependencies..."
-  npm install
-fi
-
-if [ -d dist ] && [ "${FORCE_BUILD:-}" != "1" ]; then
-  echo "[entrypoint] dist/ already present, skipping npm run build (set FORCE_BUILD=1 to force)."
-else
-  echo "[entrypoint] building backend..."
-  npm run build
-fi
+# Prebuilt image (see Dockerfile) — dist/ and production node_modules
+# already exist, baked in at `docker build` time. This just runs the
+# genuinely per-start work: fetch secrets from SSM -> migrate -> KEK ->
+# geoip -> start. The order matters: secrets have to land in the
+# environment (fetch-secrets) before anything that needs them (migrations
+# need DATABASE_URL, the app itself needs everything).
 
 echo "[entrypoint] fetching secrets from AWS SSM Parameter Store..."
 # Captured *before* sourcing fetch-secrets.sh, not after — SSM's
@@ -63,14 +38,14 @@ echo "[entrypoint] checking for an existing KEK..."
 KEK_COUNT=$(node -e "
 require('dotenv/config');
 const { PrismaPg } = require('@prisma/adapter-pg');
-const { PrismaClient } = require('./src/generated/prisma');
+const { PrismaClient } = require('./dist/generated/prisma');
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 prisma.kekRegistry.count().then((c) => { console.log(c); return prisma.\$disconnect(); });
 ")
 
 if [ "$KEK_COUNT" = "0" ]; then
   echo "[entrypoint] no KEK found — generating the first one..."
-  node_modules/.bin/ts-node scripts/kek-generate.ts
+  node dist/scripts/kek-generate.js
 else
   echo "[entrypoint] KEK already present ($KEK_COUNT row(s)), skipping generation."
 fi
@@ -105,12 +80,5 @@ else
 fi
 
 echo "[entrypoint] starting the app..."
-# Set only now, not earlier/baked into the image — `npm install` above
-# needs devDependencies (nest CLI, ts-node, prisma CLI, typescript) to
-# actually be installed, and npm skips them entirely when NODE_ENV is
-# already "production" at install time.
 export NODE_ENV=production
-# start:prod (not `start`, which is `nest start` — recompiles from source
-# via the Nest CLI, ignoring the dist/ output `npm run build` just
-# produced above) — this runs the actual built artifact.
 exec npm run start:prod

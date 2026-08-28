@@ -3,7 +3,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '../src/generated/prisma';
+import { PrismaClient } from '../generated/prisma';
 
 // `pnpm run kek:retire -- --keyId=<id>` — permanently retires a KEK.
 // Refuses if any TotpCredential still references it (rewrap first — every
