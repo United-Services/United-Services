@@ -1,133 +1,60 @@
 # United Services Egypt
 
-Corporate website, client/candidate portal, and admin dashboard for
-**United Services Egypt** — pipeline integrity and corrosion-control
-solutions for the oil & gas industry across Egypt, Iraq, Saudi Arabia, and
-the UAE.
+**United Services Egypt (USE)** provides corrosion-control and pipeline
+integrity services to the oil, gas, and power sectors — GRE tubular
+lining, FBE coating, external anti-corrosion wrapping, HDPE lining, RTP
+systems, and RTV insulator coating — engineered and manufactured in Cairo
+since 2005 and serving clients across Egypt, Iraq, Saudi Arabia, and the
+UAE.
 
-## Stack
+This repository is the company's digital platform: the public website,
+the client and job-candidate portals, and the internal staff dashboard
+used to run day-to-day operations.
 
-| Layer     | Technology                                                                 |
-| --------- | --------------------------------------------------------------------------- |
-| Frontend  | Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS · next-intl (en/ar/zh) |
-| Backend   | NestJS 11 · TypeScript · Prisma ORM 7 (`@prisma/adapter-pg`)               |
-| Database  | PostgreSQL                                                                 |
-| Cache     | Redis (caching + rate-limit storage)                                      |
-| Auth      | Clerk (session auth + WebAuthn/TOTP admin MFA)                            |
-| Storage   | AWS S3 (private bucket, presigned URLs only)                              |
-| Logging   | Betterstack                                                                |
-| Deploy    | Docker (multi-stage) · nginx reverse proxy · docker-compose               |
+## What this platform does
 
-## Repository layout
+**For visitors and prospective clients** — a public website presenting
+the company, its services, and past projects, available in English,
+Arabic, and Chinese, with a contact form and a request-for-quote flow.
 
-```
-backend/    NestJS API (src/, prisma/, test/)
-frontend/   Next.js app (src/app, src/views, src/components, messages/)
-nginx/      Reverse-proxy config (routes /api/* to backend, everything else to frontend)
-docs/       Business rules, deployment runbook, disaster recovery, requirements
-docker-compose.yml   postgres + redis + backend + frontend + nginx
-```
+**For clients** — a private account area to submit and track
+requests-for-quote, book service appointments against real availability,
+raise and follow up on support tickets, and request technical
+specification documents for a given service.
 
-See `backend/AGENTS.md` and `frontend/AGENTS.md` for the conventions each
-app follows internally.
+**For job applicants** — a dedicated application portal to apply for open
+positions, upload a CV/ID and any supporting documents, and track
+application status through to a decision.
 
-## Getting started (local development)
+**For staff** — an internal dashboard to manage client requests,
+bookings, and candidate applications; publish and edit open positions and
+service content; manage staff accounts and permissions; and review
+platform activity and visitor analytics. Administrator accounts require a
+second authentication factor (an authenticator app or a security
+key/fingerprint) to protect this area.
 
-Prerequisites: Node 22+, npm, a PostgreSQL instance, a Redis instance, and
-a Clerk application (dev instance keys are fine locally).
+## Where things stand
 
-```bash
-# Backend
-cd backend
-# Create .env with real values — see docs/CREDENTIALS_CHECKLIST.md's
-# "`.env.example` shape" section for the full list (DATABASE_URL, Clerk
-# keys, AWS S3, etc.)
-npm install
-npm run prisma:migrate
-npm run seed                 # optional: seed fixture data
-npm run start:dev            # http://localhost:3002/api/v1
+See [`CHANGELOG.md`](CHANGELOG.md) for what has shipped release by
+release, and [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) for the
+running list of features, in progress and planned.
 
-# Frontend (separate terminal)
-cd frontend
-# Create .env.local with at least:
-#   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
-#   CLERK_SECRET_KEY=
-#   NEXT_PUBLIC_API_URL=http://localhost:3002/api/v1
-npm install
-npm run dev                  # http://localhost:3000
-```
+## Trust & security, in plain terms
 
-## Running with Docker
-
-```bash
-# Create .env at the repo root — see docs/CREDENTIALS_CHECKLIST.md's
-# "`.env.example` shape" section for what each var means
-docker compose up --build
-
-# Every rebuild that replaces backend/frontend:latest leaves the previous
-# image behind as a nameless "<none>" layer — harmless individually, but
-# they pile up fast across repeated `--build` runs (15GB+ in one afternoon
-# of iterating). Get in the habit of running this after each one:
-docker image prune -f
-```
-
-This starts `postgres`, `redis`, `backend`, `frontend`, and `nginx` (port 80
-by default, `$NGINX_PORT`). A real deploy (server, not local dev) doesn't
-use `--build` at all anymore — `scripts/deploy.sh` pulls the prebuilt
-images `.github/workflows/docker-publish.yml` publishes on every merge to
-`main` instead; see
-[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md#environment-variables) for the
-full list of what changes between dev and production.
-
-## Testing, linting, and type-checking
-
-```bash
-# Backend
-cd backend
-npm run lint
-npm test
-npx tsc --noEmit
-
-# Frontend
-cd frontend
-npm run lint
-npx vitest run
-npx tsc --noEmit
-npm run build
-```
-
-CI runs the same checks — see `.github/workflows/`.
-
-## Security
-
-- **Authentication & authorization** — Clerk-issued sessions are re-verified
-  against our own `User` table on every request (`ClerkAuthGuard`); role is
-  never trusted from a live Clerk claim. A global `RolesGuard` enforces
-  `@Roles()` on every endpoint, and every user-scoped query is filtered by
-  the authenticated user's own ID — no user can read another user's data.
-- **Admin MFA** — admin accounts require TOTP or WebAuthn (passkey/security
-  key) multi-factor authentication; TOTP secrets are stored under
-  libsodium sealed-box envelope encryption, never in plaintext.
-- **File uploads** — all uploads go directly to a private S3 bucket via
-  short-lived presigned URLs; the app server never proxies file bytes.
-  Every upload is validated against a strict content-type allowlist, the
-  filename is checked for disguised/double extensions (e.g.
-  `invoice.php.pdf`), and the object's actual bytes are verified against
-  its declared type via file-signature (magic-byte) inspection before the
-  upload is accepted — rejecting content that doesn't match what it claims
-  to be.
-- **Security headers** — a strict Content-Security-Policy, HSTS,
-  X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and
-  Permissions-Policy are set both at the nginx edge and in the backend's
-  own `helmet()` configuration (defense in depth).
-- **Global error handling** — a global exception filter ensures unhandled
-  errors never leak internal messages/stack traces to a client; Next.js
-  error boundaries (`error.tsx`, `global-error.tsx`, `not-found.tsx`) do
-  the same on the frontend.
-- **Rate limiting** — Redis-backed throttling in the API, plus a coarse
-  IP-based limit at the nginx edge.
-
-Full details in [`docs/BUSINESS_RULES.md`](docs/BUSINESS_RULES.md).
+- Every private page and every request is checked against the signed-in
+  user's own account and role — a client can never see another client's
+  requests, and only administrators can reach staff-only tools.
+- Administrator accounts require a second authentication factor on top of
+  a password, so a leaked password alone can't grant access.
+- Uploaded files (CVs, ID documents, specifications) are checked to make
+  sure their actual content matches what they claim to be, and are stored
+  privately — never made public by default.
+- The platform monitors itself: unhandled errors are logged and paged to
+  an on-call phone rather than silently failing, and the site has
+  automated protection against being overwhelmed by excessive traffic.
+- A full internal security review was carried out before launch, with
+  findings tracked and fixed; see [`docs/BUSINESS_RULES.md`](docs/BUSINESS_RULES.md)
+  for the underlying rules the platform enforces.
 
 ## Legal
 
@@ -140,14 +67,24 @@ Full details in [`docs/BUSINESS_RULES.md`](docs/BUSINESS_RULES.md).
 
 ## Documentation
 
-- [`docs/BUSINESS_RULES.md`](docs/BUSINESS_RULES.md) — authorization model,
-  data ownership, and other rules the codebase enforces.
+- [`docs/BUSINESS_RULES.md`](docs/BUSINESS_RULES.md) — the access and
+  data-ownership rules the platform enforces.
+- [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) — product requirements
+  and shipped/planned features.
 - [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — deployment runbook.
-- [`docs/DISASTER_RECOVERY.md`](docs/DISASTER_RECOVERY.md) — backup/recovery
-  procedures.
-- [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) — product requirements.
+- [`docs/DISASTER_RECOVERY.md`](docs/DISASTER_RECOVERY.md) — backup and
+  recovery procedures.
 - [`docs/CREDENTIALS_CHECKLIST.md`](docs/CREDENTIALS_CHECKLIST.md) — the
-  external accounts/secrets a deployment needs.
+  external accounts and secrets a deployment needs.
+
+## For developers
+
+Technical stack, local setup, Docker, and testing/CI instructions have
+moved out of this file — see
+[`backend/AGENTS.md`](backend/AGENTS.md) and
+[`frontend/AGENTS.md`](frontend/AGENTS.md) for how each app is built and
+its internal conventions, and [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
+for how the platform is actually deployed and operated.
 
 ---
 

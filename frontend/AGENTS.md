@@ -45,6 +45,39 @@ be added alongside this app later.
 - Use double quotes for strings containing apostrophes, or escape them in
   single-quoted strings — an unescaped apostrophe breaks the build.
 
+## Local development
+
+Prerequisites: Node 22+, npm, and a Clerk application (dev instance keys
+are fine locally). The backend should be running too (see
+`backend/AGENTS.md`) for API calls to resolve.
+
+```bash
+cd frontend
+# Create .env.local with at least:
+#   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+#   CLERK_SECRET_KEY=
+#   NEXT_PUBLIC_API_URL=http://localhost:3002/api/v1
+npm install
+npm run dev                  # http://localhost:3000
+```
+
+`.npmrc` sets `legacy-peer-deps=true` — `react-simple-maps` declares a
+stale React 16–18 peer range that doesn't reflect the React 19 actually
+in use; without this every `npm install`/`npm ci` fails with `ERESOLVE`.
+
+## Testing, linting, and type-checking
+
+```bash
+npm run lint
+npx vitest run
+npx tsc --noEmit
+npm run build
+```
+
+CI runs the same checks — see `.github/workflows/ci.yml`. E2E tests
+(Playwright, `e2e/`) run against a real running stack, not part of the
+standard CI job — see `playwright.config.ts`.
+
 ## Commands
 
 - `npm run dev` — start the Next.js dev server (`next dev`).

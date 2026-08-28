@@ -42,6 +42,28 @@ domain before provisioning anything else; retrofitting this later means
 touching `CORS_ORIGINS`, Clerk's allowed origins, and cookie `domain`
 settings all at once.
 
+## Running the full stack locally with Docker
+
+An alternative to running `backend`/`frontend` as two separate `npm run
+dev` processes (see `backend/AGENTS.md` / `frontend/AGENTS.md`) — brings
+up the whole stack, including nginx routing, in one command:
+
+```bash
+# Create .env at the repo root — see docs/CREDENTIALS_CHECKLIST.md's
+# ".env.example shape" section for what each var means
+docker compose up --build
+
+# Every rebuild that replaces backend/frontend:latest leaves the previous
+# image behind as a nameless "<none>" layer — harmless individually, but
+# they pile up fast across repeated --build runs (15GB+ in one afternoon
+# of iterating). Get in the habit of running this after each one:
+docker image prune -f
+```
+
+This starts `postgres`, `redis`, `backend`, `frontend`, and `nginx` (port
+80 by default, `$NGINX_PORT`). This is local-only — a real deploy doesn't
+use `--build` at all; see "Deploying an update" below.
+
 ## Hosting options
 
 Two viable paths — pick one, don't half-do both:
