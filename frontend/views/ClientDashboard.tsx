@@ -9,6 +9,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { palette, inputStyle } from "../theme"
 import { InlineSpinner } from "../components/Spinner"
 import { Skeleton, SkeletonCards, SkeletonRows } from "../components/Skeleton"
+import { warmImageCache } from "../lib/specsPrefetch"
 import {
   IconGear,
   IconClipboard,
@@ -82,6 +83,11 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
   const [latestFiles, setLatestFiles] = useState<Record<string, LatestFile>>({})
   const [myRequests, setMyRequests] = useState<FileAccessRequest[]>([])
   const [requestingId, setRequestingId] = useState<string | null>(null)
+  // Per-image load state for the skeleton overlay below — an <img> that's
+  // still downloading shows a skeleton in its place instead of a
+  // partially-decoded/streaming-in image, which reads as broken rather
+  // than "loading." Mirrors AdminSpecsSection.tsx's same pattern.
+  const [imageReady, setImageReady] = useState<Record<string, boolean>>({})
 
   const [rfq, setRfq] = useState({
     serviceId: "",
@@ -118,6 +124,11 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
         ])
       setMe(meRes.data)
       setServices(servicesRes.data)
+      // Kick off image downloads as soon as the list arrives rather than
+      // waiting for each <img loading="lazy"> to scroll into view — by the
+      // time the services grid actually paints below, most/all images are
+      // already warm in the browser's HTTP cache.
+      warmImageCache(servicesRes.data)
       setMyRequests(requestsRes.data)
       setSlots(slotsRes.data)
       setMyAppointments(myApptsRes.data)
@@ -517,18 +528,44 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                       }}
                     >
                       {s.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- admin-uploaded S3 presigned URL, not a static build-time asset next/image can optimize
-                        <img
-                          src={s.imageUrl}
-                          alt={s.name}
-                          loading="lazy"
+                        <div
                           style={{
+                            position: "relative",
                             width: "100%",
                             height: 140,
-                            objectFit: "cover",
-                            display: "block",
                           }}
-                        />
+                        >
+                          {/* Shown until the image below fires onLoad — see
+                              imageReady state above. Usually invisible in
+                              practice: loadAll() already warmed the
+                              browser's cache for this exact URL via
+                              warmImageCache() before this grid painted. */}
+                          {!imageReady[s.id] && (
+                            <div style={{ position: "absolute", inset: 0 }}>
+                              <Skeleton height="100%" radius={0} />
+                            </div>
+                          )}
+                          {/* eslint-disable-next-line @next/next/no-img-element -- admin-uploaded S3 presigned URL, not a static build-time asset next/image can optimize */}
+                          <img
+                            src={s.imageUrl}
+                            alt={s.name}
+                            loading="lazy"
+                            onLoad={() =>
+                              setImageReady((prev) => ({ ...prev, [s.id]: true }))
+                            }
+                            onError={() =>
+                              setImageReady((prev) => ({ ...prev, [s.id]: true }))
+                            }
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                              display: "block",
+                              opacity: imageReady[s.id] ? 1 : 0,
+                              transition: "opacity 0.15s ease",
+                            }}
+                          />
+                        </div>
                       ) : (
                         <div style={{ width: "100%", height: 140, background: "#F3F2EE" }} />
                       )}

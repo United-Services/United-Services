@@ -35,11 +35,14 @@ export function getCachedSpecs(): SpecsCache | null {
 }
 
 // Warms the browser's own HTTP cache for each service image so that by
-// the time the admin actually opens the Specs section, the <img loading
-// ="lazy"> there resolves from cache instead of starting a fresh S3
+// the time the admin/client actually sees the services grid, the <img
+// loading="lazy"> there resolves from cache instead of starting a fresh S3
 // round trip — this is what makes the prefetch cover images, not just
-// the JSON list.
-function warmImageCache(services: Service[]) {
+// the JSON list. Exported for ClientDashboard.tsx too, which fetches
+// services directly rather than through prefetchSpecs above (no separate
+// "prefetch before section click" step there — it loads everything on
+// mount already), but still wants the same image warm-up.
+export function warmImageCache(services: { imageUrl: string | null }[]) {
   if (typeof window === "undefined") return
   for (const svc of services) {
     if (!svc.imageUrl) continue
