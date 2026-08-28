@@ -25,7 +25,14 @@ if (!region) {
   process.exit(1);
 }
 
-const appEnv = process.env.APP_ENV ?? 'staging';
+const appEnv = process.env.APP_ENV;
+if (!appEnv) {
+  console.error(
+    '[fetch-secrets] APP_ENV is not set — cannot pick an SSM path. ' +
+      'Set APP_ENV in the host .env (e.g. staging, production).',
+  );
+  process.exit(1);
+}
 const path = `/united-services/${appEnv}/`;
 
 // Single-quoted, with embedded single quotes escaped the standard POSIX

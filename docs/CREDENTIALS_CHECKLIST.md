@@ -27,7 +27,7 @@ variables —
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
 AWS_REGION=
-APP_ENV=staging   # or production — selects the SSM path below
+APP_ENV=
 NGINX_PORT=80
 ```
 
