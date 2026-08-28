@@ -87,3 +87,20 @@ jobs:
             ghcr.io/alioskillers/united-services-frontend:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+# NOTE on registry-side growth: every push here tags a new :<sha> image and
+# never deletes old ones, so GHCR storage for these two packages grows
+# unbounded over time — the local-disk pileup this file's local-cleanup
+# comments address is a separate problem, already handled (see
+# scripts/deploy.sh and README.md's "Running with Docker" section).
+# Deliberately NOT auto-pruning old GHCR versions here: actions/delete-
+# package-versions (the standard tool for this) documents no guarantee
+# about multi-arch manifest lists, and each push here creates several
+# untagged per-platform images that a real :latest/: <sha> manifest list
+# still references — a naive "keep the N most recent versions" cutoff
+# could delete one of those out from under a manifest a server is still
+# pulling, breaking `docker pull` for one architecture only, silently,
+# discovered only at the next deploy. If/when this needs addressing,
+# verify the deletion logic against these packages' actual multi-arch
+# structure first (`gh api /user/packages/container/<name>/versions`) —
+# don't add an automated prune step without that verification.

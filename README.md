@@ -63,13 +63,19 @@ npm run dev                  # http://localhost:3000
 # Create .env at the repo root — see docs/CREDENTIALS_CHECKLIST.md's
 # "`.env.example` shape" section for what each var means
 docker compose up --build
+
+# Every rebuild that replaces backend/frontend:latest leaves the previous
+# image behind as a nameless "<none>" layer — harmless individually, but
+# they pile up fast across repeated `--build` runs (15GB+ in one afternoon
+# of iterating). Get in the habit of running this after each one:
+docker image prune -f
 ```
 
 This starts `postgres`, `redis`, `backend`, `frontend`, and `nginx` (port 80
-by default, `$NGINX_PORT`). For a production deploy, use the same `.env`
-but with production values — the real domain for `CORS_ORIGINS`/
-`NEXT_PUBLIC_API_URL`/`WEBAUTHN_RP_ID`/`WEBAUTHN_RP_ORIGIN`, and Clerk's
-production instance keys, not the dev/test ones. See
+by default, `$NGINX_PORT`). A real deploy (server, not local dev) doesn't
+use `--build` at all anymore — `scripts/deploy.sh` pulls the prebuilt
+images `.github/workflows/docker-publish.yml` publishes on every merge to
+`main` instead; see
 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md#environment-variables) for the
 full list of what changes between dev and production.
 
