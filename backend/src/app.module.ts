@@ -31,6 +31,7 @@ import { AdminUsersModule } from './admin-users/admin-users.module';
 import { GeoModule } from './geo/geo.module';
 import { AlertingModule } from './alerting/alerting.module';
 import { TicketsModule } from './tickets/tickets.module';
+import { AllowedOriginsModule } from './allowed-origins/allowed-origins.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { TicketsModule } from './tickets/tickets.module';
     }),
     PrismaModule,
     AuditLogModule,
+    AllowedOriginsModule,
     AuthModule,
     S3Module,
     CryptoModule,

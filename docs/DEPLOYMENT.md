@@ -184,7 +184,14 @@ Full list and where to get each value: `docs/CREDENTIALS_CHECKLIST.md`.
 Deployment-specific ones to double check are set in the **production**
 environment (not just local `.env`), since they differ from dev:
 
-- `CORS_ORIGINS` — the real frontend origin(s), not `localhost:3000`
+- `CORS_ORIGINS` — **one-time bootstrap only**, not the ongoing source of
+  truth: the app seeds the `AllowedOrigin` DB table from this exactly
+  once, the first time it starts against a genuinely empty table, then
+  never reads it again (see `AllowedOriginsService`). Adding/removing an
+  allowed origin afterward means adding/removing the row directly in the
+  database — deliberately no admin-dashboard UI or API for this, CORS is
+  security-sensitive enough to stay a DB-only change. Takes effect within
+  ~30s, no restart needed.
 - `NEXT_PUBLIC_API_URL` — the real backend origin, not `localhost:3002`
 - `WEBAUTHN_RP_ID` / `WEBAUTHN_RP_ORIGIN` — must match the real domain or
   admin biometric MFA silently fails (WebAuthn ties credentials to origin)
@@ -195,20 +202,31 @@ environment (not just local `.env`), since they differ from dev:
   strings respectively (see `backend/prisma.config.ts` comment — migrations
   need `DIRECT_URL`, the running app needs the pooled `DATABASE_URL`)
 
+## Adding/removing an allowed CORS origin
+
+Direct database change, not an env var or a redeploy — see
+`AllowedOriginsService`'s comment for why this stays DB-only rather than
+an admin-dashboard feature. Takes effect within ~30s, no restart needed.
+
+```sql
+-- Add one:
+INSERT INTO "AllowedOrigin" (id, origin) VALUES (gen_random_uuid()::text, 'https://new-subdomain.use-eg.com');
+-- Remove one:
+DELETE FROM "AllowedOrigin" WHERE origin = 'https://old-subdomain.use-eg.com';
+```
+
+`origin` must exactly match what a browser sends in its `Origin` header —
+scheme + host + optional port, no path, no trailing slash.
+
 ## Secrets management (AWS SSM Parameter Store)
 
 Real secrets (Clerk, Supabase/Postgres, Upstash, S3, Betterstack, webhook
 signing, GeoIP/MaxMind license) live in AWS SSM Parameter Store, not in a
-server-side `.env` maintained by hand. Non-secret config (`CORS_ORIGINS`,
-`WEBAUTHN_RP_ID`/`ORIGIN`, tuning constants) is **not** pushed through SSM
-at all — encrypting values that are either already public or not sensitive
-to someone with server access would be theater, not security. For a Docker
-deploy this is a non-issue: `docker-compose.yml`'s `environment:` block
-already has working defaults for all of these
-(`${CORS_ORIGINS:-http://localhost}` etc.) via the root `.env`/shell
-environment. Running the backend directly (not via docker-compose) needs
-these set in `backend/.env` same as any other local override — outside the
-scope of this SSM pipeline.
+server-side `.env` maintained by hand. `CORS_ORIGINS` is pushed through
+SSM too, but only ever consulted once, to bootstrap the `AllowedOrigin`
+table on a genuinely fresh deploy — see the "Environment variables"
+section above. `WEBAUTHN_RP_ID`/`ORIGIN` and other tuning constants stay
+real env vars, read on every start same as always.
 
 **Naming**: `/united-services/<environment>/<KEY>`, e.g.
 `/united-services/staging/CLERK_SECRET_KEY` and
