@@ -120,6 +120,10 @@ const nextConfig = {
               // NEXT_PUBLIC_API_URL (http://localhost:3002) — allow that
               // origin in connect-src only outside production so this CSP
               // doesn't silently block every API call in local dev.
+              // https://clerk-telemetry.com: clerk-js sends its own
+              // anonymous usage beacon here on load, unrelated to
+              // clerk.use-eg.com (the actual Frontend API domain) — blocked
+              // without this, confirmed live in the console.
               // https://*.s3.us-east-1.amazonaws.com: every presigned
               // upload (service images/specs, candidate ID/CV/documents —
               // see S3Service) is a PUT the browser sends directly to S3,
@@ -127,7 +131,7 @@ const nextConfig = {
               // bucket name, not hardcoded to the current one, but still
               // scoped to this AWS_REGION — update if that ever changes.
               [
-                "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.use-eg.com https://*.s3.us-east-1.amazonaws.com",
+                "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.use-eg.com https://clerk-telemetry.com https://*.s3.us-east-1.amazonaws.com",
                 process.env.NODE_ENV !== "production" ? "http://localhost:3002" : "",
               ]
                 .filter(Boolean)
