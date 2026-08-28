@@ -12,8 +12,12 @@ import { Prisma } from '../generated/prisma';
 export class AuditLogService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // actorUserId is optional — reserved for system-generated entries with no
+  // human actor (e.g. SchedulerHeartbeatService). Every human-triggered
+  // call site must keep passing a real user id; never omit it just because
+  // it's convenient.
   record(params: {
-    actorUserId: string;
+    actorUserId?: string;
     action: string;
     targetType: string;
     targetId: string;

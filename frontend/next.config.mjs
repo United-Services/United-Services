@@ -59,86 +59,12 @@ const nextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=31536000; includeSubDomains; preload",
           },
-          // Mirrors nginx/nginx.conf's Content-Security-Policy — keep both
-          // in sync. NOTE: nginx.conf's script-src also carried a sha256
-          // hash alongside 'unsafe-inline' (meant to cover the JSON-LD
-          // block in src/app/[locale]/page.tsx's structuredData); that
-          // combination doesn't work the way it looks — per the CSP spec,
-          // 'unsafe-inline' is ignored entirely once ANY hash/nonce source
-          // is present in the same directive (it's not an OR/fallback).
-          // Confirmed live in a browser: with the hash present, Next's own
-          // required inline hydration scripts got silently blocked on
-          // every page. Dropped the hash here (and should be dropped from
-          // nginx.conf too) — script-src falls back to plain
-          // 'unsafe-inline', which is weaker (no longer restricts inline
-          // scripts to known-good content) but is what was actually in
-          // effect anyway once Clerk's own inline script/style tags are
-          // accounted for. A real fix would be nonce-based CSP (a fresh
-          // nonce per request, threaded through middleware to every inline
-          // script) — bigger effort, not done here.
-          //
-          // 'unsafe-eval' is also required — NOT a leftover, and NOT
-          // optional. clerk-js evaluates code dynamically as part of its
-          // WASM-backed crypto (WebAuthn/passkey) support. Without it, the
-          // entire <SignIn>/<SignUp> widget fails to mount at all — the
-          // panel it should render into is just blank, with a CSP
-          // violation as the only clue in the console. Confirmed live:
-          // this was silently broken end-to-end (every sign-in/sign-up
-          // page) between the CSP being added and this fix, caught only
-          // because a real login was attempted rather than just checking
-          // for console errors on pages that never invoke Clerk's widget.
-          {
-            key: "Content-Security-Policy",
-            value: [
-              "default-src 'self'",
-              "base-uri 'self'",
-              "form-action 'self'",
-              "frame-ancestors 'none'",
-              "object-src 'none'",
-              // clerk.use-eg.com: this app's production Clerk instance uses
-              // a custom Frontend API domain, not the default
-              // *.clerk.accounts.dev. Confirmed live: clerk-js failed to
-              // load at all on the real production domain
-              // ("failed_to_load_clerk_js") without this.
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.use-eg.com",
-              // clerk-js also spawns a Web Worker from a blob: URL. With no
-              // worker-src set, browsers fall back to script-src for
-              // worker creation too — but a blob: worker doesn't satisfy a
-              // host-based allowlist (https://*.clerk...) the way a
-              // same-origin or explicitly-allowed blob: source does, so it
-              // was still being blocked even after 'unsafe-eval' fixed the
-              // base widget. Confirmed live: this exact worker-src gap
-              // remained even once <SignIn> was visibly rendering.
-              "worker-src 'self' blob:",
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "img-src 'self' data: https: blob:",
-              "font-src 'self' data: https://fonts.gstatic.com",
-              // In production this app only ever runs behind nginx, which
-              // proxies /api/* same-origin — no cross-origin API call ever
-              // happens there. Local `pnpm dev` has no nginx in front, so
-              // the frontend calls the backend directly at
-              // NEXT_PUBLIC_API_URL (http://localhost:3002) — allow that
-              // origin in connect-src only outside production so this CSP
-              // doesn't silently block every API call in local dev.
-              // https://clerk-telemetry.com: clerk-js sends its own
-              // anonymous usage beacon here on load, unrelated to
-              // clerk.use-eg.com (the actual Frontend API domain) — blocked
-              // without this, confirmed live in the console.
-              // https://*.s3.us-east-1.amazonaws.com: every presigned
-              // upload (service images/specs, candidate ID/CV/documents —
-              // see S3Service) is a PUT the browser sends directly to S3,
-              // never through this app's own backend. Wildcarded on the
-              // bucket name, not hardcoded to the current one, but still
-              // scoped to this AWS_REGION — update if that ever changes.
-              [
-                "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.use-eg.com https://clerk-telemetry.com https://*.s3.us-east-1.amazonaws.com",
-                process.env.NODE_ENV !== "production" ? "http://localhost:3002" : "",
-              ]
-                .filter(Boolean)
-                .join(" "),
-              "frame-src https://*.clerk.accounts.dev https://*.clerk.com https://www.google.com https://maps.google.com",
-            ].join("; "),
-          },
+          // Content-Security-Policy is NOT set here anymore. It now needs a
+          // fresh nonce on every request (script-src trusts the nonce
+          // instead of 'unsafe-inline'), and this headers() config runs
+          // once at build time — there's no per-request value it could ever
+          // see. proxy.ts (middleware, which does run per-request) is the
+          // single source of truth for it now; see buildCsp() there.
         ],
       },
     ]

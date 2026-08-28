@@ -939,7 +939,8 @@
         "Target",
         "When"
       ],
-      "none": "No audit log entries found."
+      "none": "No audit log entries found.",
+      "systemActor": "System"
     },
     "positions": {
       "createHeading": "Post a New Position",
