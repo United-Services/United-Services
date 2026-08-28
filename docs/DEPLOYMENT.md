@@ -57,23 +57,42 @@ repo root, `backend/Dockerfile`, `frontend/Dockerfile`, and
 Postgres+Redis, real migrations + KEK bootstrap, real nginx routing both
 `/api/*` and the frontend on one port).
 
-1. Provision a server (any VPS/dedicated box with Docker installed).
-2. Create `.env` at the repo root with real values (Clerk, AWS, etc. —
-   see `docs/CREDENTIALS_CHECKLIST.md`'s "`.env.example` shape" section
-   for the full list and what each one means), then
-   `docker compose up -d --build`. This gives you:
+1. Provision a server (any VPS/dedicated box with Docker installed) — no
+   repo checkout, npm, or TypeScript toolchain needed on it. Only 3 files:
+   `docker-compose.yml`, `nginx/nginx.conf`, and a `.env` you create there
+   (see step 2).
+2. Create `.env` next to `docker-compose.yml` with real values (Clerk,
+   AWS, etc. — see `docs/CREDENTIALS_CHECKLIST.md`'s "`.env.example`
+   shape" section), then authenticate to GHCR once (images are private,
+   matching the repo) and pull:
+   ```bash
+   echo "$GHCR_READ_TOKEN" | docker login ghcr.io -u <github-username> --password-stdin
+   docker compose pull
+   docker compose up -d
+   ```
+   `backend`/`frontend` both pull prebuilt images from
+   `ghcr.io/alioskillers/united-services-{backend,frontend}:latest` —
+   `.github/workflows/docker-publish.yml` builds and pushes those on every
+   merge to `main`. This gives you:
    - `postgres` + `redis` containers (or point `DATABASE_URL`/`REDIS_URL`
      at managed services instead and ignore these two — see the comment
      at the top of `docker-compose.yml`)
-   - `backend`: builds via multi-stage Dockerfile, entrypoint
-     (`backend/docker-entrypoint.sh`) runs `prisma migrate deploy` then
-     idempotently bootstraps the first TOTP KEK on a fresh DB before
-     starting the app. KEK private keys persist in the `kek-keys` named
-     volume — never on the container's ephemeral layer.
-   - `frontend`: Next.js `output: 'standalone'` build, minimal runtime
-     image.
+   - `backend`: entrypoint (`backend/docker-entrypoint.sh`) runs `prisma
+     migrate deploy` then idempotently bootstraps the first TOTP KEK on a
+     fresh DB before starting the app. KEK private keys persist in the
+     `kek-keys` named volume — never on the container's ephemeral layer.
+   - `frontend`: prebuilt Next.js image — every `NEXT_PUBLIC_*` var was
+     already fetched from SSM and inlined at image-build time in CI (see
+     `frontend/Dockerfile`'s build-stage comment), not at container start.
    - `nginx`: routes `/api/*` to the backend, everything else to the
      frontend, both on port 80 (see cookie note above — same origin).
+
+   **Deploying an update** later: `docker compose pull && docker compose
+   up -d` — that's the entire redeploy, no source checkout involved. Local
+   development still uses `docker compose up -d --build` (both
+   Dockerfiles keep their multi-stage build path for this) since a dev
+   machine wants to build from its own working tree, not whatever's
+   currently on `main`.
 3. Point DNS at the server, then add the domain as a Cloudflare zone in
    front of it (orange-cloud proxy mode) for WAF/CDN/DDoS protection —
    this is the deferred step `docs/REQUIREMENTS.md` flags as not done.

@@ -69,6 +69,14 @@ services:
     networks: [internal]
 
   backend:
+    # `image:` + `build:` together: a plain `docker compose pull && up -d`
+    # (no `--build`) uses the prebuilt image from GHCR and never touches
+    # `build:` at all — the server doesn't need backend/ checked out, or
+    # npm/tsc/@nestjs-cli installed, just this file + .env + nginx.conf.
+    # `build:` stays for local dev (`docker compose up -d --build`) and
+    # for docker-publish.yml, which builds+pushes this exact tag on every
+    # merge to main. See docs/DEPLOYMENT.md's "Deploying an update" section.
+    image: ghcr.io/alioskillers/united-services-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -101,6 +109,8 @@ services:
     networks: [internal]
 
   frontend:
+    # Same image:+build: contract as backend above.
+    image: ghcr.io/alioskillers/united-services-frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
