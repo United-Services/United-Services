@@ -28,6 +28,13 @@ docker compose pull
 # compose up -d --build` directly (not this script).
 docker compose up -d --remove-orphans
 
+# Keeps nginx/cloudflare-ips.d/*.conf current on every deploy, not just the
+# daily cron/systemd timer (see that script's own comment) — a fresh
+# checkout has no generated file at all until this runs once, which would
+# otherwise leave real_ip with nothing to resolve against until the next
+# scheduled run.
+"$REPO_ROOT/scripts/update-cloudflare-ips.sh"
+
 # Every rebuild/re-pull that replaces a tag (:latest) leaves the previous
 # image behind as a now-nameless "<none>" layer — harmless individually,
 # but they silently accumulate across repeated deploys/local rebuilds (15GB+

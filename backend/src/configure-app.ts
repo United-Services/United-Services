@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import compression from 'compression';
 import { requestLoggingMiddleware } from './common/middleware/request-logging.middleware';
+import { AllowedOriginsService } from './allowed-origins/allowed-origins.service';
 
 // Every non-DI-registered piece of app setup lives here instead of inline in
 // bootstrap(), so the e2e test harness (test/utils/bootstrap.ts) can call the
@@ -53,13 +54,24 @@ export function configureApp(app: NestExpressApplication): void {
     }),
   );
 
-  const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
+  // Origins are DB-backed now (AllowedOriginsService), not a static
+  // CORS_ORIGINS env var that needed a redeploy to change — resolved via
+  // app.get() since this function runs after NestFactory.create() has
+  // already built the full DI graph. `isAllowed()` is a synchronous
+  // in-memory check on the hot path (see that service's class comment);
+  // this callback runs on every single cross-origin request.
+  const allowedOrigins = app.get(AllowedOriginsService);
   app.enableCors({
-    origin: allowedOrigins.length > 0 ? allowedOrigins : false,
+    origin: (requestOrigin, callback) => {
+      // No Origin header at all (same-origin requests, curl, server-to-
+      // server calls) — nothing for CORS to restrict; only cross-origin
+      // browser requests ever send this header.
+      if (!requestOrigin) return callback(null, true);
+      allowedOrigins
+        .isAllowed(requestOrigin)
+        .then((allowed) => callback(null, allowed))
+        .catch((err) => callback(err));
+    },
     credentials: true,
   });
 

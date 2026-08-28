@@ -403,6 +403,19 @@ model AuditLog {
   @@index([createdAt])
 }
 
+// Replaces the old CORS_ORIGINS env var as the source of truth for which
+// origins app.enableCors() allows (see AllowedOriginsService) — adding a
+// new frontend/staging domain used to mean editing SSM and redeploying;
+// now it's an admin-dashboard action with no redeploy. `origin` is
+// exactly what a browser sends in the Origin header: scheme + host +
+// optional port, no path/trailing slash (validated by
+// CreateAllowedOriginDto).
+model AllowedOrigin {
+  id        String   @id @default(cuid())
+  origin    String   @unique
+  createdAt DateTime @default(now())
+}
+
 // `country` is always resolved server-side from the request IP via
 // GeoService (MaxMind GeoLite2) — never trusted from client input. Powers
 // the admin dashboard's requests-by-country world map.
