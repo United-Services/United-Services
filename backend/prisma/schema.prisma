@@ -381,8 +381,15 @@ model CandidateDocument {
 
 model AuditLog {
   id          String   @id @default(cuid())
-  actorUserId String
-  actor       User     @relation("AuditLogActor", fields: [actorUserId], references: [id])
+  // Nullable: every human-triggered action still always passes a real
+  // actorUserId (see AuditLogService.record's call sites) — null is
+  // reserved for system-generated entries with no human actor, e.g. the
+  // scheduler heartbeat (SchedulerHeartbeatService). Never backfill a real
+  // user id onto one of those just to satisfy a NOT NULL constraint — that
+  // would misattribute an automated action to a person who didn't do it,
+  // which defeats the point of an audit log.
+  actorUserId String?
+  actor       User?    @relation("AuditLogActor", fields: [actorUserId], references: [id])
   action      String
   targetType  String
   targetId    String

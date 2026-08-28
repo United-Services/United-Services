@@ -98,13 +98,38 @@ export class MeController {
     return this.toDto(user, sessionId);
   }
 
-  // Same exemption reasoning as me() above — only changes the caller's own password.
+  // Exempt from MFA guards for the same reason as me() above: the
+  // dashboard redirect (frontend app/[locale]/dashboard/page.tsx) sends
+  // *every* role here first whenever mustChangePassword is true —
+  // including a brand-new admin account, which at that point has
+  // mfaEnrolled=false and hasn't reached MFA setup yet. That bootstrap
+  // case can't require a current password (there isn't a real one yet)
+  // or a fresh MFA session (nothing to verify against yet), so it has to
+  // stay reachable here regardless of role.
+  //
+  // What must NOT be reachable here: an already-set-up admin
+  // (mustChangePassword already false) rotating their password with
+  // nothing but a stolen session cookie and zero fresh-MFA proof — that
+  // silently defeats MfaSessionVerifiedGuard via @MfaExempt() and is a
+  // full account-takeover primitive (new password + signOutOfOtherSessions
+  // in one unauthenticated-beyond-the-cookie request), directly against
+  // docs/BUSINESS_RULES.md rule 7 ("admin password reset requires a
+  // fresh MFA verification"). Those admins are pointed at the dedicated,
+  // correctly-gated path instead: MfaController.resetPassword
+  // (POST /mfa/admin-password-reset), which requires a fresh TOTP/WebAuthn
+  // verification in the same request and audit-logs the change — unlike
+  // this endpoint, which does neither.
   @MfaExempt()
   @Post('change-password')
   async changePassword(
     @CurrentUser() user: User,
     @Body() dto: ChangePasswordDto,
   ) {
+    if (user.role === Role.admin && !user.mustChangePassword) {
+      throw new ForbiddenException(
+        'Admin accounts must change their password via a fresh MFA verification — use POST /mfa/admin-password-reset',
+      );
+    }
     await this.clerkClient.users.updateUser(user.clerkId, {
       password: dto.newPassword,
       signOutOfOtherSessions: true,

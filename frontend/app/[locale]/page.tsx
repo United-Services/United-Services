@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { headers } from "next/headers"
 import HomeClient from "./HomeClient"
 import type { ServicePreview } from "@/views/Home"
 import type { AppLocale } from "@/i18n/routing"
@@ -16,11 +17,9 @@ export const metadata: Metadata = {
   },
 }
 
-// If this object changes, recompute its CSP hash and update the
-// script-src 'sha256-...' value in nginx/nginx.conf — the inline
-// <script> below is only allowed to run because its exact content
-// (JSON.stringify(structuredData)) matches that hash; an edit here with
-// a stale hash makes the script silently stop rendering.
+// No CSP hash to keep in sync anymore — this script's nonce prop (read
+// from the per-request header proxy.ts sets) is what CSP checks now, not
+// its content, so editing this object needs no corresponding config change.
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
@@ -62,10 +61,17 @@ export default async function HomePage({
 }) {
   const { locale } = await params
   const initialServices = await fetchInitialServices(locale)
+  // Reading the request-scoped nonce header opts this page out of static
+  // generation/ISR — required for nonce-based CSP (a fresh nonce per
+  // request means there's nothing valid to bake into a build-time-static
+  // page). See proxy.ts's buildCsp() comment and
+  // node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md.
+  const nonce = (await headers()).get("x-nonce") ?? undefined
   return (
     <>
       <script
         type="application/ld+json"
+        nonce={nonce}
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
       <HomeClient initialServices={initialServices} />

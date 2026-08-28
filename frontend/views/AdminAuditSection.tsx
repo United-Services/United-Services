@@ -15,7 +15,9 @@ interface AuditLogRow {
   targetType: string
   targetId: string
   createdAt: string
-  actor: { firstName: string; lastName: string; email: string; role: string }
+  // null for system-generated entries with no human actor (e.g. the
+  // scheduler heartbeat) — every human-triggered entry still always has one.
+  actor: { firstName: string; lastName: string; email: string; role: string } | null
 }
 
 interface Props {
@@ -86,12 +88,18 @@ export default function AdminAuditSection({ setError }: Props) {
                     fontWeight: 600,
                   }}
                 >
-                  {a.actor.firstName} {a.actor.lastName}{" "}
-                  <span
-                    style={{ color: palette.muted, fontWeight: 400 }}
-                  >
-                    ({a.actor.role})
-                  </span>
+                  {a.actor ? (
+                    <>
+                      {a.actor.firstName} {a.actor.lastName}{" "}
+                      <span style={{ color: palette.muted, fontWeight: 400 }}>
+                        ({a.actor.role})
+                      </span>
+                    </>
+                  ) : (
+                    <span style={{ color: palette.muted, fontWeight: 400 }}>
+                      {t("audit.systemActor")}
+                    </span>
+                  )}
                 </td>
                 <td
                   style={{
