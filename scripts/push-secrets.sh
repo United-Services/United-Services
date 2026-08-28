@@ -74,6 +74,7 @@ SECRET_KEYS=(
   SPRITE_KEY
   NGINX_PORT
   NEXT_PUBLIC_API_URL
+  APP_ENV
 )
 
 echo "Pushing secrets to /united-services/${ENVIRONMENT}/* ..."
