@@ -1,7 +1,107 @@
 # Changelog
 
-All notable changes to this project are documented here. This is the first
-release — everything below shipped as part of `v1.0.0`.
+All notable changes to this project are documented here.
+
+## [2.0.0]
+
+60 commits since `v1.0.0`. No breaking API/schema changes for existing
+deployments — migrations are additive and backward-compatible — but tagged
+as a major version given the scope of the deploy-pipeline change and the
+admin-security fix below.
+
+### Deployment & Infrastructure
+
+- **Prebuilt, pullable Docker images.** Both `backend/Dockerfile` and
+  `frontend/Dockerfile` are now real multi-stage builds — the final image
+  carries only compiled output + production dependencies, no
+  TypeScript/`ts-node`/`@nestjs-cli`/source files. `.github/workflows/
+  docker-publish.yml` builds and pushes both to GHCR
+  (`ghcr.io/alioskillers/united-services-{backend,frontend}`, multi-platform:
+  `linux/amd64` + `linux/arm64`) on every merge to `main`. A deploy is now
+  `docker compose pull && docker compose up -d` — no repo checkout, no
+  npm/tsc toolchain on the server at all. `scripts/deploy.sh` updated to
+  match (no longer rebuilds locally after pulling) and prunes dangling
+  images after every run; local dev's `docker compose up --build` gets the
+  same prune-after-build guidance.
+- `NEXT_PUBLIC_*` env vars are now fetched from SSM and inlined at
+  **image-build time** (via BuildKit `--secret` mounts, never `ARG`/`ENV`,
+  so they never land in image layer history) rather than at container
+  start — a consequence of the prebuilt-image model above.
+- Secrets/config hardening: `fetch-secrets.mjs`'s `APP_ENV ?? 'staging'`
+  hardcoded fallback removed — a missing `APP_ENV` now fails loudly with a
+  clear message instead of silently querying the wrong SSM path.
+  `fetch-secrets.sh`'s AWS-credential fallback fixed for macOS's bundled
+  bash; `push-secrets.sh` fixed (default AWS profile, an unreachable
+  skip-on-missing-key path) and now includes `APP_ENV` itself.
+- Added a `KekRegistry.status` index (flagged by Supabase's index
+  advisor as a sequential scan on every KEK lookup) and indexes for 7
+  previously-unindexed foreign key columns plus sort-column indexes on
+  admin list endpoints.
+- A 6-hourly scheduler heartbeat (`backend/scripts/heartbeat.ts`, run via
+  local crontab — same pattern as the existing `backup:db` job) writes an
+  `INFORMATIONAL` row to the audit log, so a silently-dead cron becomes
+  visible by its absence. `AuditLog.actorUserId` is now nullable to
+  support this — an automated write has no human actor, and forcing one
+  on would misattribute it.
+- Live WebSocket updates for the open-slots appointment picker; a job
+  queue, response compression, and cache headers added as part of a
+  broader performance/scalability pass; expensive analytics queries
+  cached; server-fetched initial data for Home/Services/Careers to avoid
+  a client-fetch waterfall; prefetched dashboard specs/images with
+  per-image skeletons.
+- Playwright e2e tests (public site, signup, admin dashboard) and
+  expanded k6 load-test coverage (positions/geo endpoints, POST rate
+  limits, the WebSocket gateway).
+- Paging a real phone via Betterstack when the backend throws a genuine
+  unhandled 500.
+
+### Authentication & Security
+
+- **Fixed an admin MFA bypass**: the generic `/me/change-password`
+  endpoint was `@MfaExempt()` with no current-password check, letting a
+  stolen admin session cookie rotate the password and sign out other
+  sessions with zero fresh MFA proof — a full account-takeover primitive.
+  Already-onboarded admins are now blocked from this route and pointed at
+  the properly MFA-gated `/mfa/admin-password-reset`.
+- **Nonce-based CSP**: `script-src`'s `'unsafe-inline'` (the v1.0.0
+  "Known Issue" below) replaced with a per-request nonce generated in
+  `frontend/proxy.ts`, now the single source of truth for the policy (the
+  previously-duplicated, conflicting copies in `next.config.mjs` and
+  `nginx.conf` removed). `'unsafe-eval'` stays — required for Clerk's
+  WebAuthn/passkey WASM crypto. Verified live across every page type with
+  zero CSP violations.
+- Admins can now delete/replace their own WebAuthn biometric credentials,
+  with a clear error message when biometric MFA fails from an insecure
+  context; an option to delete a TOTP authenticator-app enrollment too.
+  Duplicate/misplaced logout buttons on the admin MFA pages cleaned up,
+  and a logout option added to every error page.
+- Tightened rate limiting on the Clerk webhook endpoint.
+- Fixed several unhandled-Prisma-error paths (file-access `decide()`
+  state machine, Redis/translation failure paths, 2 more found during a
+  live API pentest) that were surfacing as generic 500s instead of
+  correct, sanitized error responses — plus the underlying missing test
+  coverage for those edge cases.
+- Two real CSP regressions caught and fixed post-v1.0.0: one silently
+  breaking Clerk's sign-in widget entirely, another blocking Clerk on the
+  real production domain and the Contact page's Google Maps embed.
+
+### Client, Candidate & Admin Portals
+
+- Ticket system: status tracking, search, and an admin dashboard split
+  out to accommodate it; resumable uploads with skeleton loading states.
+- Admin service CRUD with S3-backed images.
+- Sign-in/sign-up now correctly lands a user on their dashboard instead
+  of the homepage; candidates auto-redirect to their dashboard right
+  after signup.
+- Visual pass: sign-in/signup stock photos replaced with local images,
+  private/dashboard pages retinted to match the public site's lime theme,
+  two real mobile-breakage bugs fixed after a pixel-level responsiveness
+  audit.
+
+### Known Issues / Accepted Trade-offs (carried over, now resolved)
+
+- ~~CSP's `script-src` relies on `'unsafe-inline'`~~ — fixed above via
+  per-request nonce.
 
 ## [1.0.0] — Initial Release
 
