@@ -7,6 +7,7 @@ name: Docker publish
 on:
   push:
     branches: [main]
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -18,6 +19,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # linux/arm64 via QEMU emulation, alongside the runner's native
+      # linux/amd64 — a GHCR image built amd64-only silently fails to
+      # `docker compose pull` on any Apple Silicon Mac ("no matching
+      # manifest for linux/arm64/v8"), confirmed live the first time this
+      # was pulled locally. Slower (apt-get et al run emulated for the
+      # arm64 pass) but this is the whole point of a "pullable directly"
+      # image — it has to actually pull on whatever's doing the pulling.
+      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -32,6 +41,7 @@ jobs:
         with:
           context: ./backend
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             ghcr.io/alioskillers/united-services-backend:latest
             ghcr.io/alioskillers/united-services-backend:${{ github.sha }}
@@ -43,6 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -65,6 +76,7 @@ jobs:
         with:
           context: ./frontend
           push: true
+          platforms: linux/amd64,linux/arm64
           secret-files: |
             aws_access_key_id=/tmp/aws_access_key_id
             aws_secret_access_key=/tmp/aws_secret_access_key
