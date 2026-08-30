@@ -7,6 +7,23 @@ on:
     branches: [main]
 
 jobs:
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Free substitute for GitHub's own secret scanning/push protection —
+      # those require GitHub Advanced Security, which isn't purchasable on
+      # this repo's (personal-account) plan. gitleaks scans the full commit
+      # history on every push/PR and fails the build on a match, so this
+      # runs in addition to (not instead of) never committing real secrets
+      # in the first place.
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   backend:
     name: Backend — typecheck & build
     runs-on: ubuntu-latest
