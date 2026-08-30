@@ -13,7 +13,7 @@ describe('RfqController', () => {
       serviceRequest: {
         create: jest.fn(),
         findMany: jest.fn(),
-        update: jest.fn(),
+        updateMany: jest.fn(),
         findUnique: jest.fn(),
       },
       service: {
@@ -91,10 +91,10 @@ describe('RfqController', () => {
 
   it('records an audit entry with the new status when an admin updates one', async () => {
     const { controller, prisma, auditLog } = makeController();
-    (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue({
-      contactedAt: null,
+    (prisma.serviceRequest.updateMany as jest.Mock).mockResolvedValue({
+      count: 1,
     });
-    (prisma.serviceRequest.update as jest.Mock).mockResolvedValue({
+    (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue({
       id: 'rfq-1',
       status: 'quoted',
     });
@@ -112,10 +112,10 @@ describe('RfqController', () => {
 
   it('freely moves status between pending and in_review before contact', async () => {
     const { controller, prisma } = makeController();
-    (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue({
-      contactedAt: null,
+    (prisma.serviceRequest.updateMany as jest.Mock).mockResolvedValue({
+      count: 1,
     });
-    (prisma.serviceRequest.update as jest.Mock).mockResolvedValue({
+    (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue({
       id: 'rfq-1',
       status: 'pending',
     });
@@ -124,32 +124,61 @@ describe('RfqController', () => {
       status: 'pending',
     } as any);
 
-    expect(prisma.serviceRequest.update).toHaveBeenCalledWith({
-      where: { id: 'rfq-1' },
+    expect(prisma.serviceRequest.updateMany).toHaveBeenCalledWith({
+      where: { id: 'rfq-1', contactedAt: null },
       data: { status: 'pending' },
     });
   });
 
+  // The contactedAt: null check has to be inside the updateMany's own
+  // `where`, not a separate findUnique read — this pins that atomic
+  // shape, since it's what closes the race between two concurrent
+  // requests (see the dedicated race-condition test below).
   it('rejects any status change once the request is already contacted', async () => {
     const { controller, prisma } = makeController();
+    (prisma.serviceRequest.updateMany as jest.Mock).mockResolvedValue({
+      count: 0,
+    });
     (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue({
-      contactedAt: new Date('2026-01-01'),
+      id: 'rfq-1',
     });
 
     await expect(
       controller.updateStatus(admin, 'rfq-1', { status: 'in_review' } as any),
     ).rejects.toThrow(BadRequestException);
-    expect(prisma.serviceRequest.update).not.toHaveBeenCalled();
   });
 
   it('404s updateStatus for an unknown RFQ id instead of a generic 500', async () => {
     const { controller, prisma } = makeController();
+    (prisma.serviceRequest.updateMany as jest.Mock).mockResolvedValue({
+      count: 0,
+    });
     (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue(null);
 
     await expect(
       controller.updateStatus(admin, 'missing', { status: 'quoted' } as any),
     ).rejects.toThrow(NotFoundException);
-    expect(prisma.serviceRequest.update).not.toHaveBeenCalled();
+  });
+
+  // The actual concurrency guarantee: two "simultaneous" updateStatus
+  // calls on the same request can never both succeed, because the
+  // contactedAt: null guard lives inside the atomic updateMany rather
+  // than a preceding read. This simulates the loser of that race
+  // directly — count: 0 even though nothing about this call's own
+  // request implied the RFQ was already contacted.
+  it('treats a lost race (updateMany affects 0 rows) as already-contacted, never as a silent status change', async () => {
+    const { controller, prisma, auditLog } = makeController();
+    (prisma.serviceRequest.updateMany as jest.Mock).mockResolvedValue({
+      count: 0,
+    });
+    (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue({
+      id: 'rfq-1',
+    });
+
+    await expect(
+      controller.updateStatus(admin, 'rfq-1', { status: 'quoted' } as any),
+    ).rejects.toThrow(BadRequestException);
+    expect(auditLog.record).not.toHaveBeenCalled();
   });
 
   it('list fuzzy-matches q across client and project fields, filtering out non-matches', async () => {
@@ -186,20 +215,21 @@ describe('RfqController', () => {
 
   it('marks a not-yet-contacted request as contacted', async () => {
     const { controller, prisma, auditLog } = makeController();
-    (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue({
-      contactedAt: null,
+    (prisma.serviceRequest.updateMany as jest.Mock).mockResolvedValue({
+      count: 1,
     });
-    (prisma.serviceRequest.update as jest.Mock).mockImplementation(
-      ({ data }) => ({ id: 'rfq-1', ...data }),
-    );
+    (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue({
+      id: 'rfq-1',
+      contactedAt: new Date('2026-01-02'),
+    });
 
     const result = await controller.markContacted(admin, 'rfq-1');
 
-    expect(prisma.serviceRequest.update).toHaveBeenCalledWith({
-      where: { id: 'rfq-1' },
+    expect(prisma.serviceRequest.updateMany).toHaveBeenCalledWith({
+      where: { id: 'rfq-1', contactedAt: null },
       data: { contactedAt: expect.any(Date) },
     });
-    expect(result.contactedAt).toBeInstanceOf(Date);
+    expect(result?.contactedAt).toBeInstanceOf(Date);
     expect(auditLog.record).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'rfq.contacted',
@@ -210,23 +240,45 @@ describe('RfqController', () => {
 
   it('rejects marking an already-contacted request again — contacted is final', async () => {
     const { controller, prisma } = makeController();
+    (prisma.serviceRequest.updateMany as jest.Mock).mockResolvedValue({
+      count: 0,
+    });
     (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue({
-      contactedAt: new Date('2026-01-01'),
+      id: 'rfq-1',
     });
 
     await expect(controller.markContacted(admin, 'rfq-1')).rejects.toThrow(
       BadRequestException,
     );
-    expect(prisma.serviceRequest.update).not.toHaveBeenCalled();
   });
 
   it('404s markContacted for an unknown RFQ id instead of a generic 500', async () => {
     const { controller, prisma } = makeController();
+    (prisma.serviceRequest.updateMany as jest.Mock).mockResolvedValue({
+      count: 0,
+    });
     (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue(null);
 
     await expect(controller.markContacted(admin, 'missing')).rejects.toThrow(
       NotFoundException,
     );
-    expect(prisma.serviceRequest.update).not.toHaveBeenCalled();
+  });
+
+  // Same concurrency guarantee as updateStatus above: two "simultaneous"
+  // markContacted calls on the same request can never both succeed, since
+  // the contactedAt: null guard lives inside the atomic updateMany.
+  it('treats a lost race (updateMany affects 0 rows) as already-contacted, never firing the audit entry twice', async () => {
+    const { controller, prisma, auditLog } = makeController();
+    (prisma.serviceRequest.updateMany as jest.Mock).mockResolvedValue({
+      count: 0,
+    });
+    (prisma.serviceRequest.findUnique as jest.Mock).mockResolvedValue({
+      id: 'rfq-1',
+    });
+
+    await expect(controller.markContacted(admin, 'rfq-1')).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(auditLog.record).not.toHaveBeenCalled();
   });
 });

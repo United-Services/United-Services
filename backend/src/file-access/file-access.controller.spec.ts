@@ -33,6 +33,7 @@ describe('FileAccessController', () => {
           .mockImplementation(({ data }) =>
             Promise.resolve({ id: 'req-1', ...data }),
           ),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     } as unknown as PrismaService;
     const s3 = {
@@ -109,7 +110,7 @@ describe('FileAccessController', () => {
       await expect(
         controller.decide(admin, 'missing', { approve: true }),
       ).rejects.toThrow(NotFoundException);
-      expect(prisma.fileAccessRequest.update).not.toHaveBeenCalled();
+      expect(prisma.fileAccessRequest.updateMany).not.toHaveBeenCalled();
     });
 
     // A decision is final — the admin UI already hides the approve/deny
@@ -117,7 +118,10 @@ describe('FileAccessController', () => {
     // by AdminRequestsSection), so a second decide() call reaching the
     // backend means either a replayed request or two admins racing on the
     // same request. Either way it must not silently overwrite the original
-    // decidedByAdminId/decidedAt. Same bug class fixed in
+    // decidedByAdminId/decidedAt. The pending check lives inside decide()'s
+    // atomic updateMany (where: { id, status: pending }), not the
+    // preceding findUnique — these tests simulate that by making
+    // updateMany itself report count: 0, same shape as
     // candidates.controller.ts's decide().
     it('rejects deciding a request that has already been approved', async () => {
       const { controller, prisma } = makeController({
@@ -128,11 +132,13 @@ describe('FileAccessController', () => {
           serviceFileId: 'file-1',
         }),
       });
+      (prisma.fileAccessRequest.updateMany as jest.Mock).mockResolvedValue({
+        count: 0,
+      });
 
       await expect(
         controller.decide(admin, 'req-1', { approve: false }),
       ).rejects.toThrow(ConflictException);
-      expect(prisma.fileAccessRequest.update).not.toHaveBeenCalled();
     });
 
     it('rejects deciding a request that has already been denied', async () => {
@@ -144,36 +150,85 @@ describe('FileAccessController', () => {
           serviceFileId: 'file-1',
         }),
       });
+      (prisma.fileAccessRequest.updateMany as jest.Mock).mockResolvedValue({
+        count: 0,
+      });
 
       await expect(
         controller.decide(admin, 'req-1', { approve: true }),
       ).rejects.toThrow(ConflictException);
-      expect(prisma.fileAccessRequest.update).not.toHaveBeenCalled();
     });
 
     it('approves a pending request and records decidedByAdminId + audit entry', async () => {
-      const { controller, prisma, auditLog } = makeController({
-        findUnique: jest.fn().mockResolvedValue({
+      const findUnique = jest
+        .fn()
+        .mockResolvedValueOnce({
           id: 'req-1',
           status: FileAccessStatus.pending,
           clientId: client.id,
           serviceFileId: 'file-1',
-        }),
-      });
+        })
+        .mockResolvedValueOnce({
+          id: 'req-1',
+          status: FileAccessStatus.approved,
+          clientId: client.id,
+          serviceFileId: 'file-1',
+          decidedByAdminId: admin.id,
+        });
+      const { controller, prisma, auditLog } = makeController({ findUnique });
 
       const result = await controller.decide(admin, 'req-1', {
         approve: true,
       });
 
-      expect(result.status).toBe(FileAccessStatus.approved);
-      expect(result.decidedByAdminId).toBe(admin.id);
+      expect(result?.status).toBe(FileAccessStatus.approved);
+      expect(result?.decidedByAdminId).toBe(admin.id);
+      expect(prisma.fileAccessRequest.updateMany).toHaveBeenCalledWith({
+        where: { id: 'req-1', status: FileAccessStatus.pending },
+        data: expect.objectContaining({
+          status: FileAccessStatus.approved,
+          decidedByAdminId: admin.id,
+        }),
+      });
       expect(auditLog.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'file_access.approved' }),
       );
-      expect(prisma.fileAccessRequest.update).toHaveBeenCalledTimes(1);
+      expect(prisma.fileAccessRequest.updateMany).toHaveBeenCalledTimes(1);
     });
 
     it('denies a pending request and records the corresponding audit action', async () => {
+      const findUnique = jest
+        .fn()
+        .mockResolvedValueOnce({
+          id: 'req-1',
+          status: FileAccessStatus.pending,
+          clientId: client.id,
+          serviceFileId: 'file-1',
+        })
+        .mockResolvedValueOnce({
+          id: 'req-1',
+          status: FileAccessStatus.denied,
+          clientId: client.id,
+          serviceFileId: 'file-1',
+        });
+      const { controller, prisma, auditLog } = makeController({ findUnique });
+
+      const result = await controller.decide(admin, 'req-1', {
+        approve: false,
+      });
+
+      expect(result?.status).toBe(FileAccessStatus.denied);
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'file_access.denied' }),
+      );
+      expect(prisma.fileAccessRequest.updateMany).toHaveBeenCalledTimes(1);
+    });
+
+    // The actual concurrency guarantee: two "simultaneous" decide() calls
+    // on the same request can never both succeed, since the pending check
+    // lives inside the atomic updateMany rather than the preceding read.
+    // This simulates the loser of that race directly.
+    it('treats a lost race (updateMany affects 0 rows) as already-decided, never as a silent overwrite', async () => {
       const { controller, prisma, auditLog } = makeController({
         findUnique: jest.fn().mockResolvedValue({
           id: 'req-1',
@@ -182,16 +237,14 @@ describe('FileAccessController', () => {
           serviceFileId: 'file-1',
         }),
       });
-
-      const result = await controller.decide(admin, 'req-1', {
-        approve: false,
+      (prisma.fileAccessRequest.updateMany as jest.Mock).mockResolvedValue({
+        count: 0,
       });
 
-      expect(result.status).toBe(FileAccessStatus.denied);
-      expect(auditLog.record).toHaveBeenCalledWith(
-        expect.objectContaining({ action: 'file_access.denied' }),
-      );
-      expect(prisma.fileAccessRequest.update).toHaveBeenCalledTimes(1);
+      await expect(
+        controller.decide(admin, 'req-1', { approve: true }),
+      ).rejects.toThrow(ConflictException);
+      expect(auditLog.record).not.toHaveBeenCalled();
     });
   });
 
