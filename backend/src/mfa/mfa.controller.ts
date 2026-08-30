@@ -20,17 +20,20 @@ import {
   WebAuthnRegisterVerifyDto,
 } from './dto/webauthn.dto';
 import { AdminPasswordResetDto } from './dto/admin-password-reset.dto';
-import { Role, type User } from '../generated/prisma';
+import type { User } from '../generated/prisma';
+import { ADMIN_ROLES } from '../common/constants/admin-roles';
 import type {
   AuthenticationResponseJSON,
   RegistrationResponseJSON,
 } from '@simplewebauthn/server';
 
-// MFA is mandatory for admins only (docs/BUSINESS_RULES.md rule 2) —
-// every route here is admin-only, enforced by the global RolesGuard.
-// See MfaEnrolledGuard for why this controller is @MfaExempt().
+// MFA is mandatory for admin and super_admin only (docs/BUSINESS_RULES.md
+// rule 2) — every route here is admin/super_admin-only, enforced by the
+// global RolesGuard. super_admin goes through the exact same enrollment
+// and per-session challenge flow, not a separate one. See
+// MfaEnrolledGuard for why this controller is @MfaExempt().
 @Controller('mfa')
-@Roles(Role.admin)
+@Roles(...ADMIN_ROLES)
 @MfaExempt()
 export class MfaController {
   private readonly clerkClient = createClerkClient({

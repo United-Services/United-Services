@@ -5,6 +5,7 @@ export enum Role {
   Client = "client",
   Candidate = "candidate",
   Admin = "admin",
+  SuperAdmin = "super_admin",
 }
 
 export enum FileAccessStatus {

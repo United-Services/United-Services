@@ -128,3 +128,24 @@ changes or a new one is discovered during implementation.
     content covered above) and the candidate signup/status flow still
     intentionally stay English everywhere — see `docs/REQUIREMENTS.md`'s
     public-site note.
+17. `super_admin` is a strict superset of `admin` — same dashboard, same
+    sign-in flow, same mandatory MFA (enrollment + per-session
+    verification, rule 2 applies to both). Both `MfaEnrolledGuard`/
+    `MfaSessionVerifiedGuard` and every admin-only controller check
+    against `ADMIN_ROLES` (`common/constants/admin-roles.ts`), never a
+    bare `role === Role.admin`, specifically so this stays true —
+    forgetting to include `super_admin` somewhere would silently exempt
+    it from MFA, not just from a permission. Two exclusive extra
+    features: **audit log** (`AuditLogController`) and **tickets**
+    (`TicketsController`'s `list`/`updateStatus`) reject a plain admin,
+    enforced with `@Roles(Role.super_admin)` — never `ADMIN_ROLES` — on
+    those specific routes/controllers. Frontend hides the corresponding
+    nav items/sections for a plain admin (`views/AdminDashboard.tsx`),
+    but that's UX only; the backend `@Roles` decorator is the actual
+    boundary. Privilege escalation is closed at the source: only an
+    existing `super_admin` can grant the `super_admin` role (creating a
+    new account or promoting an existing one) or modify an existing
+    `super_admin` account at all (disable/enable/role-change/password-
+    reset) — see `AdminUsersController.assertCanGrantRole`/
+    `assertCanActOnTarget`. A plain admin can still fully manage every
+    other role, including other plain admins.

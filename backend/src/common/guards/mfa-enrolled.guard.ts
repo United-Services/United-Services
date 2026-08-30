@@ -7,10 +7,11 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { MFA_EXEMPT_KEY } from '../decorators/mfa-exempt.decorator';
-import { Role, type User } from '../../generated/prisma';
+import type { User } from '../../generated/prisma';
+import { isAdminRole } from '../constants/admin-roles';
 
-// Enforces MFA enrollment server-side for admin accounts (the frontend
-// redirect alone is a UX nudge, not an authorization boundary).
+// Enforces MFA enrollment server-side for admin/super_admin accounts (the
+// frontend redirect alone is a UX nudge, not an authorization boundary).
 // Runs after RolesGuard in the chain (see app.module.ts).
 @Injectable()
 export class MfaEnrolledGuard implements CanActivate {
@@ -26,7 +27,7 @@ export class MfaEnrolledGuard implements CanActivate {
     const { user } = context
       .switchToHttp()
       .getRequest<Request & { user?: User }>();
-    if (!user || user.role !== Role.admin) return true;
+    if (!user || !isAdminRole(user.role)) return true;
 
     if (!user.mfaEnrolled) {
       throw new ForbiddenException(

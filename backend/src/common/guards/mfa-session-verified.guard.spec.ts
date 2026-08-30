@@ -72,6 +72,30 @@ describe('MfaSessionVerifiedGuard', () => {
     await expect(guard.canActivate(context)).resolves.toBe(true);
   });
 
+  // See docs/BUSINESS_RULES.md rule 17 — super_admin goes through the
+  // identical per-session verification as admin.
+  it('rejects an enrolled super_admin whose current session has not been verified', async () => {
+    const { guard, context } = contextFor(
+      { role: Role.super_admin, mfaEnrolled: true },
+      'sess_1',
+      false,
+      false,
+    );
+    await expect(guard.canActivate(context)).rejects.toThrow(
+      ForbiddenException,
+    );
+  });
+
+  it('allows an enrolled super_admin whose current session has already been verified', async () => {
+    const { guard, context } = contextFor(
+      { role: Role.super_admin, mfaEnrolled: true },
+      'sess_1',
+      false,
+      true,
+    );
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+  });
+
   it('never gates a non-admin account', async () => {
     const { guard, context, mfa } = contextFor(
       { role: Role.client, mfaEnrolled: false },

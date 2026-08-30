@@ -324,12 +324,12 @@ describe('PositionsController', () => {
       expect(result).toEqual({ ok: true });
     });
 
-    it('requires the admin role', () => {
+    it('requires the admin role (admin or super_admin — see docs/BUSINESS_RULES.md rule 17)', () => {
       const roles = Reflect.getMetadata(
         ROLES_KEY,
         PositionsController.prototype.invalidateTranslation,
       );
-      expect(roles).toEqual([Role.admin]);
+      expect(roles).toEqual([Role.admin, Role.super_admin]);
     });
   });
 });

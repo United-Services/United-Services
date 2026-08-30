@@ -333,5 +333,29 @@ describe('FileAccessController', () => {
         url: expect.any(String),
       });
     });
+
+    // This route has no @Roles() decorator at all — the ownership check
+    // above (isAdminRole(user.role) || own request) is the *only* access
+    // boundary here. A `role !== Role.admin` comparison (instead of
+    // isAdminRole/ADMIN_ROLES) would have wrongly blocked a super_admin
+    // from downloading anyone else's file — the exact kind of gap the
+    // repo-wide admin -> super_admin broadening exists to close in every
+    // ownership check, not just @Roles()-decorated routes.
+    it('lets a super_admin download any approved request regardless of owner too', async () => {
+      const superAdmin = { id: 'super-admin-1', role: Role.super_admin } as User;
+      const { controller } = makeController({
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'req-1',
+          clientId: otherClient.id,
+          status: FileAccessStatus.approved,
+          serviceFile: { s3Key: 'specs/gre.pdf' },
+        }),
+      });
+      await expect(
+        controller.download(superAdmin, 'req-1'),
+      ).resolves.toMatchObject({
+        url: expect.any(String),
+      });
+    });
   });
 });

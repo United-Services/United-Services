@@ -22,6 +22,7 @@ import { TranslationService } from '../translations/translation.service';
 import { TRANSLATABLE_LOCALES } from '../translations/translatable-locales';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
+import { ADMIN_ROLES } from '../common/constants/admin-roles';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
@@ -259,7 +260,7 @@ export class ServicesController {
     return this.withImageUrl(withTranslation);
   }
 
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Post()
   async create(@CurrentUser() admin: User, @Body() dto: CreateServiceDto) {
     const existing = await this.prisma.service.findUnique({
@@ -299,7 +300,7 @@ export class ServicesController {
     return this.withImageUrl(created);
   }
 
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Patch(':id')
   async update(
     @CurrentUser() admin: User,
@@ -333,7 +334,7 @@ export class ServicesController {
   // cascading those away. ServiceFile rows themselves do cascade-delete
   // (see the schema's onDelete: Cascade on ServiceFile.service), but only
   // once we've confirmed nothing else references them.
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Delete(':id')
   async remove(@CurrentUser() admin: User, @Param('id') id: string) {
     const service = await this.prisma.service.findUnique({
@@ -393,7 +394,7 @@ export class ServicesController {
   // everywhere else in this codebase (see me.controller.ts's candidate
   // uploads): the file never transits this server, and content is only
   // trusted once its magic bytes are checked at confirm time.
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Post(':id/image/presign')
   async presignImage(
     @Param('id') serviceId: string,
@@ -416,7 +417,7 @@ export class ServicesController {
   // Chunked counterpart to presignImage() — same key scheme, same
   // allowlist, but split into parts so a dropped connection only loses
   // the parts still in flight, not the whole image.
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Post(':id/image/multipart/create')
   async multipartCreateImage(
     @Param('id') serviceId: string,
@@ -433,7 +434,7 @@ export class ServicesController {
     return { key, uploadId };
   }
 
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Post(':id/image/multipart/presign-part')
   async multipartPresignImagePart(
     @Param('id') serviceId: string,
@@ -450,7 +451,7 @@ export class ServicesController {
     return { url };
   }
 
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Post(':id/image/multipart/complete')
   async multipartCompleteImage(
     @Param('id') serviceId: string,
@@ -467,7 +468,7 @@ export class ServicesController {
     return { key: dto.key };
   }
 
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Post(':id/image/multipart/abort')
   async multipartAbortImage(
     @Param('id') serviceId: string,
@@ -480,7 +481,7 @@ export class ServicesController {
     return { ok: true };
   }
 
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Post(':id/image')
   async confirmImage(
     @CurrentUser() admin: User,
@@ -540,7 +541,7 @@ export class ServicesController {
   // Spec files are always private (see ServiceFile model comment) — an
   // admin uploads via presigned PUT directly to S3, then confirms so we
   // record the object without the file ever transiting this server.
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Post(':id/files/presign')
   async presignFile(
     @Param('id') serviceId: string,
@@ -562,7 +563,7 @@ export class ServicesController {
 
   // Chunked counterpart to presignFile() — see multipartCreateImage() above
   // for why this exists alongside the single-PUT path.
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Post(':id/files/multipart/create')
   async multipartCreateFile(
     @Param('id') serviceId: string,
@@ -578,7 +579,7 @@ export class ServicesController {
     return { key, uploadId };
   }
 
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Post(':id/files/multipart/presign-part')
   async multipartPresignFilePart(
     @Param('id') serviceId: string,
@@ -595,7 +596,7 @@ export class ServicesController {
     return { url };
   }
 
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Post(':id/files/multipart/complete')
   async multipartCompleteFile(
     @Param('id') serviceId: string,
@@ -612,7 +613,7 @@ export class ServicesController {
     return { key: dto.key };
   }
 
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Post(':id/files/multipart/abort')
   async multipartAbortFile(
     @Param('id') serviceId: string,
@@ -625,7 +626,7 @@ export class ServicesController {
     return { ok: true };
   }
 
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Post(':id/files')
   async confirmFile(
     @CurrentUser() admin: User,
@@ -676,7 +677,7 @@ export class ServicesController {
     return file;
   }
 
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Get(':id/files')
   listFiles(@Param('id') serviceId: string) {
     return this.prisma.serviceFile.findMany({

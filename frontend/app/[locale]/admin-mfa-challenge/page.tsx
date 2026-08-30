@@ -2,7 +2,7 @@ import { redirect } from "@/i18n/navigation"
 import { auth } from "@clerk/nextjs/server"
 import { axios, authHeader } from "@/lib/api"
 import type { AppLocale } from "@/i18n/routing"
-import { Role } from "@/enums/status.enums"
+import { isAdminRole } from "@/lib/adminRoles"
 import AdminMfaChallengeClient from "./AdminMfaChallengeClient"
 
 // Server-side gate, independent of the middleware's coarse Clerk-claim
@@ -23,7 +23,7 @@ export default async function AdminMfaChallengePage({
   const token = await getToken()
   try {
     const { data: me } = await axios.get("/me", { headers: authHeader(token) })
-    if (me.role !== Role.Admin) redirect({ href: "/dashboard", locale })
+    if (!isAdminRole(me.role)) redirect({ href: "/dashboard", locale })
     if (!me.mfaEnrolled) redirect({ href: "/admin-mfa-setup", locale })
     if (me.mfaSessionVerified) redirect({ href: "/admin-dashboard", locale })
   } catch (error) {

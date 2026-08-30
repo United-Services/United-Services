@@ -5,6 +5,7 @@ import { auth } from "@clerk/nextjs/server"
 import { axios, authHeader } from "@/lib/api"
 import type { AppLocale } from "@/i18n/routing"
 import { Role } from "@/enums/status.enums"
+import { isAdminRole } from "@/lib/adminRoles"
 import DashboardLoadError from "./DashboardLoadError"
 
 // The single post-sign-in landing route for every role. Deliberately does
@@ -30,12 +31,12 @@ export default async function DashboardRedirectPage({
     // (for admins) MFA enrollment/challenge below.
     if (me.mustChangePassword)
       redirect({ href: "/change-password", locale })
-    if (me.role === Role.Admin) {
+    if (isAdminRole(me.role)) {
       if (!me.mfaEnrolled) redirect({ href: "/admin-mfa-setup", locale })
       // Enrollment is a one-time fact about the account; this is a
-      // separate, per-sign-in check — an admin who enrolled long ago
-      // still has to prove the second factor again for *this* session
-      // before ever reaching admin data. See docs/BUSINESS_RULES.md.
+      // separate, per-sign-in check — an admin/super_admin who enrolled
+      // long ago still has to prove the second factor again for *this*
+      // session before ever reaching admin data. See docs/BUSINESS_RULES.md.
       if (!me.mfaSessionVerified)
         redirect({ href: "/admin-mfa-challenge", locale })
       redirect({ href: "/admin-dashboard", locale })

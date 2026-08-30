@@ -55,6 +55,36 @@ describe('MfaEnrolledGuard', () => {
     expect(guard.canActivate(context)).toBe(true);
   });
 
+  // super_admin must go through the identical MFA-enrollment enforcement
+  // as admin — see docs/BUSINESS_RULES.md rule 17. This is the exact
+  // class of bug the me.controller.ts admin-password-reset fix closed for
+  // admin: a role check using `=== Role.admin` instead of the ADMIN_ROLES
+  // set would silently exempt super_admin from MFA entirely, not just
+  // from a permission.
+  it('rejects a super_admin who has not completed MFA enrollment', () => {
+    const { guard, context } = contextFor(
+      { role: Role.super_admin, mfaEnrolled: false },
+      false,
+    );
+    expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+  });
+
+  it('allows a super_admin who has completed MFA enrollment', () => {
+    const { guard, context } = contextFor(
+      { role: Role.super_admin, mfaEnrolled: true },
+      false,
+    );
+    expect(guard.canActivate(context)).toBe(true);
+  });
+
+  it('allows an unenrolled super_admin through on an @MfaExempt() route', () => {
+    const { guard, context } = contextFor(
+      { role: Role.super_admin, mfaEnrolled: false },
+      true,
+    );
+    expect(guard.canActivate(context)).toBe(true);
+  });
+
   it('lets an unauthenticated request pass through (RolesGuard is responsible for rejecting those)', () => {
     const { guard, context } = contextFor(undefined, false);
     expect(guard.canActivate(context)).toBe(true);

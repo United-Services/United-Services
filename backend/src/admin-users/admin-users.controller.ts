@@ -4,6 +4,7 @@ import {
   ConflictException,
   Controller,
   DefaultValuePipe,
+  ForbiddenException,
   Get,
   NotFoundException,
   Param,
@@ -16,6 +17,7 @@ import { createClerkClient } from '@clerk/backend';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { Roles } from '../common/decorators/roles.decorator';
+import { ADMIN_ROLES } from '../common/constants/admin-roles';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { generateTempPassword } from '../common/utils/generate-temp-password';
 import { fuzzyMatch, searchableText } from '../common/utils/fuzzy-match';
@@ -25,7 +27,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { Role, Prisma, type User } from '../generated/prisma';
 
-@Roles(Role.admin)
+@Roles(...ADMIN_ROLES)
 @Controller('admin/users')
 export class AdminUsersController {
   private readonly clerkClient = createClerkClient({
@@ -36,6 +38,33 @@ export class AdminUsersController {
     private readonly prisma: PrismaService,
     private readonly auditLog: AuditLogService,
   ) {}
+
+  // A plain admin granting the super_admin role (to a new or existing
+  // account) would be a straightforward privilege-escalation path — only
+  // an existing super_admin can hand out that role.
+  private assertCanGrantRole(actor: User, role: Role) {
+    if (role === Role.super_admin && actor.role !== Role.super_admin) {
+      throw new ForbiddenException(
+        'Only a super_admin can grant the super_admin role',
+      );
+    }
+  }
+
+  // Symmetric protection on the other side: a plain admin acting ON an
+  // existing super_admin account (disable/enable/role-change/password-
+  // reset) is just as much a privilege-boundary violation as granting the
+  // role in the first place — a plain admin could otherwise lock out or
+  // demote a super_admin. Only a super_admin can touch another
+  // super_admin's account; anyone can still act on a plain admin/client/
+  // candidate account, and every route below still separately blocks
+  // acting on your *own* account regardless of role.
+  private assertCanActOnTarget(actor: User, target: User) {
+    if (target.role === Role.super_admin && actor.role !== Role.super_admin) {
+      throw new ForbiddenException(
+        "Only a super_admin can modify another super_admin's account",
+      );
+    }
+  }
 
   // Creates the account in Clerk first (source of truth for sign-in), then
   // mirrors it into our own User table directly rather than waiting on the
@@ -48,6 +77,7 @@ export class AdminUsersController {
   // so no race can silently revert either.
   @Post()
   async create(@CurrentUser() admin: User, @Body() dto: CreateUserDto) {
+    this.assertCanGrantRole(admin, dto.role);
     const tempPassword = generateTempPassword();
 
     let clerkUser: Awaited<
@@ -171,6 +201,7 @@ export class AdminUsersController {
     // during a penetration test.
     const existing = await this.prisma.user.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('User not found');
+    this.assertCanActOnTarget(admin, existing);
     const updated = await this.prisma.user.update({
       where: { id },
       data: { disabledAt: new Date() },
@@ -188,6 +219,7 @@ export class AdminUsersController {
   async enable(@CurrentUser() admin: User, @Param('id') id: string) {
     const existing = await this.prisma.user.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('User not found');
+    this.assertCanActOnTarget(admin, existing);
     const updated = await this.prisma.user.update({
       where: { id },
       data: { disabledAt: null },
@@ -219,6 +251,8 @@ export class AdminUsersController {
 
     const target = await this.prisma.user.findUnique({ where: { id } });
     if (!target) throw new NotFoundException('User not found');
+    this.assertCanActOnTarget(admin, target);
+    this.assertCanGrantRole(admin, dto.role);
     const updated = await this.prisma.user.update({
       where: { id },
       data: { role: dto.role },
@@ -248,6 +282,7 @@ export class AdminUsersController {
   async resetPassword(@CurrentUser() admin: User, @Param('id') id: string) {
     const target = await this.prisma.user.findUnique({ where: { id } });
     if (!target) throw new NotFoundException('User not found');
+    this.assertCanActOnTarget(admin, target);
     const tempPassword = generateTempPassword();
 
     await this.clerkClient.users.updateUser(target.clerkId, {

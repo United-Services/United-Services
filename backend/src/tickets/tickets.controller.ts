@@ -123,7 +123,11 @@ export class TicketsController {
   // while still supporting fuzzy search would mean duplicating the
   // priority ORDER BY as a raw query; simpler to keep everything on the
   // one established pattern.
-  @Roles(Role.admin)
+  //
+  // Exclusively super_admin — NOT ADMIN_ROLES/Role.admin. This is one of
+  // the two features (see AuditLogController for the other) deliberately
+  // kept out of a regular admin's reach.
+  @Roles(Role.super_admin)
   @Get()
   async list(
     @Query('q') q: string | undefined,
@@ -162,7 +166,9 @@ export class TicketsController {
   // to `contacted` and never cleared afterward, even if later switched
   // away — it's a "when were they first reached" record, not the current
   // state (status is).
-  @Roles(Role.admin)
+  //
+  // Exclusively super_admin — see the comment on list() above.
+  @Roles(Role.super_admin)
   @Patch(':id/status')
   async updateStatus(
     @CurrentUser() admin: User,

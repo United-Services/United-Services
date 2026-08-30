@@ -15,6 +15,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { Roles } from '../common/decorators/roles.decorator';
+import { ADMIN_ROLES, isAdminRole } from '../common/constants/admin-roles';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreateFileAccessRequestDto } from './dto/create-file-access-request.dto';
 import { DecideFileAccessRequestDto } from './dto/decide-file-access-request.dto';
@@ -76,7 +77,7 @@ export class FileAccessController {
 
   // Fuzzy-matched in-app — see fuzzy-match.ts and the equivalent note on
   // AdminUsersController.list.
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Get()
   async list(
     @Query('q') q?: string,
@@ -120,7 +121,7 @@ export class FileAccessController {
     return paginate(filtered, skip, take);
   }
 
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Post(':id/decide')
   async decide(
     @CurrentUser() admin: User,
@@ -174,7 +175,7 @@ export class FileAccessController {
       include: { serviceFile: true },
     });
     if (!request) throw new NotFoundException('Request not found');
-    if (user.role !== Role.admin && request.clientId !== user.id) {
+    if (!isAdminRole(user.role) && request.clientId !== user.id) {
       throw new ForbiddenException('This request does not belong to you');
     }
     if (request.status !== FileAccessStatus.approved) {

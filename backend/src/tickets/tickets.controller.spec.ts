@@ -3,7 +3,9 @@ import { TicketsController } from './tickets.controller';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { S3Service } from '../s3/s3.service';
 import type { AuditLogService } from '../audit-log/audit-log.service';
-import type { User } from '../generated/prisma';
+import { Role, type User } from '../generated/prisma';
+import { ROLES_KEY } from '../common/decorators/roles.decorator';
+import { IS_PUBLIC_KEY } from '../common/decorators/public.decorator';
 
 // Valid magic bytes for each allowed screenshot content type, keyed by the
 // jpg/png/webp extension presign() would put on the key.
@@ -11,6 +13,34 @@ const VALID_JPEG = Buffer.from([0xff, 0xd8, 0xff, 0x00]);
 
 describe('TicketsController', () => {
   const admin = { id: 'admin-1' } as User;
+
+  // docs/BUSINESS_RULES.md rule 17: list/updateStatus are exclusively
+  // super_admin, never a plain admin. See the e2e super-admin-role spec
+  // for the real-HTTP version of this same guarantee, and
+  // audit-log.controller.spec.ts for the sibling exclusive feature.
+  it('gates list() and updateStatus() to exactly Role.super_admin, not admin or ADMIN_ROLES', () => {
+    expect(
+      Reflect.getMetadata(ROLES_KEY, TicketsController.prototype.list),
+    ).toEqual([Role.super_admin]);
+    expect(
+      Reflect.getMetadata(ROLES_KEY, TicketsController.prototype.updateStatus),
+    ).toEqual([Role.super_admin]);
+  });
+
+  it('leaves presign() and create() public and role-unrestricted (submitting a ticket needs no account)', () => {
+    expect(
+      Reflect.getMetadata(IS_PUBLIC_KEY, TicketsController.prototype.presign),
+    ).toBe(true);
+    expect(
+      Reflect.getMetadata(IS_PUBLIC_KEY, TicketsController.prototype.create),
+    ).toBe(true);
+    expect(
+      Reflect.getMetadata(ROLES_KEY, TicketsController.prototype.presign),
+    ).toBeUndefined();
+    expect(
+      Reflect.getMetadata(ROLES_KEY, TicketsController.prototype.create),
+    ).toBeUndefined();
+  });
 
   function makeController() {
     const prisma = {

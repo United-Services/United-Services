@@ -23,6 +23,7 @@ import { UploadOtherDocumentDto } from './dto/upload-other-document.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { Role, type User } from '../generated/prisma';
 import { matchesContentType } from '../common/utils/file-security';
+import { isAdminRole } from '../common/constants/admin-roles';
 
 type CandidateUploadKind =
   'candidate-id-photo' | 'candidate-cv' | 'candidate-other-document';
@@ -125,7 +126,7 @@ export class MeController {
     @CurrentUser() user: User,
     @Body() dto: ChangePasswordDto,
   ) {
-    if (user.role === Role.admin && !user.mustChangePassword) {
+    if (isAdminRole(user.role) && !user.mustChangePassword) {
       throw new ForbiddenException(
         'Admin accounts must change their password via a fresh MFA verification — use POST /mfa/admin-password-reset',
       );
