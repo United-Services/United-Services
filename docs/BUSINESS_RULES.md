@@ -149,3 +149,24 @@ changes or a new one is discovered during implementation.
     reset) — see `AdminUsersController.assertCanGrantRole`/
     `assertCanActOnTarget`. A plain admin can still fully manage every
     other role, including other plain admins.
+18. `AuditLog` rows older than 90 days (`AuditLogArchiveService`'s
+    `AUDIT_LOG_RETENTION_DAYS`) are moved into `AuditLogArchive` — same
+    fields plus `originalId`/`archivedAt` — rather than deleted outright,
+    and rather than kept forever in the hot table. This never runs inline
+    on a request: `AuditLogArchiveWorker` registers one BullMQ job
+    scheduler (`audit-log-archive-daily`, `0 3 * * *`) via
+    `queue.upsertJobScheduler`, so a repeat cron dependency was never
+    added just for this. The mover itself moves rows in batches of
+    `ARCHIVE_BATCH_SIZE` (500) — one `$transaction` (`createMany` on
+    `AuditLogArchive`, then `deleteMany` on `AuditLog`) per batch, with a
+    `BATCH_DELAY_MS` (250ms) pause between batches — specifically so a
+    large backlog can't lock up `AuditLog` or hammer the DB in one shot.
+    `createMany`'s `skipDuplicates: true` on `originalId` (unique) is what
+    makes a retry after a mid-batch crash safe: a still-present `AuditLog`
+    row that was already archived (createMany succeeded, deleteMany
+    didn't) is skipped on re-insert, then actually deleted this time — no
+    duplicate archive rows, no rows lost. A run that fails outright
+    retries per BullMQ's own `attempts`/`backoff` (3 attempts, exponential
+    from 30s); once exhausted, the job moves to `AUDIT_ARCHIVE_DLQ`
+    exactly like `TranslationWorker`'s DLQ, rather than disappearing
+    silently — see `AuditLogArchiveWorker`.
