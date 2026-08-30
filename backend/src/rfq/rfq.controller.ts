@@ -117,21 +117,26 @@ export class RfqController {
     @Param('id') id: string,
     @Body() dto: UpdateRfqStatusDto,
   ) {
-    const existing = await this.prisma.serviceRequest.findUnique({
-      where: { id },
-      select: { contactedAt: true },
+    // contactedAt: null has to live in the update's own `where` — a
+    // separate findUnique-then-check leaves a window where two concurrent
+    // requests can both read a null contactedAt before either write
+    // commits, letting a status change through after the request was
+    // already marked contacted. Same fix as appointments.controller.ts's
+    // book().
+    const updated = await this.prisma.serviceRequest.updateMany({
+      where: { id, contactedAt: null },
+      data: { status: dto.status },
     });
-    if (!existing) throw new NotFoundException('RFQ not found');
-    if (existing.contactedAt) {
+    if (updated.count === 0) {
+      const existing = await this.prisma.serviceRequest.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+      if (!existing) throw new NotFoundException('RFQ not found');
       throw new BadRequestException(
         'This request has already been marked contacted and can no longer be changed.',
       );
     }
-
-    const updated = await this.prisma.serviceRequest.update({
-      where: { id },
-      data: { status: dto.status },
-    });
     await this.auditLog.record({
       actorUserId: admin.id,
       action: 'rfq.status_updated',
@@ -139,7 +144,7 @@ export class RfqController {
       targetId: id,
       metadata: { status: dto.status },
     });
-    return updated;
+    return this.prisma.serviceRequest.findUnique({ where: { id } });
   }
 
   // One-way, not a toggle — once a request is marked contacted, that's
@@ -149,27 +154,30 @@ export class RfqController {
   @Roles(...ADMIN_ROLES)
   @Patch(':id/contacted')
   async markContacted(@CurrentUser() admin: User, @Param('id') id: string) {
-    const existing = await this.prisma.serviceRequest.findUnique({
-      where: { id },
-      select: { contactedAt: true },
+    // Same read-then-write race as updateStatus() above — the null check
+    // has to live in the update's own `where`, not a separate read, or two
+    // concurrent calls can both pass the guard and both fire the (final,
+    // one-time) audit log entry below.
+    const updated = await this.prisma.serviceRequest.updateMany({
+      where: { id, contactedAt: null },
+      data: { contactedAt: new Date() },
     });
-    if (!existing) throw new NotFoundException('RFQ not found');
-    if (existing.contactedAt) {
+    if (updated.count === 0) {
+      const existing = await this.prisma.serviceRequest.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+      if (!existing) throw new NotFoundException('RFQ not found');
       throw new BadRequestException(
         'This request has already been marked contacted.',
       );
     }
-
-    const updated = await this.prisma.serviceRequest.update({
-      where: { id },
-      data: { contactedAt: new Date() },
-    });
     await this.auditLog.record({
       actorUserId: admin.id,
       action: 'rfq.contacted',
       targetType: 'ServiceRequest',
       targetId: id,
     });
-    return updated;
+    return this.prisma.serviceRequest.findUnique({ where: { id } });
   }
 }

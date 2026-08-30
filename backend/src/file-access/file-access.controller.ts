@@ -137,14 +137,15 @@ export class FileAccessController {
     // by AdminRequestsSection), so a second decide() call reaching the
     // backend means either a replayed request or two admins racing on the
     // same request. Either way it must not silently overwrite the original
-    // decidedByAdminId/decidedAt. Same bug class fixed in
-    // candidates.controller.ts's decide().
-    if (request.status !== FileAccessStatus.pending) {
-      throw new ConflictException('This request has already been decided.');
-    }
-
-    const updated = await this.prisma.fileAccessRequest.update({
-      where: { id },
+    // decidedByAdminId/decidedAt. The pending check has to live in the
+    // update's own `where`, not this preceding findUnique — a separate
+    // read-then-check leaves a window where two concurrent decide() calls
+    // can both read `pending` before either write commits, so both would
+    // pass and the second overwrites the first. Same fix as
+    // appointments.controller.ts's book(); clientId/serviceFileId above
+    // are immutable, so reading them ahead of the atomic update is safe.
+    const decided = await this.prisma.fileAccessRequest.updateMany({
+      where: { id, status: FileAccessStatus.pending },
       data: {
         status: dto.approve
           ? FileAccessStatus.approved
@@ -153,6 +154,9 @@ export class FileAccessController {
         decidedByAdminId: admin.id,
       },
     });
+    if (decided.count === 0) {
+      throw new ConflictException('This request has already been decided.');
+    }
 
     await this.auditLog.record({
       actorUserId: admin.id,
@@ -165,7 +169,7 @@ export class FileAccessController {
       },
     });
 
-    return updated;
+    return this.prisma.fileAccessRequest.findUnique({ where: { id } });
   }
 
   @Get(':id/download')

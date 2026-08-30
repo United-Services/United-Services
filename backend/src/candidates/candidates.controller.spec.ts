@@ -14,6 +14,7 @@ describe('CandidatesController', () => {
         findMany: jest.fn(),
         findUnique: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn(),
       },
     } as unknown as PrismaService;
     const s3 = {
@@ -80,19 +81,34 @@ describe('CandidatesController', () => {
   });
 
   describe('decide', () => {
+    // decide() moves status with a single conditional updateMany (where:
+    // { id, status: pending }), not a findUnique-then-update — that's what
+    // makes it safe against two concurrent decide() calls racing on the
+    // same application (see the 'race condition' tests below). The
+    // returned record comes from a follow-up findUnique.
+    function mockSuccessfulDecision(prisma: PrismaService, finalStatus: ApplicationStatus) {
+      (prisma.candidateApplication.updateMany as jest.Mock).mockResolvedValue({
+        count: 1,
+      });
+      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
+        id: 'app-1',
+        status: finalStatus,
+        reviewedByAdminId: admin.id,
+      });
+    }
+
     it('approves and records reviewer + audit entry', async () => {
       const { controller, prisma, auditLog } = makeController();
-      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
-        status: ApplicationStatus.pending,
-      });
-      (prisma.candidateApplication.update as jest.Mock).mockImplementation(
-        ({ data }) => Promise.resolve({ id: 'app-1', ...data }),
-      );
+      mockSuccessfulDecision(prisma, ApplicationStatus.approved);
 
       const result = await controller.decide(admin, 'app-1', { approve: true });
 
-      expect(result.status).toBe(ApplicationStatus.approved);
-      expect(result.reviewedByAdminId).toBe(admin.id);
+      expect(result?.status).toBe(ApplicationStatus.approved);
+      expect(result?.reviewedByAdminId).toBe(admin.id);
+      expect(
+        (prisma.candidateApplication.updateMany as jest.Mock).mock.calls[0][0]
+          .where,
+      ).toEqual({ id: 'app-1', status: ApplicationStatus.pending });
       expect(auditLog.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'candidate.approved' }),
       );
@@ -100,18 +116,13 @@ describe('CandidatesController', () => {
 
     it('denies and records the corresponding audit action', async () => {
       const { controller, prisma, auditLog } = makeController();
-      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
-        status: ApplicationStatus.pending,
-      });
-      (prisma.candidateApplication.update as jest.Mock).mockImplementation(
-        ({ data }) => Promise.resolve({ id: 'app-1', ...data }),
-      );
+      mockSuccessfulDecision(prisma, ApplicationStatus.denied);
 
       const result = await controller.decide(admin, 'app-1', {
         approve: false,
       });
 
-      expect(result.status).toBe(ApplicationStatus.denied);
+      expect(result?.status).toBe(ApplicationStatus.denied);
       expect(auditLog.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'candidate.denied' }),
       );
@@ -125,20 +136,15 @@ describe('CandidatesController', () => {
     // into the body (e.g. a raw `status: 'approved'`).
     it('derives status only from the approve boolean, ignoring any other status-like field in the body', async () => {
       const { controller, prisma } = makeController();
-      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
-        status: ApplicationStatus.pending,
-      });
-      (prisma.candidateApplication.update as jest.Mock).mockImplementation(
-        ({ data }) => Promise.resolve({ id: 'app-1', ...data }),
-      );
+      mockSuccessfulDecision(prisma, ApplicationStatus.denied);
 
       await controller.decide(admin, 'app-1', {
         approve: false,
         status: 'approved',
       } as any);
 
-      const passedData = (prisma.candidateApplication.update as jest.Mock).mock
-        .calls[0][0].data;
+      const passedData = (prisma.candidateApplication.updateMany as jest.Mock)
+        .mock.calls[0][0].data;
       expect(passedData.status).toBe(ApplicationStatus.denied);
     });
 
@@ -148,20 +154,15 @@ describe('CandidatesController', () => {
     // (rule 8) or, worse, a non-admin-authored id could slip through.
     it('always attributes the review to the authenticated admin, ignoring a body-supplied reviewer id', async () => {
       const { controller, prisma } = makeController();
-      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
-        status: ApplicationStatus.pending,
-      });
-      (prisma.candidateApplication.update as jest.Mock).mockImplementation(
-        ({ data }) => Promise.resolve({ id: 'app-1', ...data }),
-      );
+      mockSuccessfulDecision(prisma, ApplicationStatus.approved);
 
       await controller.decide(admin, 'app-1', {
         approve: true,
         reviewedByAdminId: 'someone-else',
       } as any);
 
-      const passedData = (prisma.candidateApplication.update as jest.Mock).mock
-        .calls[0][0].data;
+      const passedData = (prisma.candidateApplication.updateMany as jest.Mock)
+        .mock.calls[0][0].data;
       expect(passedData.reviewedByAdminId).toBe(admin.id);
     });
 
@@ -171,6 +172,9 @@ describe('CandidatesController', () => {
     // into a generic 500 instead of a clean 404.
     it('throws 404 for a nonexistent application id rather than a raw Prisma error', async () => {
       const { controller, prisma } = makeController();
+      (prisma.candidateApplication.updateMany as jest.Mock).mockResolvedValue({
+        count: 0,
+      });
       (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue(
         null,
       );
@@ -178,7 +182,6 @@ describe('CandidatesController', () => {
       await expect(
         controller.decide(admin, 'missing', { approve: true }),
       ).rejects.toThrow(NotFoundException);
-      expect(prisma.candidateApplication.update).not.toHaveBeenCalled();
     });
 
     // A decision is final — the admin UI already hides the approve/deny
@@ -188,26 +191,55 @@ describe('CandidatesController', () => {
     // must not silently overwrite the original decision.
     it('rejects deciding an application that has already been approved', async () => {
       const { controller, prisma } = makeController();
+      (prisma.candidateApplication.updateMany as jest.Mock).mockResolvedValue({
+        count: 0,
+      });
       (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
-        status: ApplicationStatus.approved,
+        id: 'app-1',
       });
 
       await expect(
         controller.decide(admin, 'app-1', { approve: false }),
       ).rejects.toThrow(ConflictException);
-      expect(prisma.candidateApplication.update).not.toHaveBeenCalled();
     });
 
     it('rejects deciding an application that has already been denied', async () => {
       const { controller, prisma } = makeController();
+      (prisma.candidateApplication.updateMany as jest.Mock).mockResolvedValue({
+        count: 0,
+      });
       (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
-        status: ApplicationStatus.denied,
+        id: 'app-1',
       });
 
       await expect(
         controller.decide(admin, 'app-1', { approve: true }),
       ).rejects.toThrow(ConflictException);
-      expect(prisma.candidateApplication.update).not.toHaveBeenCalled();
+    });
+
+    // The actual concurrency guarantee: the pending check lives inside the
+    // updateMany's own `where`, not a preceding findUnique read, so two
+    // "simultaneous" decide() calls on the same row can never both
+    // succeed — Postgres serializes the two updateMany statements, and
+    // only the one that still finds status='pending' at write time gets
+    // count: 1. This test simulates the second (loser) call directly:
+    // conceptually the row was already flipped by another decide() call
+    // between this call's dispatch and its updateMany executing, so
+    // Prisma reports count: 0 even though nothing about this call's own
+    // request implied the application was already decided.
+    it('treats a lost race (updateMany affects 0 rows) as already-decided, never as a silent overwrite', async () => {
+      const { controller, prisma, auditLog } = makeController();
+      (prisma.candidateApplication.updateMany as jest.Mock).mockResolvedValue({
+        count: 0,
+      });
+      (prisma.candidateApplication.findUnique as jest.Mock).mockResolvedValue({
+        id: 'app-1',
+      });
+
+      await expect(
+        controller.decide(admin, 'app-1', { approve: true }),
+      ).rejects.toThrow(ConflictException);
+      expect(auditLog.record).not.toHaveBeenCalled();
     });
   });
 

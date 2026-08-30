@@ -163,22 +163,18 @@ export class CandidatesController {
     @Param('id') id: string,
     @Body() dto: DecideApplicationDto,
   ) {
-    const existing = await this.prisma.candidateApplication.findUnique({
-      where: { id },
-      select: { status: true },
-    });
-    if (!existing) throw new NotFoundException('Application not found');
     // A decision is final — re-deciding an already-approved/denied
     // application would silently overwrite reviewedByAdminId/reviewedAt
     // without a trace of the original decision (the audit log entry
     // below is per-call, not a diff, so a second decide() reads as a
-    // fresh decision rather than a correction).
-    if (existing.status !== ApplicationStatus.pending) {
-      throw new ConflictException('This application has already been decided.');
-    }
-
-    const updated = await this.prisma.candidateApplication.update({
-      where: { id },
+    // fresh decision rather than a correction). The pending check has to
+    // live in the update's own `where` — a separate findUnique-then-check
+    // leaves a window where two concurrent decide() calls can both read
+    // `pending` before either write commits, so both would then pass and
+    // the second overwrites the first. Same fix as appointments.controller
+    // .ts's book().
+    const updated = await this.prisma.candidateApplication.updateMany({
+      where: { id, status: ApplicationStatus.pending },
       data: {
         status: dto.approve
           ? ApplicationStatus.approved
@@ -187,12 +183,20 @@ export class CandidatesController {
         reviewedAt: new Date(),
       },
     });
+    if (updated.count === 0) {
+      const existing = await this.prisma.candidateApplication.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+      if (!existing) throw new NotFoundException('Application not found');
+      throw new ConflictException('This application has already been decided.');
+    }
     await this.auditLog.record({
       actorUserId: admin.id,
       action: dto.approve ? 'candidate.approved' : 'candidate.denied',
       targetType: 'CandidateApplication',
       targetId: id,
     });
-    return updated;
+    return this.prisma.candidateApplication.findUnique({ where: { id } });
   }
 }
