@@ -37,7 +37,7 @@ jobs:
       # secret from env at container start (docker-entrypoint.sh), never
       # bakes anything in. Only the frontend build below needs SSM access,
       # for NEXT_PUBLIC_* vars that `next build` inlines at build time.
-      - uses: docker/build-push-action@v5
+      - uses: docker/build-push-action@v7
         with:
           context: ./backend
           push: true
@@ -72,7 +72,7 @@ jobs:
           printf '%s' "${{ secrets.AWS_SECRET_ACCESS_KEY }}" > /tmp/aws_secret_access_key
           printf '%s' "${{ secrets.AWS_REGION }}" > /tmp/aws_region
           printf '%s' "${{ secrets.APP_ENV }}" > /tmp/app_env
-      - uses: docker/build-push-action@v5
+      - uses: docker/build-push-action@v7
         with:
           context: ./frontend
           push: true
