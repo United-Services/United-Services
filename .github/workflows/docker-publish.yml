@@ -26,7 +26,7 @@ jobs:
       # was pulled locally. Slower (apt-get et al run emulated for the
       # arm64 pass) but this is the whole point of a "pullable directly"
       # image — it has to actually pull on whatever's doing the pulling.
-      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
