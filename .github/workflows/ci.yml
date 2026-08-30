@@ -10,6 +10,12 @@ jobs:
   secret-scan:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
+    # gitleaks-action calls the PR-commits API to diff exactly this PR's
+    # commits and (on a finding) comments on the PR — both need scopes the
+    # default GITHUB_TOKEN doesn't carry unless granted here explicitly.
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
