@@ -14,10 +14,19 @@ datasource db {
 // Enums
 // ─────────────────────────────────────────────────────────────────────────
 
+// super_admin has every admin permission plus two exclusive ones (audit
+// log, ticket management — see AuditLogController/TicketsController) and
+// goes through the identical MFA-enrollment/session-verification flow as
+// admin (see ADMIN_ROLES in common/constants/admin-roles.ts, which both
+// guards and every admin-only controller check against instead of a bare
+// `=== admin` comparison). Only an existing super_admin can grant the
+// super_admin role or modify another super_admin's account — see
+// AdminUsersController.
 enum Role {
   client
   candidate
   admin
+  super_admin
 }
 
 enum FileAccessStatus {

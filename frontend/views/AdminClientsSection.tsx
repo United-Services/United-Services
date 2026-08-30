@@ -27,9 +27,15 @@ interface AdminUser {
 
 interface Props {
   setError: (message: string | null) => void
+  // Gates the "Super Admin" role option in both selects below — the
+  // backend rejects a plain admin granting/touching that role regardless
+  // (see AdminUsersController.assertCanGrantRole/assertCanActOnTarget),
+  // this just keeps the option from being offered somewhere it would only
+  // ever be rejected.
+  isSuperAdmin: boolean
 }
 
-export default function AdminClientsSection({ setError }: Props) {
+export default function AdminClientsSection({ setError, isSuperAdmin }: Props) {
   const { getToken } = useAuth()
   const t = useTranslations("adminDashboard")
   const tCommon = useTranslations("common")
@@ -300,6 +306,11 @@ export default function AdminClientsSection({ setError }: Props) {
               {t("clients.roleCandidate")}
             </option>
             <option value={Role.Admin}>{t("clients.roleAdmin")}</option>
+            {isSuperAdmin && (
+              <option value={Role.SuperAdmin}>
+                {t("clients.roleSuperAdmin")}
+              </option>
+            )}
           </select>
           <button
             onClick={() => setShowCreateUserForm((v) => !v)}
@@ -482,6 +493,11 @@ export default function AdminClientsSection({ setError }: Props) {
                 {t("clients.roleCandidate")}
               </option>
               <option value={Role.Admin}>{t("clients.roleAdmin")}</option>
+              {isSuperAdmin && (
+                <option value={Role.SuperAdmin}>
+                  {t("clients.roleSuperAdmin")}
+                </option>
+              )}
             </select>
           </div>
           <button
@@ -571,6 +587,12 @@ export default function AdminClientsSection({ setError }: Props) {
                   <select
                     value={c.role}
                     onChange={(e) => changeUserRole(c, e.target.value)}
+                    // Mirrors AdminUsersController.assertCanActOnTarget:
+                    // only a super_admin can modify another super_admin's
+                    // account, so a plain admin gets a disabled (but
+                    // still legible) select on that row rather than a
+                    // control that would only ever 403 on change.
+                    disabled={!isSuperAdmin && c.role === Role.SuperAdmin}
                     style={{
                       padding: "6px 10px",
                       borderRadius: 8,
@@ -589,6 +611,11 @@ export default function AdminClientsSection({ setError }: Props) {
                     <option value={Role.Admin}>
                       {t("clients.roleAdmin")}
                     </option>
+                    {(isSuperAdmin || c.role === Role.SuperAdmin) && (
+                      <option value={Role.SuperAdmin}>
+                        {t("clients.roleSuperAdmin")}
+                      </option>
+                    )}
                   </select>
                 </td>
                 <td
@@ -618,6 +645,9 @@ export default function AdminClientsSection({ setError }: Props) {
                   <div style={{ display: "flex", gap: 6 }}>
                     <button
                       onClick={() => resetUserPassword(c)}
+                      // Mirrors AdminUsersController.assertCanActOnTarget
+                      // — see the role select's comment above.
+                      disabled={!isSuperAdmin && c.role === Role.SuperAdmin}
                       style={{
                         background: "#F3F2EE",
                         color: palette.slate,
@@ -626,7 +656,14 @@ export default function AdminClientsSection({ setError }: Props) {
                         padding: "5px 14px",
                         fontSize: 12,
                         fontWeight: 600,
-                        cursor: "pointer",
+                        cursor:
+                          !isSuperAdmin && c.role === Role.SuperAdmin
+                            ? "not-allowed"
+                            : "pointer",
+                        opacity:
+                          !isSuperAdmin && c.role === Role.SuperAdmin
+                            ? 0.5
+                            : 1,
                         fontFamily: "Poppins, sans-serif",
                       }}
                     >
@@ -634,6 +671,7 @@ export default function AdminClientsSection({ setError }: Props) {
                     </button>
                     <button
                       onClick={() => toggleClientStatus(c)}
+                      disabled={!isSuperAdmin && c.role === Role.SuperAdmin}
                       style={{
                         background: c.disabledAt
                           ? "#166534"
@@ -644,7 +682,14 @@ export default function AdminClientsSection({ setError }: Props) {
                         padding: "5px 14px",
                         fontSize: 12,
                         fontWeight: 600,
-                        cursor: "pointer",
+                        cursor:
+                          !isSuperAdmin && c.role === Role.SuperAdmin
+                            ? "not-allowed"
+                            : "pointer",
+                        opacity:
+                          !isSuperAdmin && c.role === Role.SuperAdmin
+                            ? 0.5
+                            : 1,
                         fontFamily: "Poppins, sans-serif",
                       }}
                     >

@@ -44,4 +44,43 @@ describe('RolesGuard', () => {
       ForbiddenException,
     );
   });
+
+  // The multi-role array shape used throughout the backend as
+  // @Roles(...ADMIN_ROLES) (common/constants/admin-roles.ts) — every
+  // admin-equivalent controller/route now passes ['admin', 'super_admin']
+  // here instead of a single role, so both actually have to work through
+  // this exact guard, not just the underlying array semantics in theory.
+  it('allows either role in a multi-role @Roles(...ADMIN_ROLES)-style list', () => {
+    const guard = guardRequiring(['admin', 'super_admin']);
+    expect(
+      guard.canActivate(contextWithUser({ role: 'admin' })),
+    ).toBe(true);
+    expect(
+      guard.canActivate(contextWithUser({ role: 'super_admin' })),
+    ).toBe(true);
+  });
+
+  it('rejects a role not present in a multi-role list', () => {
+    const guard = guardRequiring(['admin', 'super_admin']);
+    expect(() =>
+      guard.canActivate(contextWithUser({ role: 'client' })),
+    ).toThrow(ForbiddenException);
+  });
+
+  // The audit-log/tickets exclusivity boundary (docs/BUSINESS_RULES.md
+  // rule 17) depends on this exact distinction: @Roles(Role.super_admin)
+  // alone — not ADMIN_ROLES — must still reject a plain admin.
+  it('rejects a plain admin on a route requiring exactly super_admin', () => {
+    const guard = guardRequiring(['super_admin']);
+    expect(() =>
+      guard.canActivate(contextWithUser({ role: 'admin' })),
+    ).toThrow(ForbiddenException);
+  });
+
+  it('allows super_admin on a route requiring exactly super_admin', () => {
+    const guard = guardRequiring(['super_admin']);
+    expect(
+      guard.canActivate(contextWithUser({ role: 'super_admin' })),
+    ).toBe(true);
+  });
 });

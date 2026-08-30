@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { AdminUsersController } from './admin-users.controller';
@@ -392,6 +393,241 @@ describe('AdminUsersController.disable', () => {
         NotFoundException,
       );
       expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+  });
+
+  // docs/BUSINESS_RULES.md rule 17 — only a super_admin can grant the
+  // super_admin role or modify an existing super_admin's account. A plain
+  // admin creating a new super_admin, promoting someone to it, or acting
+  // on an existing super_admin (disable/enable/role-change/password-reset)
+  // is a straightforward privilege-escalation path this closes.
+  describe('super_admin privilege boundary', () => {
+    const superAdmin = { id: 'super-admin-1', role: Role.super_admin } as User;
+
+    it('refuses a plain admin creating a new super_admin account, without ever calling Clerk', async () => {
+      const { controller } = makeController();
+      await expect(
+        controller.create(admin, {
+          email: 'new-super@example.com',
+          firstName: 'New',
+          lastName: 'Super',
+          role: Role.super_admin,
+        }),
+      ).rejects.toThrow(
+        new ForbiddenException('Only a super_admin can grant the super_admin role'),
+      );
+      expect(createUserMock).not.toHaveBeenCalled();
+    });
+
+    it('lets a super_admin create a new super_admin account', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.user.create as jest.Mock).mockResolvedValue({
+        id: 'user-1',
+        role: Role.super_admin,
+        email: 'new-super@example.com',
+        firstName: 'New',
+        lastName: 'Super',
+      });
+
+      await expect(
+        controller.create(superAdmin, {
+          email: 'new-super@example.com',
+          firstName: 'New',
+          lastName: 'Super',
+          role: Role.super_admin,
+        }),
+      ).resolves.toEqual(
+        expect.objectContaining({ tempPassword: expect.any(String) }),
+      );
+      expect(createUserMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          publicMetadata: { role: Role.super_admin },
+        }),
+      );
+    });
+
+    it('refuses a plain admin disabling an existing super_admin account', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+        id: superAdmin.id,
+        role: Role.super_admin,
+      });
+
+      await expect(
+        controller.disable(admin, superAdmin.id),
+      ).rejects.toThrow(
+        new ForbiddenException(
+          "Only a super_admin can modify another super_admin's account",
+        ),
+      );
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('lets a super_admin disable another super_admin account', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+        id: 'super-admin-2',
+        role: Role.super_admin,
+      });
+      (prisma.user.update as jest.Mock).mockResolvedValue({
+        id: 'super-admin-2',
+        disabledAt: new Date(),
+      });
+
+      await expect(
+        controller.disable(superAdmin, 'super-admin-2'),
+      ).resolves.toEqual(
+        expect.objectContaining({ id: 'super-admin-2' }),
+      );
+    });
+
+    it('refuses a plain admin enabling an existing super_admin account', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+        id: superAdmin.id,
+        role: Role.super_admin,
+      });
+
+      await expect(controller.enable(admin, superAdmin.id)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('still lets a plain admin disable/enable an ordinary admin account (only super_admin targets are protected)', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+        id: 'admin-2',
+        role: Role.admin,
+      });
+      (prisma.user.update as jest.Mock).mockResolvedValue({
+        id: 'admin-2',
+        disabledAt: new Date(),
+      });
+
+      await expect(
+        controller.disable(admin, 'admin-2'),
+      ).resolves.toEqual(expect.objectContaining({ id: 'admin-2' }));
+    });
+
+    it('refuses a plain admin promoting an ordinary user to super_admin via updateRole', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+        id: 'user-1',
+        clerkId: 'clerk-1',
+        role: Role.client,
+      });
+
+      await expect(
+        controller.updateRole(admin, 'user-1', { role: Role.super_admin }),
+      ).rejects.toThrow(
+        new ForbiddenException('Only a super_admin can grant the super_admin role'),
+      );
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('refuses a plain admin demoting an existing super_admin via updateRole, even to a lower role', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+        id: superAdmin.id,
+        clerkId: 'clerk-super-1',
+        role: Role.super_admin,
+      });
+
+      await expect(
+        controller.updateRole(admin, superAdmin.id, { role: Role.admin }),
+      ).rejects.toThrow(
+        new ForbiddenException(
+          "Only a super_admin can modify another super_admin's account",
+        ),
+      );
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('lets a super_admin promote an ordinary user to super_admin', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+        id: 'user-1',
+        clerkId: 'clerk-1',
+        role: Role.client,
+      });
+      (prisma.user.update as jest.Mock).mockResolvedValue({
+        id: 'user-1',
+        role: Role.super_admin,
+      });
+
+      await expect(
+        controller.updateRole(superAdmin, 'user-1', {
+          role: Role.super_admin,
+        }),
+      ).resolves.toEqual(
+        expect.objectContaining({ role: Role.super_admin }),
+      );
+    });
+
+    it('lets a super_admin change another existing super_admin account role', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+        id: 'super-admin-2',
+        clerkId: 'clerk-super-2',
+        role: Role.super_admin,
+      });
+      (prisma.user.update as jest.Mock).mockResolvedValue({
+        id: 'super-admin-2',
+        role: Role.admin,
+      });
+
+      await expect(
+        controller.updateRole(superAdmin, 'super-admin-2', {
+          role: Role.admin,
+        }),
+      ).resolves.toEqual(expect.objectContaining({ role: Role.admin }));
+    });
+
+    it('a super_admin still cannot change their own role (rule 6 applies regardless of role)', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+        id: superAdmin.id,
+        role: Role.super_admin,
+      });
+
+      await expect(
+        controller.updateRole(superAdmin, superAdmin.id, {
+          role: Role.admin,
+        }),
+      ).rejects.toThrow(
+        new BadRequestException('You cannot change your own role'),
+      );
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+
+    it('refuses a plain admin resetting an existing super_admin account password', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+        id: superAdmin.id,
+        clerkId: 'clerk-super-1',
+        role: Role.super_admin,
+      });
+
+      await expect(
+        controller.resetPassword(admin, superAdmin.id),
+      ).rejects.toThrow(ForbiddenException);
+      expect(updateUserMock).not.toHaveBeenCalled();
+    });
+
+    it('lets a super_admin reset another super_admin account password', async () => {
+      const { controller, prisma } = makeController();
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+        id: 'super-admin-2',
+        clerkId: 'clerk-super-2',
+        role: Role.super_admin,
+      });
+
+      await expect(
+        controller.resetPassword(superAdmin, 'super-admin-2'),
+      ).resolves.toEqual(
+        expect.objectContaining({ tempPassword: expect.any(String) }),
+      );
     });
   });
 });

@@ -8,7 +8,8 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { MFA_EXEMPT_KEY } from '../decorators/mfa-exempt.decorator';
 import { MfaService } from '../../mfa/mfa.service';
-import { Role, type User } from '../../generated/prisma';
+import type { User } from '../../generated/prisma';
+import { isAdminRole } from '../constants/admin-roles';
 
 // Requires a fresh per-session MFA challenge (see MfaService.markSessionVerified).
 // Runs after MfaEnrolledGuard in the chain (see app.module.ts).
@@ -30,7 +31,7 @@ export class MfaSessionVerifiedGuard implements CanActivate {
       .switchToHttp()
       .getRequest<Request & { user?: User; sessionId?: string }>();
     const { user, sessionId } = request;
-    if (!user || user.role !== Role.admin) return true;
+    if (!user || !isAdminRole(user.role)) return true;
     if (!user.mfaEnrolled) return true; // MfaEnrolledGuard already rejected this case
 
     if (!sessionId || !(await this.mfa.isSessionVerified(sessionId))) {

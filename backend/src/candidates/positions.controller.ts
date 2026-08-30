@@ -16,6 +16,7 @@ import { TRANSLATABLE_LOCALES } from '../translations/translatable-locales';
 import { RedisService } from '../redis/redis.service';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
+import { ADMIN_ROLES } from '../common/constants/admin-roles';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreatePositionDto, UpdatePositionDto } from './dto/position.dto';
 import { Role, type User } from '../generated/prisma';
@@ -99,7 +100,7 @@ export class PositionsController {
     return result;
   }
 
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Get('all')
   listAll() {
     return this.prisma.openPosition.findMany({
@@ -107,7 +108,7 @@ export class PositionsController {
     });
   }
 
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Post()
   async create(@CurrentUser() admin: User, @Body() dto: CreatePositionDto) {
     const created = await this.prisma.openPosition.create({
@@ -120,7 +121,7 @@ export class PositionsController {
     return created;
   }
 
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Patch(':id')
   async update(@Param('id') id: string, @Body() dto: UpdatePositionDto) {
     const updated = await this.prisma.openPosition.update({
@@ -162,7 +163,7 @@ export class PositionsController {
 
   // Lets an admin force a specific translation to regenerate (e.g. to fix
   // a bad machine translation) without waiting for a content edit.
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Post(':id/translations/:locale/invalidate')
   async invalidateTranslation(
     @CurrentUser() admin: User,

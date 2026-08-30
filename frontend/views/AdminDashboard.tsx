@@ -41,16 +41,27 @@ import AdminBookingsSection from "./AdminBookingsSection"
 import AdminAuditSection from "./AdminAuditSection"
 import AdminTicketsSection from "./AdminTicketsSection"
 import { prefetchSpecs } from "../lib/specsPrefetch"
+import { Role } from "../enums/status.enums"
 
 interface Props {
+  role: string
   onLogout: () => void
   onNavigate: (page: string) => void
 }
 
-export default function AdminDashboard({ onLogout, onNavigate }: Props) {
+// Audit log and tickets are exclusively super_admin — see
+// backend/src/analytics/audit-log.controller.ts and
+// backend/src/tickets/tickets.controller.ts, the actual enforcement
+// boundary. This conditional rendering is UX only (a plain admin who
+// somehow forced `section` to one of these would just get a 403 from the
+// API, not real data), not a substitute for that.
+const SUPER_ADMIN_ONLY_SECTIONS = new Set(["audit", "tickets"])
+
+export default function AdminDashboard({ role, onLogout, onNavigate }: Props) {
   const t = useTranslations("adminDashboard")
   const tCommon = useTranslations("common")
   const { getToken } = useAuth()
+  const isSuperAdmin = role === Role.SuperAdmin
   const [section, setSection] = useState("overview")
 
   // Warms the Specs section's data and images in the background as soon
@@ -85,7 +96,7 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
     { id: "audit", label: t("nav.audit"), icon: <IconReceipt /> },
     { id: "tickets", label: t("nav.tickets"), icon: <IconTicket /> },
     { id: "security", label: t("nav.security"), icon: <IconLock /> },
-  ]
+  ].filter((n) => !SUPER_ADMIN_ONLY_SECTIONS.has(n.id) || isSuperAdmin)
 
   return (
     <div style={{ fontFamily: "Poppins, sans-serif" }}>
@@ -244,14 +255,17 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
           {section === "overview" && (
             <AdminOverviewSection
               setError={setError}
-              onViewAuditLog={() => setSection("audit")}
+              isSuperAdmin={isSuperAdmin}
+              onViewAuditLog={
+                isSuperAdmin ? () => setSection("audit") : undefined
+              }
             />
           )}
           {section === "analytics" && (
             <AdminAnalyticsSection setError={setError} />
           )}
           {section === "clients" && (
-            <AdminClientsSection setError={setError} />
+            <AdminClientsSection setError={setError} isSuperAdmin={isSuperAdmin} />
           )}
           {section === "specs" && <AdminSpecsSection setError={setError} />}
           {section === "requests" && (
@@ -267,8 +281,12 @@ export default function AdminDashboard({ onLogout, onNavigate }: Props) {
           {section === "bookings" && (
             <AdminBookingsSection setError={setError} />
           )}
-          {section === "audit" && <AdminAuditSection setError={setError} />}
-          {section === "tickets" && <AdminTicketsSection setError={setError} />}
+          {section === "audit" && isSuperAdmin && (
+            <AdminAuditSection setError={setError} />
+          )}
+          {section === "tickets" && isSuperAdmin && (
+            <AdminTicketsSection setError={setError} />
+          )}
           {section === "security" && <AdminSecuritySection />}
         </main>
       </div>

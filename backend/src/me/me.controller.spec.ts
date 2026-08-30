@@ -469,5 +469,64 @@ describe('MeController', () => {
       );
       expect(isExempt).toBe(true);
     });
+
+    // The exact bug class this endpoint exists to close: a stolen admin
+    // session cookie must not be enough to rotate the password with zero
+    // fresh MFA proof. super_admin must get the identical rejection — a
+    // `role === Role.admin` check here (instead of isAdminRole/ADMIN_ROLES)
+    // would silently re-open this for super_admin specifically.
+    it('refuses an already-onboarded admin, pointing them at the MFA-gated reset instead', async () => {
+      const { controller, prisma } = makeController();
+
+      await expect(
+        controller.changePassword(admin, { newPassword: 'brand-new-pw-1' }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(updateUserMock).not.toHaveBeenCalled();
+    });
+
+    it('refuses an already-onboarded super_admin the same way', async () => {
+      const { controller, prisma } = makeController();
+      const superAdmin = { ...client, role: Role.super_admin } as User;
+
+      await expect(
+        controller.changePassword(superAdmin, {
+          newPassword: 'brand-new-pw-1',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(updateUserMock).not.toHaveBeenCalled();
+    });
+
+    it('still lets a brand-new admin bootstrap their first real password (mustChangePassword still true)', async () => {
+      const { controller, prisma } = makeController();
+      const bootstrapAdmin = {
+        ...admin,
+        mustChangePassword: true,
+      } as User;
+
+      await expect(
+        controller.changePassword(bootstrapAdmin, {
+          newPassword: 'brand-new-pw-1',
+        }),
+      ).resolves.toEqual({ success: true });
+      expect(updateUserMock).toHaveBeenCalled();
+    });
+
+    it('still lets a brand-new super_admin bootstrap their first real password', async () => {
+      const { controller, prisma } = makeController();
+      const bootstrapSuperAdmin = {
+        ...admin,
+        role: Role.super_admin,
+        mustChangePassword: true,
+      } as User;
+
+      await expect(
+        controller.changePassword(bootstrapSuperAdmin, {
+          newPassword: 'brand-new-pw-1',
+        }),
+      ).resolves.toEqual({ success: true });
+      expect(updateUserMock).toHaveBeenCalled();
+    });
   });
 });

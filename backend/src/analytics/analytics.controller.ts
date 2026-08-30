@@ -6,6 +6,7 @@ import { RedisService } from '../redis/redis.service';
 import { GeoService } from '../geo/geo.service';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
+import { ADMIN_ROLES } from '../common/constants/admin-roles';
 import { extractIp } from '../common/utils/extract-ip';
 import { TrackEventDto } from './dto/track-event.dto';
 import { Role, FileAccessStatus, type Prisma } from '../generated/prisma';
@@ -78,7 +79,7 @@ export class AnalyticsController {
     return { received: true };
   }
 
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Get('overview')
   async overview() {
     const cached = await this.safeCacheGet(OVERVIEW_CACHE_KEY);
@@ -174,7 +175,7 @@ export class AnalyticsController {
 
   // Powers the admin dashboard world map — requests grouped by the
   // resolved visitor country, most recent 90 days of `page_view` events.
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Get('geo-overview')
   async geoOverview(): Promise<{
     since: string;

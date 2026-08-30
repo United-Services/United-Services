@@ -812,6 +812,7 @@
       "roleClient": "Client",
       "roleCandidate": "Candidate",
       "roleAdmin": "Admin",
+      "roleSuperAdmin": "Super Admin",
       "resetPassword": "Reset Password",
       "pendingPasswordChange": "Must change password",
       "tempPasswordHeading": "Temporary password for {email}",

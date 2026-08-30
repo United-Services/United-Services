@@ -38,11 +38,16 @@ interface AuditLogRow {
 
 interface Props {
   setError: (message: string | null) => void
-  onViewAuditLog: () => void
+  // Both undefined for a plain admin — the Recent Activity card (backed
+  // by GET /audit-log, super_admin-only on the backend) doesn't render
+  // at all in that case, so there's nothing to wire a click handler to.
+  isSuperAdmin: boolean
+  onViewAuditLog?: () => void
 }
 
 export default function AdminOverviewSection({
   setError,
+  isSuperAdmin,
   onViewAuditLog,
 }: Props) {
   const { getToken } = useAuth()
@@ -100,8 +105,14 @@ export default function AdminOverviewSection({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadOverview()
     loadGeoOverview()
-    loadRecentActivity()
-  }, [])
+    // GET /audit-log is super_admin-only on the backend (see
+    // AuditLogController) — a plain admin calling it would just 403 and
+    // trip setError with a misleading "load failed" for a card that isn't
+    // even rendered below, so skip the call entirely rather than let it
+    // fail loudly for no reason.
+    if (isSuperAdmin) loadRecentActivity()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSuperAdmin])
 
   if (!overview) {
     return (
@@ -299,6 +310,7 @@ export default function AdminOverviewSection({
           </div>
         </div>
       </div>
+      {isSuperAdmin && (
       <div
         style={{
           background: "#fff",
@@ -360,6 +372,7 @@ export default function AdminOverviewSection({
           {t("overview.viewFullLog")}
         </button>
       </div>
+      )}
     </div>
   )
 }

@@ -14,6 +14,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { Roles } from '../common/decorators/roles.decorator';
+import { ADMIN_ROLES } from '../common/constants/admin-roles';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreateRfqDto } from './dto/create-rfq.dto';
 import { UpdateRfqStatusDto } from './dto/update-rfq-status.dto';
@@ -64,7 +65,7 @@ export class RfqController {
 
   // Fuzzy-matched in-app — see fuzzy-match.ts and the equivalent note on
   // AdminUsersController.list.
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Get()
   async list(
     @Query('q') q?: string,
@@ -109,7 +110,7 @@ export class RfqController {
   // below. Without this guard an admin could still flip status after
   // marking contacted, which would contradict "contacted is final" from
   // the other side of the same row.
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Patch(':id/status')
   async updateStatus(
     @CurrentUser() admin: User,
@@ -145,7 +146,7 @@ export class RfqController {
   // final: no more status changes (see updateStatus's guard above) and no
   // un-marking. The frontend confirms with the admin before calling this,
   // since it can't be undone afterward.
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Patch(':id/contacted')
   async markContacted(@CurrentUser() admin: User, @Param('id') id: string) {
     const existing = await this.prisma.serviceRequest.findUnique({

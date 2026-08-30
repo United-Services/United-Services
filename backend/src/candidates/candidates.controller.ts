@@ -14,6 +14,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { Roles } from '../common/decorators/roles.decorator';
+import { ADMIN_ROLES } from '../common/constants/admin-roles';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { DecideApplicationDto } from './dto/decide-application.dto';
 import { RequestDocumentsDto } from './dto/request-documents.dto';
@@ -26,7 +27,7 @@ const DOCUMENT_URL_TTL_SECONDS = 300;
 
 // Candidate applications are always reviewed by a human admin — no
 // auto-approval path. See docs/BUSINESS_RULES.md rule 5.
-@Roles(Role.admin)
+@Roles(...ADMIN_ROLES)
 @Controller('candidate-applications')
 export class CandidatesController {
   constructor(

@@ -14,6 +14,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AppointmentsGateway } from './appointments.gateway';
 import { Roles } from '../common/decorators/roles.decorator';
+import { ADMIN_ROLES } from '../common/constants/admin-roles';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreateSlotDto } from './dto/create-slot.dto';
 import { BookSlotDto } from './dto/book-slot.dto';
@@ -32,7 +33,7 @@ export class AppointmentsController {
     private readonly gateway: AppointmentsGateway,
   ) {}
 
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Post('slots')
   async createSlot(@CurrentUser() admin: User, @Body() dto: CreateSlotDto) {
     const slot = await this.prisma.appointmentSlot.create({
@@ -67,7 +68,7 @@ export class AppointmentsController {
   // (with its "done" status), just no longer clutters slot management. A
   // cancelled booking's slot stays here, since an admin cancelling it is
   // often exactly the reason they'd want to edit/reopen that timing.
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Get('slots/all')
   allSlots() {
     return this.prisma.appointmentSlot.findMany({
@@ -100,7 +101,7 @@ export class AppointmentsController {
   // allowed regardless of isBooked — an admin may want to hide a slot
   // that's already booked from ever being offered again once it's freed
   // up (e.g. via a cancellation).
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Patch('slots/:id')
   async updateSlot(
     @CurrentUser() admin: User,
@@ -164,7 +165,7 @@ export class AppointmentsController {
 
   // Fuzzy-matched in-app — see fuzzy-match.ts and the equivalent note on
   // AdminUsersController.list.
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Get()
   async list(
     @Query('q') q?: string,
@@ -206,7 +207,7 @@ export class AppointmentsController {
   // UpdateAppointmentStatusDto. Deliberately leaves the underlying slot's
   // isBooked/isClosed alone: an admin who wants that time slot offered
   // again closes/edits it separately via PATCH /appointments/slots/:id.
-  @Roles(Role.admin)
+  @Roles(...ADMIN_ROLES)
   @Patch(':id/status')
   async updateStatus(
     @CurrentUser() admin: User,
