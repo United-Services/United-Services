@@ -6,8 +6,9 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { Queue, Worker, type Job } from 'bullmq';
-import IORedis from 'ioredis';
 import { TranslationService } from '../translations/translation.service';
+import { FailoverService } from '../failover/failover.service';
+import { createFailoverRedisConnection } from '../failover/failover-redis-connection';
 import {
   TRANSLATION_DLQ,
   TRANSLATION_QUEUE_NAME,
@@ -17,7 +18,8 @@ import {
 // Consumes the `translations` queue TranslationService.triggerAsync/
 // triggerServiceAsync enqueue jobs onto. A dedicated Worker connection —
 // same reasoning as queue.module.ts's Queue connections — rather than
-// sharing RedisService.
+// sharing RedisService. createFailoverRedisConnection makes this
+// transparently follow FailoverService's Redis mode.
 @Injectable()
 export class TranslationWorker implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(TranslationWorker.name);
@@ -25,14 +27,14 @@ export class TranslationWorker implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly translations: TranslationService,
+    private readonly failover: FailoverService,
     @Inject(TRANSLATION_DLQ) private readonly dlq: Queue<TranslationJobData>,
   ) {}
 
   onModuleInit() {
-    const connection = new IORedis(
-      process.env.REDIS_URL ?? 'redis://localhost:6379',
-      { maxRetriesPerRequest: null },
-    );
+    const connection = createFailoverRedisConnection(this.failover, {
+      maxRetriesPerRequest: null,
+    });
 
     this.worker = new Worker<TranslationJobData>(
       TRANSLATION_QUEUE_NAME,

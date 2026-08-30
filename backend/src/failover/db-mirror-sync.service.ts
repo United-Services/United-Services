@@ -1,0 +1,181 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaService } from '../prisma/prisma.service';
+import { PrismaClient } from '../generated/prisma';
+
+const execFileAsync = promisify(execFile);
+
+// Every application model that should exist on the local standby —
+// deliberately excludes FailoverWriteLog/FailoverConflict, which are
+// local-outbox/primary-side bookkeeping respectively, not data to mirror
+// either direction. Client property names (camelCase of the schema.prisma
+// model name), matching what PrismaClient exposes.
+const MIRRORED_MODELS = [
+  'user',
+  'totpCredential',
+  'kekRegistry',
+  'webAuthnCredential',
+  'service',
+  'serviceFile',
+  'fileAccessRequest',
+  'serviceRequest',
+  'appointmentSlot',
+  'appointment',
+  'openPosition',
+  'candidateApplication',
+  'candidateDocument',
+  'auditLog',
+  'auditLogArchive',
+  'allowedOrigin',
+  'analyticsEvent',
+  'ticket',
+  'contentTranslation',
+] as const;
+
+// Same reasoning as audit-log-archive.service.ts's constants: batched
+// and paced specifically so this never becomes an unthrottled full-table
+// dump against Supabase.
+export const SYNC_BATCH_SIZE = 500;
+export const SYNC_BATCH_DELAY_MS = 250;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// The actual mirror-sync work, run from DbMirrorSyncWorker's BullMQ
+// processor — never on a request path. Keeps the local standby's schema
+// (via `prisma migrate deploy`) and data in sync with primary, batch by
+// batch, so a large table can never be synced in one unthrottled query.
+// Deliberately uses its own dedicated local-write connection, entirely
+// separate from PrismaService's internal local client (the one used for
+// live failover routing) — a write made here is background replication
+// housekeeping, not a fallback-mode write, and must never be mistaken
+// for one by the write-log extension in prisma.module.ts.
+@Injectable()
+export class DbMirrorSyncService {
+  private readonly logger = new Logger(DbMirrorSyncService.name);
+  private localWriter: PrismaClient | null = null;
+
+  constructor(private readonly primaryReader: PrismaService) {}
+
+  private getLocalWriter(): PrismaClient {
+    if (!this.localWriter) {
+      this.localWriter = new PrismaClient({
+        adapter: new PrismaPg({
+          connectionString:
+            process.env.LOCAL_DATABASE_URL ??
+            'postgresql://united_services:united_services_local_standby@localhost:5432/united_services',
+        }),
+      });
+    }
+    return this.localWriter;
+  }
+
+  // Applies every migration in prisma/migrations/ to the local standby —
+  // this is what creates every table and index there, from the exact
+  // same history already used for primary, without a second migration
+  // system. Same binary path docker-entrypoint.sh itself already uses
+  // (present in the production image — `prisma` is a regular dependency,
+  // not dev-only). prisma.config.ts's migrate commands read DIRECT_URL,
+  // not DATABASE_URL (migrations need a non-pgbouncer connection) — see
+  // that file's own comment — so that's the var overridden here.
+  async ensureLocalSchema(): Promise<void> {
+    const localUrl =
+      process.env.LOCAL_DATABASE_URL ??
+      'postgresql://united_services:united_services_local_standby@localhost:5432/united_services';
+    await execFileAsync('node_modules/.bin/prisma', ['migrate', 'deploy'], {
+      cwd: process.cwd(),
+      env: { ...process.env, DIRECT_URL: localUrl },
+    });
+  }
+
+  async syncAll(): Promise<{ model: string; upserted: number; deleted: number }[]> {
+    await this.ensureLocalSchema();
+    const results: { model: string; upserted: number; deleted: number }[] = [];
+    for (const model of MIRRORED_MODELS) {
+      const result = await this.syncModel(model);
+      results.push(result);
+    }
+    const totalUpserted = results.reduce((sum, r) => sum + r.upserted, 0);
+    const totalDeleted = results.reduce((sum, r) => sum + r.deleted, 0);
+    if (totalUpserted > 0 || totalDeleted > 0) {
+      this.logger.log(
+        `Mirror sync complete: ${totalUpserted} row(s) upserted, ${totalDeleted} row(s) deleted across ${MIRRORED_MODELS.length} tables`,
+      );
+    }
+    return results;
+  }
+
+  private async syncModel(
+    model: (typeof MIRRORED_MODELS)[number],
+  ): Promise<{ model: string; upserted: number; deleted: number }> {
+    const reader = this.primaryReader as unknown as Record<string, any>;
+    const writer = this.getLocalWriter() as unknown as Record<string, any>;
+
+    const primaryIds = new Set<string>();
+    let upserted = 0;
+    let cursor: string | null = null;
+    for (;;) {
+      const batch: { id: string }[] = await reader[model].findMany({
+        where: cursor ? { id: { gt: cursor } } : undefined,
+        orderBy: { id: 'asc' },
+        take: SYNC_BATCH_SIZE,
+      });
+      if (batch.length === 0) break;
+
+      await writer.$transaction(
+        batch.map((row) =>
+          writer[model].upsert({
+            where: { id: row.id },
+            create: row,
+            update: row,
+          }),
+        ),
+      );
+      for (const row of batch) primaryIds.add(row.id);
+      upserted += batch.length;
+      cursor = batch[batch.length - 1].id;
+
+      if (batch.length < SYNC_BATCH_SIZE) break;
+      await sleep(SYNC_BATCH_DELAY_MS);
+    }
+
+    const deleted = await this.deleteStaleLocalRows(writer, model, primaryIds);
+    return { model, upserted, deleted };
+  }
+
+  // Removes local rows that no longer exist on primary — without this,
+  // the mirror would only ever grow, never reflect a real delete.
+  private async deleteStaleLocalRows(
+    writer: Record<string, any>,
+    model: string,
+    primaryIds: Set<string>,
+  ): Promise<number> {
+    let deleted = 0;
+    let cursor: string | null = null;
+    for (;;) {
+      const batch: { id: string }[] = await writer[model].findMany({
+        where: cursor ? { id: { gt: cursor } } : undefined,
+        orderBy: { id: 'asc' },
+        take: SYNC_BATCH_SIZE,
+        select: { id: true },
+      });
+      if (batch.length === 0) break;
+
+      const staleIds = batch
+        .map((row) => row.id)
+        .filter((id) => !primaryIds.has(id));
+      if (staleIds.length > 0) {
+        await writer[model].deleteMany({ where: { id: { in: staleIds } } });
+        deleted += staleIds.length;
+      }
+      cursor = batch[batch.length - 1].id;
+
+      if (batch.length < SYNC_BATCH_SIZE) break;
+      await sleep(SYNC_BATCH_DELAY_MS);
+    }
+    return deleted;
+  }
+}

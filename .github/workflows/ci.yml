@@ -90,6 +90,15 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/use_ci
       DIRECT_URL: postgresql://postgres:postgres@localhost:5432/use_ci
       REDIS_URL: redis://localhost:6379
+      # FailoverService/PrismaModule/RedisModule each open a second
+      # connection for the local-standby role (see backend/src/failover/)
+      # — CI only has the one postgres/redis service above, so point the
+      # "local" role at the exact same one rather than a nonexistent
+      # second instance. Functionally identical to how docker-compose.yml
+      # points it at the real standby containers in every other
+      # environment.
+      LOCAL_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/use_ci
+      LOCAL_REDIS_URL: redis://localhost:6379
       TOTP_KEK_PROVIDER: local
       KEK_KEYS_DIR: ./secrets/kek
       CLERK_SECRET_KEY: sk_test_ci-placeholder-key

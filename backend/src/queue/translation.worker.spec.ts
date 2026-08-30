@@ -40,6 +40,7 @@ function makeJob(overrides: Partial<Job<any>> = {}): Job<any> {
 describe('TranslationWorker', () => {
   let translations: { processQueuedJob: jest.Mock };
   let dlq: { add: jest.Mock };
+  let failover: { getRedisMode: jest.Mock };
   let worker: TranslationWorker;
 
   beforeEach(() => {
@@ -48,8 +49,10 @@ describe('TranslationWorker', () => {
     capturedHandlers.clear();
     translations = { processQueuedJob: jest.fn().mockResolvedValue(undefined) };
     dlq = { add: jest.fn().mockResolvedValue(undefined) };
+    failover = { getRedisMode: jest.fn().mockReturnValue('primary') };
     worker = new TranslationWorker(
       translations as unknown as TranslationService,
+      failover as any,
       dlq as unknown as Queue<any>,
     );
     worker.onModuleInit();

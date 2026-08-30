@@ -11,25 +11,28 @@
 # Nothing environment-specific is hardcoded in this file or either
 # Dockerfile; see docs/CREDENTIALS_CHECKLIST.md for how to populate SSM.
 #
-# `postgres`/`redis` below are local-dev-only opt-in containers (the
-# "local-db" profile) for running entirely without any managed service —
-# backend never talks to these container names directly, only to whatever
-# DATABASE_URL/REDIS_URL comes back from SSM, so leaving these stopped is
-# always safe.
-
+# `postgres`/`redis` are the live local standby for FailoverService (see
+# backend/src/failover/) — always running, continuously mirrored from
+# Supabase/Upstash by DbMirrorSyncWorker, and switched to automatically
+# if the cloud primary becomes unreachable. Not opt-in/local-dev-only
+# anymore: backend needs them up at all times for failover to actually
+# work. POSTGRES_USER/PASSWORD/DB default rather than require a .env
+# value — this database is never exposed outside the internal Docker
+# network, so a fixed default carries no real exposure, and not
+# requiring it keeps the existing .env (which never needed these before)
+# working unmodified.
 services:
   postgres:
     image: postgres:16
     restart: unless-stopped
-    profiles: ["local-db"]
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-united_services}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-united_services_local_standby}
+      POSTGRES_DB: ${POSTGRES_DB:-united_services}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-united_services}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -38,7 +41,6 @@ services:
   redis:
     image: redis:7
     restart: unless-stopped
-    profiles: ["local-db"]
     volumes:
       - redis-data:/data
     healthcheck:
@@ -81,7 +83,13 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     restart: unless-stopped
-    depends_on: [libretranslate]
+    depends_on:
+      libretranslate:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       # Only these four ever come from the host .env — everything else
       # this app needs is fetched from SSM at container start (see
@@ -97,6 +105,13 @@ services:
       PORT: 3002
       KEK_KEYS_DIR: /app/secrets/kek
       GEOIP_MAXMIND_DB_DIR: /app/geoip-db
+      # FailoverService's local standby targets — the `postgres`/`redis`
+      # container DNS names on this compose network, not a secret (never
+      # reachable outside it). Built here, not fetched from SSM, since
+      # it's this file's own topology, same reasoning as INTERNAL_API_URL
+      # below on the frontend service.
+      LOCAL_DATABASE_URL: postgresql://${POSTGRES_USER:-united_services}:${POSTGRES_PASSWORD:-united_services_local_standby}@postgres:5432/${POSTGRES_DB:-united_services}
+      LOCAL_REDIS_URL: redis://redis:6379
     volumes:
       # TOTP KEK private keys must survive container restarts/redeploys —
       # never let this be an ephemeral container filesystem path.

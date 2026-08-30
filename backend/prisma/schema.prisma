@@ -532,3 +532,43 @@ model ContentTranslation {
   @@unique([contentType, contentId, locale])
   @@index([status])
 }
+
+// Outbox for FailoverService's local-fallback writes — see
+// backend/src/failover/. Only ever populated while Postgres is in
+// `local` mode (PrismaService's write-log extension appends one row per
+// write that lands on the local client); FailoverReconciliationWorker
+// replays unreconciled rows against primary once it recovers, then sets
+// reconciledAt. Exists in the same migration history as every other
+// model (so it's created on both primary and local by the normal
+// migrate flow / DbMirrorSyncWorker) but is meaningfully populated only
+// on the local side — primary's copy just stays empty in normal
+// operation.
+model FailoverWriteLog {
+  id           String    @id @default(cuid())
+  tableName    String
+  operation    String // create | update | delete | upsert
+  primaryKey   String
+  payload      Json?
+  writtenAt    DateTime  @default(now())
+  reconciledAt DateTime?
+
+  @@index([reconciledAt, writtenAt])
+}
+
+// A FailoverWriteLog replay that would have silently overwritten a
+// conflicting change made directly on primary during the same outage —
+// see FailoverReconciliationWorker. Written to whichever DB is active at
+// detection time (i.e. primary, once reconciliation runs), so an
+// operator can find these by querying primary directly rather than a
+// local-only table. Deliberately never auto-resolved.
+model FailoverConflict {
+  id             String    @id @default(cuid())
+  tableName      String
+  primaryKeyId   String
+  localPayload   Json
+  primaryPayload Json
+  detectedAt     DateTime  @default(now())
+  resolvedAt     DateTime?
+
+  @@index([resolvedAt, detectedAt])
+}

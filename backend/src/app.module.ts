@@ -32,10 +32,14 @@ import { GeoModule } from './geo/geo.module';
 import { AlertingModule } from './alerting/alerting.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { AllowedOriginsModule } from './allowed-origins/allowed-origins.module';
+import { FailoverModule } from './failover/failover.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // Before RedisModule/QueueModule — both depend on FailoverService to
+    // know which underlying connection to route to.
+    FailoverModule,
     RedisModule,
     QueueModule,
     // Reuses the same RedisService connection RedisModule already manages

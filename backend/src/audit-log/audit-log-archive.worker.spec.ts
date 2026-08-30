@@ -39,6 +39,7 @@ describe('AuditLogArchiveWorker', () => {
   let archiveService: { archiveExpiredLogs: jest.Mock };
   let queue: { upsertJobScheduler: jest.Mock };
   let dlq: { add: jest.Mock };
+  let failover: { getRedisMode: jest.Mock };
   let worker: AuditLogArchiveWorker;
 
   beforeEach(() => {
@@ -48,8 +49,10 @@ describe('AuditLogArchiveWorker', () => {
     archiveService = { archiveExpiredLogs: jest.fn().mockResolvedValue(0) };
     queue = { upsertJobScheduler: jest.fn().mockResolvedValue(undefined) };
     dlq = { add: jest.fn().mockResolvedValue(undefined) };
+    failover = { getRedisMode: jest.fn().mockReturnValue('primary') };
     worker = new AuditLogArchiveWorker(
       archiveService as unknown as AuditLogArchiveService,
+      failover as any,
       queue as unknown as Queue<any>,
       dlq as unknown as Queue<any>,
     );
