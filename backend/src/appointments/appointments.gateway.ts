@@ -16,8 +16,12 @@ import type { Server } from 'socket.io';
   cors: { origin: true },
 })
 export class AppointmentsGateway {
+  // Definite-assignment assertion, not an unsafe cast: @WebSocketServer()
+  // assigns this after construction, once Nest binds the gateway to its
+  // Socket.IO server — never in the constructor, so there's no
+  // constructor-time value to initialize it with.
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   slotsChanged() {
     this.server?.emit('slots:changed');
