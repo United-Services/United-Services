@@ -15,3 +15,18 @@ export interface TranslationJobData {
   contentId: string;
   locale: string;
 }
+
+export const AUDIT_ARCHIVE_QUEUE = 'AUDIT_ARCHIVE_QUEUE';
+export const AUDIT_ARCHIVE_DLQ = 'AUDIT_ARCHIVE_DLQ';
+
+export const AUDIT_ARCHIVE_QUEUE_NAME = 'audit-log-archive';
+export const AUDIT_ARCHIVE_DLQ_NAME = 'audit-log-archive-dlq';
+
+// One repeating job (see AuditLogArchiveWorker's registerRepeatableJob) —
+// data is intentionally empty. The cutoff (now - 90 days) is computed
+// fresh inside AuditLogArchiveService on every run, not baked into the
+// job payload at schedule-registration time, so a job that sits in the
+// queue for a while (or gets retried) always archives against "90 days
+// before it actually runs," never a stale cutoff from when it was
+// enqueued.
+export type AuditArchiveJobData = Record<string, never>;

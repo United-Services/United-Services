@@ -412,6 +412,32 @@ model AuditLog {
   @@index([createdAt])
 }
 
+// Data-retention destination for AuditLog rows older than 90 days — see
+// AuditLogArchiveService and docs/BUSINESS_RULES.md rule 18. A separate
+// table (not a `archivedAt` flag on AuditLog itself) so the hot table stays
+// small and its indexes stay cheap; no FK to User, deliberately — an
+// archived row must survive the actor's account being deleted later,
+// exactly like AuditLog's own actorUserId is nullable for the same reason.
+model AuditLogArchive {
+  id          String   @id @default(cuid())
+  // Unique, not the PK: keeps the original AuditLog id traceable while
+  // giving createMany a natural target for skipDuplicates. That's what
+  // makes AuditLogArchiveService's batch loop safe to retry after a
+  // crash between the createMany and the matching AuditLog deleteMany —
+  // a re-run's createMany just skips rows already archived.
+  originalId  String   @unique
+  actorUserId String?
+  action      String
+  targetType  String
+  targetId    String
+  metadata    Json?
+  createdAt   DateTime
+  archivedAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}
+
 // Replaces the old CORS_ORIGINS env var as the source of truth for which
 // origins app.enableCors() allows (see AllowedOriginsService) — adding a
 // new frontend/staging domain used to mean editing SSM and redeploying;

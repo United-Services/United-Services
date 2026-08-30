@@ -2,6 +2,10 @@ import { Global, Module } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import {
+  AUDIT_ARCHIVE_DLQ,
+  AUDIT_ARCHIVE_DLQ_NAME,
+  AUDIT_ARCHIVE_QUEUE,
+  AUDIT_ARCHIVE_QUEUE_NAME,
   TRANSLATION_DLQ,
   TRANSLATION_DLQ_NAME,
   TRANSLATION_QUEUE,
@@ -40,7 +44,26 @@ function createBullConnection(): IORedis {
       useFactory: () =>
         new Queue(TRANSLATION_DLQ_NAME, { connection: createBullConnection() }),
     },
+    {
+      provide: AUDIT_ARCHIVE_QUEUE,
+      useFactory: () =>
+        new Queue(AUDIT_ARCHIVE_QUEUE_NAME, {
+          connection: createBullConnection(),
+        }),
+    },
+    {
+      provide: AUDIT_ARCHIVE_DLQ,
+      useFactory: () =>
+        new Queue(AUDIT_ARCHIVE_DLQ_NAME, {
+          connection: createBullConnection(),
+        }),
+    },
   ],
-  exports: [TRANSLATION_QUEUE, TRANSLATION_DLQ],
+  exports: [
+    TRANSLATION_QUEUE,
+    TRANSLATION_DLQ,
+    AUDIT_ARCHIVE_QUEUE,
+    AUDIT_ARCHIVE_DLQ,
+  ],
 })
 export class QueueModule {}
