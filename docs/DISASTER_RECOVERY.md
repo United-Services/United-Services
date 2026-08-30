@@ -6,6 +6,57 @@ Two independent data stores, recovered separately but coordinated as one
 plan: the Supabase Postgres database (all application data) and the S3
 bucket `united-services` (spec files, candidate ID photos/CVs).
 
+## Automatic Postgres + Redis failover (live standby)
+
+Beyond the backup/restore plan below, the backend maintains an always-on
+local standby (`postgres`/`redis` in `docker-compose.yml`) and fails over
+to it **automatically**, with no restart or human action, if Supabase or
+Upstash becomes unreachable — see `backend/src/failover/`.
+
+- **Detection**: `FailoverService` pings each primary every 5s; 3
+  consecutive failures flip that store's mode to `local`, 3 consecutive
+  successes while in `local` flip it back. Postgres and Redis fail over
+  independently. Current mode for both is reported on `GET /health`
+  (`failover.postgres`/`failover.redis`), which Betterstack already
+  polls.
+- **Routing**: `PrismaService`/`RedisService` are Proxies over two real
+  connections each — every existing `this.prisma.*`/`this.redis.*` call
+  site in the app is unchanged; the Proxy transparently routes to
+  whichever connection is currently active. BullMQ's own Queue/Worker
+  connections (translations, audit-log archival, and the two failover
+  workers below) do the same via `createFailoverRedisConnection`.
+- **Keeping the standby current**: `DbMirrorSyncWorker` runs every 10
+  minutes (only while Postgres is in `primary` mode): applies
+  `prisma migrate deploy` against the local standby (creates every table
+  and index from the same migration history used for primary — no second
+  migration system), then batch-upserts every row from every model and
+  removes any local row no longer present on primary. Batched (500 rows)
+  and paced (250ms between batches) specifically so this can never become
+  an unthrottled dump against Supabase.
+- **Writes during a Postgres failover — the accepted tradeoff**: writes
+  made against the local standby while Postgres is in fallback mode are
+  accepted (not rejected), and logged to `FailoverWriteLog` (an outbox
+  table). Once Postgres recovers, `FailoverReconciliationWorker` replays
+  every logged write against primary, in order. This is **not**
+  conflict-free by construction — two different writes to the *same*
+  resource on both sides of a partition can't both "win." For every
+  model except `Appointment`/`AppointmentSlot` (the one place with a
+  same-target uniqueness invariant — `docs/BUSINESS_RULES.md` rule 4),
+  replay is a plain last-write-wins upsert. For those two, a replay that
+  doesn't apply as originally intended (e.g. a slot booked locally during
+  the outage that a *different* booking already claimed on primary) is
+  **not** silently overwritten — it's recorded in `FailoverConflict` for
+  manual review instead. Query `FailoverConflict` on primary directly to
+  find these; `resolvedAt` is never set automatically.
+- **Redis failover** carries materially less risk than Postgres: what it
+  holds (MFA session-verification flags, rate-limit counters, translation
+  locks, BullMQ queue state) is ephemeral by nature. A Redis failover's
+  worst case is an admin re-verifying MFA once or a rate limit resetting
+  — not lost business data. In-flight BullMQ jobs on the connection at
+  the moment of failover are lost, not replayed; every job in this
+  codebase is already designed to be safely re-triggered (see the
+  DLQ/retry pattern each worker uses).
+
 ## Backups
 
 ### Database (Supabase Postgres)

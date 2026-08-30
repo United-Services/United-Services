@@ -170,3 +170,15 @@ changes or a new one is discovered during implementation.
     from 30s); once exhausted, the job moves to `AUDIT_ARCHIVE_DLQ`
     exactly like `TranslationWorker`'s DLQ, rather than disappearing
     silently — see `AuditLogArchiveWorker`.
+19. Postgres and Redis automatically fail over to an always-on local
+    standby (`backend/src/failover/`) if Supabase/Upstash becomes
+    unreachable, and fail back automatically once it recovers — see
+    `docs/DISASTER_RECOVERY.md`'s "Automatic Postgres + Redis failover"
+    section for the full design. The one rule this interacts with
+    directly: rule 4's booking guard (`isBooked=false` conditional
+    update) is what `FailoverReconciliationWorker` relies on to detect a
+    genuine double-booking across a partition — a replayed booking whose
+    conditional update no longer matches on primary is recorded in
+    `FailoverConflict` rather than silently discarded or overwritten.
+    Every other model's writes during a fallback window replay as a
+    last-write-wins upsert once primary recovers.

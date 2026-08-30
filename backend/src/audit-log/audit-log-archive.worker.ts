@@ -6,8 +6,9 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { Queue, Worker, type Job } from 'bullmq';
-import IORedis from 'ioredis';
 import { AuditLogArchiveService } from './audit-log-archive.service';
+import { FailoverService } from '../failover/failover.service';
+import { createFailoverRedisConnection } from '../failover/failover-redis-connection';
 import {
   AUDIT_ARCHIVE_DLQ,
   AUDIT_ARCHIVE_QUEUE,
@@ -39,6 +40,7 @@ export class AuditLogArchiveWorker implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly archiveService: AuditLogArchiveService,
+    private readonly failover: FailoverService,
     @Inject(AUDIT_ARCHIVE_QUEUE)
     private readonly queue: Queue<AuditArchiveJobData>,
     @Inject(AUDIT_ARCHIVE_DLQ)
@@ -48,10 +50,9 @@ export class AuditLogArchiveWorker implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     await this.registerRepeatableJob();
 
-    const connection = new IORedis(
-      process.env.REDIS_URL ?? 'redis://localhost:6379',
-      { maxRetriesPerRequest: null },
-    );
+    const connection = createFailoverRedisConnection(this.failover, {
+      maxRetriesPerRequest: null,
+    });
 
     this.worker = new Worker<AuditArchiveJobData>(
       AUDIT_ARCHIVE_QUEUE_NAME,

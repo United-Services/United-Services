@@ -30,3 +30,22 @@ export const AUDIT_ARCHIVE_DLQ_NAME = 'audit-log-archive-dlq';
 // before it actually runs," never a stale cutoff from when it was
 // enqueued.
 export type AuditArchiveJobData = Record<string, never>;
+
+export const DB_MIRROR_SYNC_QUEUE = 'DB_MIRROR_SYNC_QUEUE';
+export const DB_MIRROR_SYNC_DLQ = 'DB_MIRROR_SYNC_DLQ';
+
+export const DB_MIRROR_SYNC_QUEUE_NAME = 'db-mirror-sync';
+export const DB_MIRROR_SYNC_DLQ_NAME = 'db-mirror-sync-dlq';
+
+// Empty for the same reason as AuditArchiveJobData — DbMirrorSyncService
+// always syncs against Postgres's current state, never a snapshot from
+// when the job was scheduled.
+export type DbMirrorSyncJobData = Record<string, never>;
+
+export const FAILOVER_RECONCILE_QUEUE = 'FAILOVER_RECONCILE_QUEUE';
+export const FAILOVER_RECONCILE_DLQ = 'FAILOVER_RECONCILE_DLQ';
+
+export const FAILOVER_RECONCILE_QUEUE_NAME = 'failover-reconcile';
+export const FAILOVER_RECONCILE_DLQ_NAME = 'failover-reconcile-dlq';
+
+export type FailoverReconcileJobData = Record<string, never>;

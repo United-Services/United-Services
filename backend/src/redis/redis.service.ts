@@ -1,18 +1,11 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import Redis from 'ioredis';
 
-@Injectable()
-export class RedisService extends Redis implements OnModuleDestroy {
-  constructor() {
-    // Same fallback as queue.module.ts's BullMQ connections — not a
-    // credential, just ioredis's own documented default connection
-    // target, and it's what satisfies ioredis's constructor overloads
-    // (they don't accept `string | undefined`) without widening
-    // REDIS_URL's type at every call site.
-    super(process.env.REDIS_URL ?? 'redis://localhost:6379');
-  }
-
-  onModuleDestroy() {
-    this.disconnect();
-  }
-}
+// Never instantiated directly — redis.module.ts's factory provider
+// supplies a runtime Proxy for this DI token instead (see that file),
+// routing every command to whichever of the primary (Upstash) or local
+// (compose `redis` service) connections FailoverService currently
+// reports as active. This class exists purely so every existing
+// constructor-injected `redis: RedisService` type annotation across the
+// codebase keeps type-checking against the real ioredis API surface,
+// completely unchanged by the failover work.
+export abstract class RedisService extends Redis {}
