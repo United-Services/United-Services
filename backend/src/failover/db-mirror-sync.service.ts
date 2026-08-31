@@ -44,6 +44,17 @@ const MIRRORED_MODELS = [
   'candidateDocument',
 ] as const;
 
+// Every model above is keyed by `id` except KekRegistry, whose @id field
+// is `keyId` (see schema.prisma) — upsertModel/deleteStaleLocalRows read
+// this to know which field to cursor/order/upsert on instead of assuming
+// `id` everywhere.
+const PRIMARY_KEY_FIELD: Partial<Record<(typeof MIRRORED_MODELS)[number], string>> = {
+  kekRegistry: 'keyId',
+};
+function primaryKeyField(model: (typeof MIRRORED_MODELS)[number]): string {
+  return PRIMARY_KEY_FIELD[model] ?? 'id';
+}
+
 // Same reasoning as audit-log-archive.service.ts's constants: batched
 // and paced specifically so this never becomes an unthrottled full-table
 // dump against Supabase.
@@ -148,14 +159,15 @@ export class DbMirrorSyncService {
   ): Promise<{ upserted: number; primaryIds: Set<string> }> {
     const reader = this.primaryReader as unknown as Record<string, any>;
     const writer = this.getLocalWriter() as unknown as Record<string, any>;
+    const pk = primaryKeyField(model);
 
     const primaryIds = new Set<string>();
     let upserted = 0;
     let cursor: string | null = null;
     for (;;) {
-      const batch: { id: string }[] = await reader[model].findMany({
-        where: cursor ? { id: { gt: cursor } } : undefined,
-        orderBy: { id: 'asc' },
+      const batch: Record<string, any>[] = await reader[model].findMany({
+        where: cursor ? { [pk]: { gt: cursor } } : undefined,
+        orderBy: { [pk]: 'asc' },
         take: SYNC_BATCH_SIZE,
       });
       if (batch.length === 0) break;
@@ -163,15 +175,15 @@ export class DbMirrorSyncService {
       await writer.$transaction(
         batch.map((row) =>
           writer[model].upsert({
-            where: { id: row.id },
+            where: { [pk]: row[pk] },
             create: row,
             update: row,
           }),
         ),
       );
-      for (const row of batch) primaryIds.add(row.id);
+      for (const row of batch) primaryIds.add(row[pk]);
       upserted += batch.length;
-      cursor = batch[batch.length - 1].id;
+      cursor = batch[batch.length - 1][pk];
 
       if (batch.length < SYNC_BATCH_SIZE) break;
       await sleep(SYNC_BATCH_DELAY_MS);
@@ -184,28 +196,29 @@ export class DbMirrorSyncService {
   // the mirror would only ever grow, never reflect a real delete.
   private async deleteStaleLocalRows(
     writer: Record<string, any>,
-    model: string,
+    model: (typeof MIRRORED_MODELS)[number],
     primaryIds: Set<string>,
   ): Promise<number> {
+    const pk = primaryKeyField(model);
     let deleted = 0;
     let cursor: string | null = null;
     for (;;) {
-      const batch: { id: string }[] = await writer[model].findMany({
-        where: cursor ? { id: { gt: cursor } } : undefined,
-        orderBy: { id: 'asc' },
+      const batch: Record<string, any>[] = await writer[model].findMany({
+        where: cursor ? { [pk]: { gt: cursor } } : undefined,
+        orderBy: { [pk]: 'asc' },
         take: SYNC_BATCH_SIZE,
-        select: { id: true },
+        select: { [pk]: true },
       });
       if (batch.length === 0) break;
 
       const staleIds = batch
-        .map((row) => row.id)
+        .map((row) => row[pk])
         .filter((id) => !primaryIds.has(id));
       if (staleIds.length > 0) {
-        await writer[model].deleteMany({ where: { id: { in: staleIds } } });
+        await writer[model].deleteMany({ where: { [pk]: { in: staleIds } } });
         deleted += staleIds.length;
       }
-      cursor = batch[batch.length - 1].id;
+      cursor = batch[batch.length - 1][pk];
 
       if (batch.length < SYNC_BATCH_SIZE) break;
       await sleep(SYNC_BATCH_DELAY_MS);

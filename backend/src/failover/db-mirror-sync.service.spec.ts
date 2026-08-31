@@ -23,7 +23,6 @@ jest.mock('@prisma/adapter-pg', () => ({
 // behavior.
 const OTHER_MODELS = [
   'totpCredential',
-  'kekRegistry',
   'webAuthnCredential',
   'service',
   'serviceFile',
@@ -52,12 +51,18 @@ let localUserModel: {
   upsert: jest.Mock;
   deleteMany: jest.Mock;
 };
+let localKekRegistryModel: {
+  findMany: jest.Mock;
+  upsert: jest.Mock;
+  deleteMany: jest.Mock;
+};
 let localTransactionMock: jest.Mock;
 
 jest.mock('../generated/prisma', () => ({
   PrismaClient: jest.fn().mockImplementation(() => {
     const client: Record<string, unknown> = {
       user: localUserModel,
+      kekRegistry: localKekRegistryModel,
       $transaction: localTransactionMock,
     };
     for (const m of OTHER_MODELS) client[m] = makeInertModel();
@@ -69,8 +74,13 @@ function row(id: string) {
   return { id, email: `${id}@example.com` };
 }
 
+function kekRow(keyId: string) {
+  return { keyId, publicKey: `pub-${keyId}`, status: 'active' };
+}
+
 describe('DbMirrorSyncService', () => {
   let primaryUserModel: { findMany: jest.Mock };
+  let primaryKekRegistryModel: { findMany: jest.Mock };
   let primaryReader: Record<string, unknown>;
   let service: DbMirrorSyncService;
 
@@ -85,10 +95,16 @@ describe('DbMirrorSyncService', () => {
     });
 
     primaryUserModel = { findMany: jest.fn().mockResolvedValue([]) };
-    primaryReader = { user: primaryUserModel };
+    primaryKekRegistryModel = { findMany: jest.fn().mockResolvedValue([]) };
+    primaryReader = { user: primaryUserModel, kekRegistry: primaryKekRegistryModel };
     for (const m of OTHER_MODELS) primaryReader[m] = makeInertModel();
 
     localUserModel = {
+      findMany: jest.fn().mockResolvedValue([]),
+      upsert: jest.fn(),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    };
+    localKekRegistryModel = {
       findMany: jest.fn().mockResolvedValue([]),
       upsert: jest.fn(),
       deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
@@ -152,6 +168,40 @@ describe('DbMirrorSyncService', () => {
       const totpDeleteOrder =
         localWriterClient.totpCredential.findMany.mock.invocationCallOrder[0];
       expect(totpDeleteOrder).toBeLessThan(kekDeleteOrder);
+    });
+
+    // Regression test for a real production incident: KekRegistry's @id
+    // field is `keyId`, not `id` (see schema.prisma) — upsertModel/
+    // deleteStaleLocalRows previously hardcoded `id` everywhere, so every
+    // sync run hit "Unknown argument `id`" on kekRegistry.findMany and
+    // moved straight to the DLQ.
+    it('queries and upserts kekRegistry by its actual primary key (keyId), not id', async () => {
+      primaryKekRegistryModel.findMany.mockResolvedValueOnce([kekRow('kek1')]);
+
+      await service.syncAll();
+
+      expect(primaryKekRegistryModel.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ orderBy: { keyId: 'asc' } }),
+      );
+      expect(localKekRegistryModel.upsert).toHaveBeenCalledWith({
+        where: { keyId: 'kek1' },
+        create: kekRow('kek1'),
+        update: kekRow('kek1'),
+      });
+    });
+
+    it('delete-reconciles kekRegistry by keyId, not id', async () => {
+      primaryKekRegistryModel.findMany.mockResolvedValueOnce([kekRow('kek1')]);
+      localKekRegistryModel.findMany.mockResolvedValueOnce([
+        { keyId: 'kek1' },
+        { keyId: 'kek-stale' },
+      ]);
+
+      await service.syncAll();
+
+      expect(localKekRegistryModel.deleteMany).toHaveBeenCalledWith({
+        where: { keyId: { in: ['kek-stale'] } },
+      });
     });
 
     it('returns one result per mirrored model (20 total)', async () => {
