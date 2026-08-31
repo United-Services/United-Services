@@ -67,6 +67,78 @@ describe('BetterstackLogger', () => {
       expectNoConsoleOutput();
     });
 
+    // Regression: JSON.stringify(someError) produces "{}" — Error's own
+    // name/message/stack are non-enumerable, so a bare
+    // `logger.error(err)` (an Error as the sole argument) or
+    // `logger.log(err)` used to silently ship as an empty,
+    // undiagnosable "{}" instead of the actual error.
+    it('log() ships a full name/message/stack when given a bare Error as the message', () => {
+      const logger = new BetterstackLogger();
+      const err = new Error('database connection refused');
+      logger.log(err);
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const shipped = JSON.parse(body.message);
+      expect(shipped.name).toBe('Error');
+      expect(shipped.message).toBe('database connection refused');
+      expect(shipped.stack).toEqual(expect.stringContaining('Error: database connection refused'));
+    });
+
+    it('error() with a bare Error as the message (no stack/context args) still ships the real message, not {}', () => {
+      const logger = new BetterstackLogger();
+      const err = new TypeError('cannot read property of undefined');
+      logger.error(err);
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(body.message).not.toBe('{}');
+      const shipped = JSON.parse(body.message);
+      expect(shipped.name).toBe('TypeError');
+      expect(shipped.message).toBe('cannot read property of undefined');
+    });
+
+    it('error() given an Error object as the `stack` argument extracts its real stack, not just its toString()', () => {
+      const logger = new BetterstackLogger();
+      const err = new Error('ntfy unreachable');
+      // Mirrors IncidentAlertService's `logger.error('msg', err as Error)`
+      // call shape — Nest's Logger types `stack?: string`, but nothing
+      // enforces that at a call site.
+      logger.error('Failed to trigger incident alert', err as unknown as string);
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(body.message).toContain('Failed to trigger incident alert');
+      expect(body.message).toContain('Error: ntfy unreachable');
+    });
+
+    it('serializes an array containing an Error (e.g. console.error("context", err)-shaped input) without losing the error detail', () => {
+      const logger = new BetterstackLogger();
+      logger.log(['request failed', new Error('timeout')]);
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const shipped = JSON.parse(body.message);
+      expect(shipped[0]).toBe('request failed');
+      expect(shipped[1].message).toBe('timeout');
+    });
+
+    it('follows a chained `cause` Error so the root cause is never silently dropped', () => {
+      const logger = new BetterstackLogger();
+      const root = new Error('ECONNREFUSED');
+      const wrapped = new Error('failed to connect', { cause: root });
+      logger.log(wrapped);
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const shipped = JSON.parse(body.message);
+      expect(shipped.message).toBe('failed to connect');
+      expect(shipped.cause.message).toBe('ECONNREFUSED');
+    });
+
+    it('still ships a plain (non-Error) object as before — the fix is scoped to Errors only', () => {
+      const logger = new BetterstackLogger();
+      logger.log({ some: 'plain', data: 1 });
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(JSON.parse(body.message)).toEqual({ some: 'plain', data: 1 });
+    });
+
     it('never throws or blocks when the Betterstack request itself rejects', async () => {
       fetchMock.mockRejectedValue(new Error('network down'));
       const logger = new BetterstackLogger();
