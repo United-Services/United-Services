@@ -69,12 +69,49 @@ describe("shipLog", () => {
     expect(shipped[1].message).toBe("timeout")
   })
 
-  it("still ships a plain object as before — the fix is scoped to Errors only", async () => {
+  it("still ships a genuinely plain object unchanged (no message/stack property)", async () => {
     const { shipLog } = await import("./betterstackLog")
     shipLog("info", { some: "plain", data: 1 })
 
     const body = await bodyOf()
     expect(JSON.parse(body.message)).toEqual({ some: "plain", data: 1 })
+  })
+
+  // Regression for the real incident this fix was written for: accessing
+  // the app over plain HTTP on a LAN IP (non-secure context) surfaced
+  // Clerk SDK errors that aren't `instanceof Error` and still shipped as
+  // "{}" even after the first round of this fix. Detecting error-shaped
+  // objects by property access (works regardless of class hierarchy or
+  // enumerability) catches this.
+  it("expands a non-Error object that merely looks like an error (has a message property)", async () => {
+    const { shipLog } = await import("./betterstackLog")
+    class ClerkStyleError {
+      constructor(
+        public message: string,
+        public status: number,
+      ) {}
+    }
+    shipLog("error", new ClerkStyleError("session not found", 401))
+
+    const body = await bodyOf()
+    expect(body.message).not.toBe("{}")
+    const shipped = JSON.parse(body.message)
+    expect(shipped.message).toBe("session not found")
+    expect(shipped.status).toBe(401)
+  })
+
+  it("recovers a non-enumerable message property that plain JSON.stringify would silently drop", async () => {
+    const { shipLog } = await import("./betterstackLog")
+    const weirdError: Record<string, unknown> = {}
+    Object.defineProperty(weirdError, "message", {
+      value: "hidden from JSON.stringify",
+      enumerable: false,
+    })
+    expect(JSON.stringify(weirdError)).toBe("{}")
+
+    shipLog("error", weirdError)
+    const body = await bodyOf()
+    expect(JSON.parse(body.message).message).toBe("hidden from JSON.stringify")
   })
 
   it("silently drops the log when Betterstack isn't configured, never throwing", async () => {

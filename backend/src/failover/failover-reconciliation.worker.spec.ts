@@ -19,7 +19,7 @@ jest.mock('bullmq', () => ({
   }),
 }));
 
-jest.mock('ioredis', () => jest.fn().mockImplementation(() => ({})));
+jest.mock('ioredis', () => jest.fn().mockImplementation(() => ({ on: jest.fn() })));
 
 describe('FailoverReconciliationWorker', () => {
   let reconciliationService: { reconcileAll: jest.Mock };

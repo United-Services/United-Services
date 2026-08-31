@@ -1,5 +1,26 @@
+import { Logger } from '@nestjs/common';
 import IORedis, { type RedisOptions } from 'ioredis';
 import { FailoverService } from './failover.service';
+
+const logger = new Logger('FailoverRedisConnection');
+
+// Without an 'error' listener, ioredis prints "[ioredis] Unhandled error
+// event: ..." straight to the real console on every connection failure
+// (its own safety net around Node's default EventEmitter behavior,
+// which would otherwise crash the process on an unheard 'error' event)
+// — bypassing BetterstackLogger entirely and violating this codebase's
+// "no console, ever" contract (see BetterstackLogger's own doc comment).
+// The actual failure handling already happens correctly via the
+// promise rejections on individual commands/connect() calls (see
+// FailoverService.checkRedis(), and BullMQ's own retry/backoff on a
+// failed command) — this listener exists purely to give ioredis
+// somewhere to send the event instead of stdout, not to add new logic.
+function silenceUnhandledErrorEvent(client: IORedis, role: string): IORedis {
+  client.on('error', (err: Error) => {
+    logger.debug(`${role} connection error (handled elsewhere): ${err.message}`);
+  });
+  return client;
+}
 
 // Builds a Proxy that behaves like a single ioredis connection but
 // forwards every command to whichever of two real, always-connected
@@ -18,13 +39,13 @@ export function createFailoverRedisConnection(
   failover: FailoverService,
   options: RedisOptions = {},
 ): IORedis {
-  const primary = new IORedis(
-    process.env.REDIS_URL ?? 'redis://localhost:6379',
-    options,
+  const primary = silenceUnhandledErrorEvent(
+    new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', options),
+    'primary',
   );
-  const local = new IORedis(
-    process.env.LOCAL_REDIS_URL ?? 'redis://localhost:6379',
-    options,
+  const local = silenceUnhandledErrorEvent(
+    new IORedis(process.env.LOCAL_REDIS_URL ?? 'redis://localhost:6379', options),
+    'local',
   );
 
   return new Proxy(

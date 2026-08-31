@@ -131,12 +131,57 @@ describe('BetterstackLogger', () => {
       expect(shipped.cause.message).toBe('ECONNREFUSED');
     });
 
-    it('still ships a plain (non-Error) object as before — the fix is scoped to Errors only', () => {
+    it('still ships a genuinely plain object unchanged (no message/stack property) — the expansion only kicks in for error-shaped objects', () => {
       const logger = new BetterstackLogger();
       logger.log({ some: 'plain', data: 1 });
 
       const body = JSON.parse(fetchMock.mock.calls[0][1].body);
       expect(JSON.parse(body.message)).toEqual({ some: 'plain', data: 1 });
+    });
+
+    // Regression for the real incident this whole fix was written for:
+    // a library error object that ISN'T `instanceof Error` (many SDKs —
+    // Clerk's included — throw custom classes that don't properly
+    // extend the native Error, or define message/code as non-enumerable
+    // getters) still silently produced "{}" even after the first round
+    // of this fix, since that version only special-cased `instanceof
+    // Error`. Detecting by property access instead catches this shape
+    // too.
+    it('expands a non-Error object that merely *looks* like an error (has a message property) instead of shipping {}', () => {
+      const logger = new BetterstackLogger();
+      class ClerkStyleError {
+        constructor(
+          public message: string,
+          public status: number,
+        ) {}
+      }
+      logger.error(new ClerkStyleError('session not found', 401));
+
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(body.message).not.toBe('{}');
+      const shipped = JSON.parse(body.message);
+      expect(shipped.message).toBe('session not found');
+      expect(shipped.status).toBe(401);
+    });
+
+    it('recovers a non-enumerable message getter that JSON.stringify alone would silently drop', () => {
+      const logger = new BetterstackLogger();
+      const weirdError: Record<string, unknown> = {};
+      Object.defineProperty(weirdError, 'message', {
+        value: 'hidden from JSON.stringify',
+        enumerable: false,
+      });
+
+      // Sanity-check the premise: plain JSON.stringify really does drop
+      // a non-enumerable property, which is exactly why this needs
+      // fixing rather than being a redundant test.
+      expect(JSON.stringify(weirdError)).toBe('{}');
+
+      logger.log(weirdError);
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(JSON.parse(body.message).message).toBe(
+        'hidden from JSON.stringify',
+      );
     });
 
     it('never throws or blocks when the Betterstack request itself rejects', async () => {

@@ -19,7 +19,7 @@ jest.mock('bullmq', () => ({
   }),
 }));
 
-jest.mock('ioredis', () => jest.fn().mockImplementation(() => ({})));
+jest.mock('ioredis', () => jest.fn().mockImplementation(() => ({ on: jest.fn() })));
 
 function makeJob(overrides: Partial<Job<any>> = {}): Job<any> {
   return {

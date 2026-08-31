@@ -130,6 +130,12 @@ export class FailoverService
       lazyConnect: true,
       retryStrategy: () => null,
     });
+    // Without this, ioredis prints "[ioredis] Unhandled error event: ..."
+    // straight to the real console on every failed check — bypassing
+    // BetterstackLogger entirely. The catch block below already does the
+    // real handling (failure counting, mode flip, logging); this only
+    // gives ioredis's own EventEmitter somewhere to send the event.
+    client.on('error', () => {});
     try {
       await client.connect();
       await client.ping();

@@ -33,4 +33,26 @@ describe('createFailoverRedisConnection', () => {
     expect(typeof connection.get).toBe('function');
     expect(typeof connection.status).toBe('string');
   });
+
+  // Regression: another real bug found live — a bare `new IORedis(...)`
+  // with no 'error' listener makes Node's EventEmitter throw synchronously
+  // on an unhandled 'error' event (ioredis's own internal safety net
+  // catches this and prints "[ioredis] Unhandled error event: ..."
+  // straight to the real console instead of crashing — but that still
+  // bypasses BetterstackLogger entirely, violating the "no console, ever"
+  // contract). Both underlying connections need their own listener
+  // attached at construction time.
+  it('attaches an error listener to both underlying connections, so emitting error never throws/crashes', () => {
+    const primaryActive = createFailoverRedisConnection(
+      makeFailover('primary'),
+      NO_CONNECT_OPTIONS,
+    );
+    const localActive = createFailoverRedisConnection(
+      makeFailover('local'),
+      NO_CONNECT_OPTIONS,
+    );
+
+    expect(() => primaryActive.emit('error', new Error('boom'))).not.toThrow();
+    expect(() => localActive.emit('error', new Error('boom'))).not.toThrow();
+  });
 });

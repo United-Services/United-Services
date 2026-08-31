@@ -34,30 +34,36 @@ export function shipLog(level: string, message: unknown, context?: string): void
 // name are non-enumerable, so a raw Error object (e.g. passed straight
 // through from instrumentation-client.ts's own console.error override,
 // or from a server-side `console.error(err)`) silently ships as an
-// empty, undiagnosable "{}" instead of the actual error.
+// empty, undiagnosable "{}". Native Errors aren't the only offenders:
+// many libraries (Clerk's SDK included) throw custom error classes that
+// either don't properly extend Error, or that also define message/
+// stack/code as non-enumerable getters — same masking either way.
+// expandErrorLike() detects an error-like object by *property access*
+// (works regardless of enumerability), not by `instanceof Error` or
+// Object.keys/JSON.stringify (which only see enumerable own properties).
 function stringifyMessage(message: unknown): string {
   try {
-    if (message instanceof Error) return JSON.stringify(serializeError(message))
-    if (Array.isArray(message) && message.some((v) => v instanceof Error)) {
-      return JSON.stringify(
-        message.map((v) => (v instanceof Error ? serializeError(v) : v)),
-      )
-    }
-    return JSON.stringify(message)
+    return JSON.stringify(expandErrorLike(message))
   } catch {
     return String(message)
   }
 }
 
-function serializeError(err: Error): Record<string, unknown> {
-  return {
-    name: err.name,
-    message: err.message,
-    stack: err.stack,
-    ...(err.cause instanceof Error
-      ? { cause: serializeError(err.cause) }
-      : err.cause !== undefined
-        ? { cause: err.cause }
-        : {}),
+function expandErrorLike(value: unknown): unknown {
+  if (value === null || typeof value !== "object") return value
+  if (Array.isArray(value)) return value.map(expandErrorLike)
+
+  const obj = value as Record<string, unknown>
+  const looksLikeError =
+    value instanceof Error ||
+    typeof obj.message === "string" ||
+    typeof obj.stack === "string"
+  if (!looksLikeError) return value
+
+  const expanded: Record<string, unknown> = { ...obj }
+  for (const key of ["name", "message", "stack", "code", "status", "statusCode"]) {
+    if (obj[key] !== undefined) expanded[key] = obj[key]
   }
+  if (obj.cause !== undefined) expanded.cause = expandErrorLike(obj.cause)
+  return expanded
 }
