@@ -55,4 +55,29 @@ describe('createFailoverRedisConnection', () => {
     expect(() => primaryActive.emit('error', new Error('boom'))).not.toThrow();
     expect(() => localActive.emit('error', new Error('boom'))).not.toThrow();
   });
+
+  // Regression: a real production incident (Upstash Redis monthly request
+  // quota exhaustion) exposed that BullMQ's lazy, once-only
+  // `client.defineCommand(name, {...})` call (guarded on
+  // `!this._client[commandName]`, see RedisConnection.loadCommands in
+  // bullmq) only ever reached whichever concrete client was active *at
+  // that one moment* — a later failover left the other connection
+  // missing the command entirely, producing "client[name] is not a
+  // function" (a TypeError, which BullMQ doesn't treat as a
+  // backoff-eligible connection error) in an unthrottled retry loop that
+  // OOM-crashed the process. defineCommand must reach both connections
+  // up front regardless of which is active when it's called.
+  it('defines a custom command on both underlying connections, not just whichever is active when defineCommand is called', () => {
+    const failoverPrimary = makeFailover('primary');
+    const connection = createFailoverRedisConnection(failoverPrimary, NO_CONNECT_OPTIONS);
+
+    connection.defineCommand('echoTest', { numberOfKeys: 0, lua: "return 'ok'" });
+
+    // Switching the reported mode to 'local' after defineCommand was
+    // called (while mode was 'primary') simulates the exact failover
+    // ordering that broke in production — the command must still be
+    // present on whichever connection becomes active afterward.
+    (failoverPrimary.getRedisMode as jest.Mock).mockReturnValue('local');
+    expect(typeof (connection as unknown as Record<string, unknown>).echoTest).toBe('function');
+  });
 });
