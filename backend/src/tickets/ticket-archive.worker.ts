@@ -86,21 +86,33 @@ export class TicketArchiveWorker implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  // Deliberately caught, not awaited-and-thrown — see
+  // DbMirrorSyncWorker.registerRepeatableJob's comment: this runs during
+  // Nest's module init phase, which onModuleInit blocks on, so an
+  // unhandled rejection here (Redis unreachable) would stall
+  // NestFactory.create() forever and take the entire HTTP server down
+  // with it, even though no route depends on this queue.
   private async registerSweepJob() {
-    await this.queue.upsertJobScheduler(
-      JOB_SCHEDULER_ID,
-      { pattern: CRON_PATTERN },
-      {
-        name: SWEEP_JOB_NAME,
-        data: {},
-        opts: {
-          attempts: 3,
-          backoff: { type: 'exponential', delay: 30_000 },
-          removeOnComplete: { age: 3600 },
-          removeOnFail: { age: 86_400 },
+    try {
+      await this.queue.upsertJobScheduler(
+        JOB_SCHEDULER_ID,
+        { pattern: CRON_PATTERN },
+        {
+          name: SWEEP_JOB_NAME,
+          data: {},
+          opts: {
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 30_000 },
+            removeOnComplete: { age: 3600 },
+            removeOnFail: { age: 86_400 },
+          },
         },
-      },
-    );
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to register the ticket-archive sweep job scheduler — continuing boot without it: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
   async onModuleDestroy() {
