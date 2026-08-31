@@ -14,11 +14,13 @@ jest.mock('@prisma/adapter-pg', () => ({
 
 const redisConnectMock = jest.fn();
 const redisPingMock = jest.fn();
+const redisOnMock = jest.fn();
 jest.mock('ioredis', () => {
   return jest.fn().mockImplementation(() => ({
     connect: (...args: unknown[]) => redisConnectMock(...args),
     ping: (...args: unknown[]) => redisPingMock(...args),
     disconnect: jest.fn(),
+    on: (...args: unknown[]) => redisOnMock(...args),
   }));
 });
 
@@ -154,6 +156,17 @@ describe('FailoverService', () => {
   });
 
   describe('Redis failover', () => {
+    // Regression: a bare `new IORedis(...)` with no 'error' listener
+    // makes Node's EventEmitter throw synchronously on an unhandled
+    // 'error' event — ioredis's own internal safety net catches this
+    // and prints "[ioredis] Unhandled error event: ..." straight to the
+    // real console instead, bypassing BetterstackLogger entirely and
+    // violating the "no console, ever" contract every single check.
+    it('attaches an error listener to the per-tick ping connection', async () => {
+      await checkRedis(service);
+      expect(redisOnMock).toHaveBeenCalledWith('error', expect.any(Function));
+    });
+
     it('fails over to local after 3 consecutive failures, emitting redis:failover', async () => {
       const handler = jest.fn();
       service.on('redis:failover', handler);
