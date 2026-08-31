@@ -1,5 +1,6 @@
 import { DbMirrorSyncService, SYNC_BATCH_SIZE } from './db-mirror-sync.service';
 import type { PrismaService } from '../prisma/prisma.service';
+import { PrismaClient } from '../generated/prisma';
 
 const execFileMock = jest.fn((...args: unknown[]) => {
   const cb = args[args.length - 1] as (
@@ -115,6 +116,44 @@ describe('DbMirrorSyncService', () => {
   });
 
   describe('syncAll', () => {
+    // Regression test for a real production incident: totpCredential
+    // references kekRegistry (TotpCredential_totpKekKeyId_fkey) — when
+    // MIRRORED_MODELS listed totpCredential before kekRegistry, the
+    // mirror-sync job hit "Foreign key constraint violated" on every
+    // run and moved straight to the DLQ. Upserts must happen in
+    // parent-before-child order; delete-reconciliation must happen in
+    // the reverse (child-before-parent), or deleting a still-referenced
+    // parent locally would hit the same kind of FK violation.
+    it('upserts parent models (kekRegistry) before the children that reference them (totpCredential)', async () => {
+      const results = await service.syncAll();
+
+      const kekCallOrder = (primaryReader.kekRegistry as any).findMany.mock
+        .invocationCallOrder[0];
+      const totpCallOrder = (primaryReader.totpCredential as any).findMany.mock
+        .invocationCallOrder[0];
+      expect(kekCallOrder).toBeLessThan(totpCallOrder);
+      // 'kekRegistry' appears before 'totpCredential' in the results
+      // array too, confirming the model list itself is ordered this way.
+      expect(results.findIndex((r) => r.model === 'kekRegistry')).toBeLessThan(
+        results.findIndex((r) => r.model === 'totpCredential'),
+      );
+    });
+
+    it('runs delete-reconciliation in the reverse order — children (totpCredential) before their parents (kekRegistry)', async () => {
+      await service.syncAll();
+
+      // deleteStaleLocalRows reads the *local writer's* findMany for
+      // each model — the call order there is what actually determines
+      // delete-reconciliation order.
+      const localWriterClient = (PrismaClient as unknown as jest.Mock).mock
+        .results[0].value;
+      const kekDeleteOrder =
+        localWriterClient.kekRegistry.findMany.mock.invocationCallOrder[0];
+      const totpDeleteOrder =
+        localWriterClient.totpCredential.findMany.mock.invocationCallOrder[0];
+      expect(totpDeleteOrder).toBeLessThan(kekDeleteOrder);
+    });
+
     it('returns one result per mirrored model (20 total)', async () => {
       const results = await service.syncAll();
       expect(results).toHaveLength(20);
