@@ -33,7 +33,10 @@ interface AuditLogRow {
   targetType: string
   targetId: string
   createdAt: string
-  actor: { firstName: string; lastName: string; email: string; role: string }
+  // null for system-generated entries with no human actor (e.g. the
+  // failover/db-mirror-sync jobs), or when the actor's account was later
+  // deleted — see prisma/schema.prisma's AuditLog.actorUserId comment.
+  actor: { firstName: string; lastName: string; email: string; role: string } | null
 }
 
 interface Props {
@@ -342,7 +345,7 @@ export default function AdminOverviewSection({
           >
             <div style={{ flex: 1, fontSize: 13, color: palette.slate }}>
               <strong>
-                {a.actor.firstName} {a.actor.lastName}
+                {a.actor ? `${a.actor.firstName} ${a.actor.lastName}` : t("overview.systemActor")}
               </strong>{" "}
               — {a.action.replace(/_/g, " ").replace(/\./g, " ")}
             </div>
