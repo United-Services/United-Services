@@ -12,27 +12,36 @@ const execFileAsync = promisify(execFile);
 // local-outbox/primary-side bookkeeping respectively, not data to mirror
 // either direction. Client property names (camelCase of the schema.prisma
 // model name), matching what PrismaClient exposes.
+//
+// Order is load-bearing: it's a topological sort of schema.prisma's own
+// foreign keys (parents before the children that reference them) — e.g.
+// `totpCredential` references both `user` and `kekRegistry`, so both
+// have to already exist locally before a totpCredential row can be
+// upserted, or the FK constraint rejects it. syncAll() upserts in this
+// order, then walks it in reverse for delete-reconciliation (a child row
+// referencing a parent has to be deleted before the parent, for the
+// same FK reason in the opposite direction).
 const MIRRORED_MODELS = [
   'user',
-  'totpCredential',
   'kekRegistry',
-  'webAuthnCredential',
-  'service',
-  'serviceFile',
-  'fileAccessRequest',
-  'serviceRequest',
-  'appointmentSlot',
-  'appointment',
-  'openPosition',
-  'candidateApplication',
-  'candidateDocument',
-  'auditLog',
-  'auditLogArchive',
   'allowedOrigin',
   'analyticsEvent',
   'ticket',
   'ticketArchive',
+  'auditLogArchive',
   'contentTranslation',
+  'totpCredential',
+  'webAuthnCredential',
+  'service',
+  'appointmentSlot',
+  'openPosition',
+  'auditLog',
+  'serviceFile',
+  'serviceRequest',
+  'appointment',
+  'candidateApplication',
+  'fileAccessRequest',
+  'candidateDocument',
 ] as const;
 
 // Same reasoning as audit-log-archive.service.ts's constants: batched
@@ -94,11 +103,36 @@ export class DbMirrorSyncService {
 
   async syncAll(): Promise<{ model: string; upserted: number; deleted: number }[]> {
     await this.ensureLocalSchema();
-    const results: { model: string; upserted: number; deleted: number }[] = [];
+
+    // Phase 1 — upsert every model in MIRRORED_MODELS's own (parent-
+    // before-child) order, so a row's foreign keys always already exist
+    // locally by the time it's written.
+    const upsertResults = new Map<string, { upserted: number; primaryIds: Set<string> }>();
     for (const model of MIRRORED_MODELS) {
-      const result = await this.syncModel(model);
-      results.push(result);
+      upsertResults.set(model, await this.upsertModel(model));
     }
+
+    // Phase 2 — delete-reconcile in the *reverse* order: a child row has
+    // to be gone locally before its parent can be safely deleted, same
+    // FK reasoning as phase 1 but pointed the other way.
+    const deletedByModel = new Map<string, number>();
+    for (const model of [...MIRRORED_MODELS].reverse()) {
+      const { primaryIds } = upsertResults.get(model)!;
+      deletedByModel.set(
+        model,
+        await this.deleteStaleLocalRows(
+          this.getLocalWriter() as unknown as Record<string, any>,
+          model,
+          primaryIds,
+        ),
+      );
+    }
+
+    const results = MIRRORED_MODELS.map((model) => ({
+      model,
+      upserted: upsertResults.get(model)!.upserted,
+      deleted: deletedByModel.get(model)!,
+    }));
     const totalUpserted = results.reduce((sum, r) => sum + r.upserted, 0);
     const totalDeleted = results.reduce((sum, r) => sum + r.deleted, 0);
     if (totalUpserted > 0 || totalDeleted > 0) {
@@ -109,9 +143,9 @@ export class DbMirrorSyncService {
     return results;
   }
 
-  private async syncModel(
+  private async upsertModel(
     model: (typeof MIRRORED_MODELS)[number],
-  ): Promise<{ model: string; upserted: number; deleted: number }> {
+  ): Promise<{ upserted: number; primaryIds: Set<string> }> {
     const reader = this.primaryReader as unknown as Record<string, any>;
     const writer = this.getLocalWriter() as unknown as Record<string, any>;
 
@@ -143,8 +177,7 @@ export class DbMirrorSyncService {
       await sleep(SYNC_BATCH_DELAY_MS);
     }
 
-    const deleted = await this.deleteStaleLocalRows(writer, model, primaryIds);
-    return { model, upserted, deleted };
+    return { upserted, primaryIds };
   }
 
   // Removes local rows that no longer exist on primary — without this,
