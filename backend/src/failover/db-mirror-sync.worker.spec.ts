@@ -52,6 +52,27 @@ describe('DbMirrorSyncWorker', () => {
     expect(repeatOpts).toEqual({ pattern: '*/10 * * * *' });
   });
 
+  // Regression for a real production incident: onModuleInit runs during
+  // Nest's module init phase, which the whole app's bootstrap blocks on
+  // (NestFactory.create() awaits it) — an unhandled rejection here (e.g.
+  // Upstash Redis quota exhaustion rejecting every command) previously
+  // stalled bootstrap forever, so the HTTP server never called
+  // app.listen() and the entire API went down, even though no route
+  // depends on this queue.
+  it('does not reject onModuleInit when upsertJobScheduler fails, so app bootstrap is never blocked by this queue', async () => {
+    const failingQueue = {
+      upsertJobScheduler: jest.fn().mockRejectedValue(new Error('ERR max requests limit exceeded')),
+    };
+    const freshWorker = new DbMirrorSyncWorker(
+      syncService as unknown as DbMirrorSyncService,
+      failover as unknown as FailoverService,
+      failingQueue as unknown as Queue<any>,
+      dlq as unknown as Queue<any>,
+    );
+
+    await expect(freshWorker.onModuleInit()).resolves.toBeUndefined();
+  });
+
   it('runs syncAll() when Postgres is in primary mode', async () => {
     expect(capturedProcessor).toBeDefined();
     await capturedProcessor!();

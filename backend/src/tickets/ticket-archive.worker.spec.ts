@@ -65,6 +65,25 @@ describe('TicketArchiveWorker', () => {
     expect(repeatOpts).toEqual({ pattern: '*/10 * * * *' });
   });
 
+  // Regression: onModuleInit runs during Nest's module init phase, which
+  // the whole app's bootstrap blocks on — an unhandled rejection here
+  // (e.g. Redis unreachable) previously stalled bootstrap forever, so
+  // the HTTP server never called app.listen(), even though no route
+  // depends on this queue.
+  it('does not reject onModuleInit when upsertJobScheduler fails, so app bootstrap is never blocked by this queue', async () => {
+    const failingQueue = {
+      upsertJobScheduler: jest.fn().mockRejectedValue(new Error('ERR max requests limit exceeded')),
+    };
+    const freshWorker = new TicketArchiveWorker(
+      archiveService as unknown as TicketArchiveService,
+      failover as unknown as FailoverService,
+      failingQueue as unknown as Queue<any>,
+      dlq as unknown as Queue<any>,
+    );
+
+    await expect(freshWorker.onModuleInit()).resolves.toBeUndefined();
+  });
+
   describe('processor', () => {
     it('calls archiveTicket(ticketId) for a job carrying a ticketId', async () => {
       expect(capturedProcessor).toBeDefined();

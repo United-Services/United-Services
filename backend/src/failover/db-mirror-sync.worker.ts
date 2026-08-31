@@ -84,21 +84,37 @@ export class DbMirrorSyncWorker implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  // Deliberately caught, not awaited-and-thrown: this runs during Nest's
+  // module init phase, which onModuleInit blocks on — an unhandled
+  // rejection here (e.g. Redis genuinely unreachable, like the Upstash
+  // quota-exhaustion incident this was hardened against) would stall
+  // NestFactory.create() forever, meaning the entire HTTP server never
+  // calls app.listen(), taking down every unrelated route (none of which
+  // depend on this queue) along with it. Worst case on failure: this one
+  // repeatable job doesn't get (re)registered until the next successful
+  // boot — the mirror sync just doesn't run this cycle, which is already
+  // the documented behavior while Postgres is in local-fallback mode.
   private async registerRepeatableJob() {
-    await this.queue.upsertJobScheduler(
-      JOB_SCHEDULER_ID,
-      { pattern: CRON_PATTERN },
-      {
-        name: REPEATABLE_JOB_NAME,
-        data: {},
-        opts: {
-          attempts: 3,
-          backoff: { type: 'exponential', delay: 30_000 },
-          removeOnComplete: { age: 3600 },
-          removeOnFail: { age: 86_400 },
+    try {
+      await this.queue.upsertJobScheduler(
+        JOB_SCHEDULER_ID,
+        { pattern: CRON_PATTERN },
+        {
+          name: REPEATABLE_JOB_NAME,
+          data: {},
+          opts: {
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 30_000 },
+            removeOnComplete: { age: 3600 },
+            removeOnFail: { age: 86_400 },
+          },
         },
-      },
-    );
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to register the mirror-sync repeatable job scheduler — continuing boot without it: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
   async onModuleDestroy() {
