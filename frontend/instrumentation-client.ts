@@ -32,10 +32,36 @@ for (const level of levels) {
   }
 }
 
+// `JSON.stringify(someError)` produces "{}" — Error's own message/stack/
+// name are non-enumerable, so plain JSON.stringify silently discards
+// them. That's the exact bug this function existed to prevent, and
+// didn't: a raw `console.error(err)` (React's own error boundary logging
+// does this) shipped as an empty, undiagnosable "{}" instead of the
+// actual error. Expand Error instances (recursively through `cause`)
+// before falling back to plain JSON.stringify for everything else.
 function safeStringify(value: unknown): string {
   try {
+    if (value instanceof Error) return JSON.stringify(serializeError(value))
+    if (Array.isArray(value) && value.some((v) => v instanceof Error)) {
+      return JSON.stringify(
+        value.map((v) => (v instanceof Error ? serializeError(v) : v)),
+      )
+    }
     return JSON.stringify(value)
   } catch {
     return String(value)
+  }
+}
+
+function serializeError(err: Error): Record<string, unknown> {
+  return {
+    name: err.name,
+    message: err.message,
+    stack: err.stack,
+    ...(err.cause instanceof Error
+      ? { cause: serializeError(err.cause) }
+      : err.cause !== undefined
+        ? { cause: err.cause }
+        : {}),
   }
 }

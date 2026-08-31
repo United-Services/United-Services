@@ -21,11 +21,43 @@ export function shipLog(level: string, message: unknown, context?: string): void
     body: JSON.stringify({
       dt: new Date().toISOString().replace("T", " ").replace("Z", " UTC"),
       level,
-      message: typeof message === "string" ? message : JSON.stringify(message),
+      message: typeof message === "string" ? message : stringifyMessage(message),
       context,
       service: "frontend",
     }),
   }).catch(() => {
     // Never let log shipping itself throw or block whatever triggered it.
   })
+}
+
+// `JSON.stringify(someError)` produces "{}" — Error's own message/stack/
+// name are non-enumerable, so a raw Error object (e.g. passed straight
+// through from instrumentation-client.ts's own console.error override,
+// or from a server-side `console.error(err)`) silently ships as an
+// empty, undiagnosable "{}" instead of the actual error.
+function stringifyMessage(message: unknown): string {
+  try {
+    if (message instanceof Error) return JSON.stringify(serializeError(message))
+    if (Array.isArray(message) && message.some((v) => v instanceof Error)) {
+      return JSON.stringify(
+        message.map((v) => (v instanceof Error ? serializeError(v) : v)),
+      )
+    }
+    return JSON.stringify(message)
+  } catch {
+    return String(message)
+  }
+}
+
+function serializeError(err: Error): Record<string, unknown> {
+  return {
+    name: err.name,
+    message: err.message,
+    stack: err.stack,
+    ...(err.cause instanceof Error
+      ? { cause: serializeError(err.cause) }
+      : err.cause !== undefined
+        ? { cause: err.cause }
+        : {}),
+  }
 }

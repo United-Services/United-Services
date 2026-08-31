@@ -25,7 +25,9 @@ export class BetterstackLogger extends ConsoleLogger {
         dt: new Date().toISOString().replace('T', ' ').replace('Z', ' UTC'),
         level,
         message:
-          typeof message === 'string' ? message : JSON.stringify(message),
+          typeof message === 'string'
+            ? message
+            : BetterstackLogger.stringifyMessage(message),
         context,
         service: 'backend',
       }),
@@ -34,14 +36,57 @@ export class BetterstackLogger extends ConsoleLogger {
     });
   }
 
+  // `JSON.stringify(someError)` produces "{}" — Error's own message/
+  // stack/name are non-enumerable, so a bare `logger.error(err)` (an
+  // Error object as the sole argument, no message string) silently
+  // shipped as an empty, undiagnosable "{}" instead of the actual error.
+  private static stringifyMessage(message: unknown): string {
+    try {
+      if (message instanceof Error) {
+        return JSON.stringify(BetterstackLogger.serializeError(message));
+      }
+      if (Array.isArray(message) && message.some((v) => v instanceof Error)) {
+        return JSON.stringify(
+          message.map((v) =>
+            v instanceof Error ? BetterstackLogger.serializeError(v) : v,
+          ),
+        );
+      }
+      return JSON.stringify(message);
+    } catch {
+      return String(message);
+    }
+  }
+
+  private static serializeError(err: Error): Record<string, unknown> {
+    return {
+      name: err.name,
+      message: err.message,
+      stack: err.stack,
+      ...(err.cause instanceof Error
+        ? { cause: BetterstackLogger.serializeError(err.cause) }
+        : err.cause !== undefined
+          ? { cause: err.cause }
+          : {}),
+    };
+  }
+
   log(message: unknown, context?: string) {
     this.ship('info', message, context);
   }
 
-  error(message: unknown, stack?: string, context?: string) {
+  // `stack` is typed `string` (matches Nest's LoggerService signature), but
+  // nothing enforces that at a call site — `logger.error('msg', err)`
+  // passing a whole Error object as `stack` used to silently rely on
+  // Error.prototype.toString() happening to produce something readable.
+  // Handled explicitly now so a real Error here still ships its actual
+  // stack, not just its one-line toString().
+  error(message: unknown, stack?: string | Error, context?: string) {
+    const stackText =
+      stack instanceof Error ? (stack.stack ?? stack.message) : stack;
     this.ship(
       'error',
-      stack ? `${String(message)}\n${stack}` : message,
+      stackText ? `${String(message)}\n${stackText}` : message,
       context,
     );
   }
