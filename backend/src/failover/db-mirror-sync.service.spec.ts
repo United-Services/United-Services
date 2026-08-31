@@ -17,7 +17,7 @@ jest.mock('@prisma/adapter-pg', () => ({
 }));
 
 // One controllable mock model ('user') plus 18 inert no-op models, so
-// syncAll()'s full 19-model loop completes quickly while still letting
+// syncAll()'s full 20-model loop completes quickly while still letting
 // tests assert precisely on one model's batching/delete-reconciliation
 // behavior.
 const OTHER_MODELS = [
@@ -38,6 +38,7 @@ const OTHER_MODELS = [
   'allowedOrigin',
   'analyticsEvent',
   'ticket',
+  'ticketArchive',
   'contentTranslation',
 ];
 
@@ -114,9 +115,9 @@ describe('DbMirrorSyncService', () => {
   });
 
   describe('syncAll', () => {
-    it('returns one result per mirrored model (19 total)', async () => {
+    it('returns one result per mirrored model (20 total)', async () => {
       const results = await service.syncAll();
-      expect(results).toHaveLength(19);
+      expect(results).toHaveLength(20);
       expect(results.map((r) => r.model)).toContain('user');
     });
 
@@ -164,6 +165,21 @@ describe('DbMirrorSyncService', () => {
       expect(userResult.upserted).toBe(SYNC_BATCH_SIZE + 1);
     });
 
+    it('stops after an exact-batch-size final page instead of looping forever (queries once more, finds nothing)', async () => {
+      const fullPage = Array.from({ length: SYNC_BATCH_SIZE }, (_, i) =>
+        row(`u${String(i).padStart(4, '0')}`),
+      );
+      primaryUserModel.findMany
+        .mockResolvedValueOnce(fullPage)
+        .mockResolvedValueOnce([]);
+
+      const results = await service.syncAll();
+
+      expect(primaryUserModel.findMany).toHaveBeenCalledTimes(2);
+      const userResult = results.find((r) => r.model === 'user')!;
+      expect(userResult.upserted).toBe(SYNC_BATCH_SIZE);
+    });
+
     it('deletes local rows no longer present on primary (delete-reconciliation)', async () => {
       primaryUserModel.findMany.mockResolvedValueOnce([row('u1')]);
       localUserModel.findMany.mockResolvedValueOnce([
@@ -190,6 +206,42 @@ describe('DbMirrorSyncService', () => {
       await service.syncAll();
 
       expect(localUserModel.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('paginates delete-reconciliation across multiple local pages, not just the sync side', async () => {
+      primaryUserModel.findMany.mockResolvedValueOnce([row('u1')]);
+      const fullLocalPage = Array.from({ length: SYNC_BATCH_SIZE }, (_, i) => ({
+        id: `stale-${String(i).padStart(4, '0')}`,
+      }));
+      localUserModel.findMany
+        .mockResolvedValueOnce(fullLocalPage)
+        .mockResolvedValueOnce([{ id: 'u1' }, { id: 'stale-last' }]);
+
+      const results = await service.syncAll();
+
+      expect(localUserModel.findMany).toHaveBeenCalledTimes(2);
+      expect(localUserModel.deleteMany).toHaveBeenCalledTimes(2);
+      const userResult = results.find((r) => r.model === 'user')!;
+      // Every id from the full page (all stale) plus 'stale-last' from
+      // the second page — 'u1' from that second page is preserved.
+      expect(userResult.deleted).toBe(SYNC_BATCH_SIZE + 1);
+    });
+
+    it('an empty primary table with existing local rows deletes everything locally (primary fully cleared)', async () => {
+      primaryUserModel.findMany.mockResolvedValueOnce([]);
+      localUserModel.findMany.mockResolvedValueOnce([
+        { id: 'orphan-1' },
+        { id: 'orphan-2' },
+      ]);
+
+      const results = await service.syncAll();
+
+      expect(localUserModel.deleteMany).toHaveBeenCalledWith({
+        where: { id: { in: ['orphan-1', 'orphan-2'] } },
+      });
+      const userResult = results.find((r) => r.model === 'user')!;
+      expect(userResult.upserted).toBe(0);
+      expect(userResult.deleted).toBe(2);
     });
   });
 });

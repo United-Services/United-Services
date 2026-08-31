@@ -113,6 +113,44 @@ describe('FailoverService', () => {
       await checkPostgres(service);
       expect(handler).toHaveBeenCalledTimes(1);
     });
+
+    // Reentrancy: a check slower than CHECK_INTERVAL_MS must not let a
+    // second tick start concurrently and double-count toward the
+    // threshold — otherwise 2 real failed checks could look like 4 and
+    // trigger a failover a tick early, or worse, race the counter reset
+    // on a mixed success/failure overlap.
+    it('ignores an overlapping tick while a check is still in flight, so two ticks never double-count one failure', async () => {
+      let resolveQuery!: () => void;
+      queryRawMock.mockReturnValue(
+        new Promise((resolve) => {
+          resolveQuery = () => resolve([{ '?column?': 1 }]);
+        }),
+      );
+
+      const first = checkPostgres(service);
+      const second = checkPostgres(service); // fires while `first` is still pending
+      resolveQuery();
+      await first;
+      await second;
+
+      // Only one real check ran to completion — $queryRaw itself was
+      // only ever asked for once, not twice, proving the second tick
+      // returned immediately instead of starting its own query.
+      expect(queryRawMock).toHaveBeenCalledTimes(1);
+    });
+
+    // A rejection doesn't have to be an Error instance — this must not
+    // itself throw (e.g. from `err.message` on a non-Error) while
+    // building the log message, which would crash the whole check.
+    it('handles a non-Error rejection (e.g. a plain string) without throwing', async () => {
+      queryRawMock.mockRejectedValue('plain string rejection');
+
+      await expect(checkPostgres(service)).resolves.not.toThrow();
+      await checkPostgres(service);
+      await checkPostgres(service);
+
+      expect(service.getPostgresMode()).toBe('local');
+    });
   });
 
   describe('Redis failover', () => {
@@ -148,6 +186,33 @@ describe('FailoverService', () => {
       await checkRedis(service);
       await checkRedis(service);
       await checkRedis(service);
+      expect(service.getRedisMode()).toBe('local');
+    });
+
+    it('ignores an overlapping tick while a check is still in flight', async () => {
+      let resolvePing!: () => void;
+      redisPingMock.mockReturnValue(
+        new Promise((resolve) => {
+          resolvePing = () => resolve('PONG');
+        }),
+      );
+
+      const first = checkRedis(service);
+      const second = checkRedis(service);
+      resolvePing();
+      await first;
+      await second;
+
+      expect(redisPingMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('handles a non-Error rejection without throwing', async () => {
+      redisPingMock.mockRejectedValue({ code: 'WEIRD' });
+
+      await expect(checkRedis(service)).resolves.not.toThrow();
+      await checkRedis(service);
+      await checkRedis(service);
+
       expect(service.getRedisMode()).toBe('local');
     });
   });

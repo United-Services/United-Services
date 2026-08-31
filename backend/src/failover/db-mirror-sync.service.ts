@@ -31,6 +31,7 @@ const MIRRORED_MODELS = [
   'allowedOrigin',
   'analyticsEvent',
   'ticket',
+  'ticketArchive',
   'contentTranslation',
 ] as const;
 
