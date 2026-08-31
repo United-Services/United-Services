@@ -779,6 +779,7 @@
       "totalBooked": "Total booked",
       "recentActivity": "Recent Audit Activity",
       "noActivity": "No activity yet.",
+      "systemActor": "System",
       "viewFullLog": "View full audit log →",
       "requestsByCountry": "Requests by Country",
       "requestsByCountrySub": "Page views over the last 90 days, resolved from visitor IP",

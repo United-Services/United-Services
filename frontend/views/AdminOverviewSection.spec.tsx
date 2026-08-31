@@ -114,4 +114,39 @@ describe("AdminOverviewSection — audit-log-backed Recent Activity card is supe
     button.click()
     expect(onViewAuditLog).toHaveBeenCalledTimes(1)
   })
+
+  // Regression: AuditLog.actorUserId is nullable on the backend (system-
+  // generated entries, or the actor's account was later deleted) — a
+  // null actor here used to crash the whole admin dashboard with
+  // "Cannot read properties of null (reading 'firstName')" instead of
+  // just rendering that one row as "System".
+  it("renders a system-generated entry (null actor) as System instead of crashing", async () => {
+    get.mockReset().mockImplementation((url: string) => {
+      if (url === "/analytics/overview") return Promise.resolve({ data: OVERVIEW })
+      if (url === "/analytics/geo-overview")
+        return Promise.resolve({ data: { countries: [] } })
+      if (url === "/audit-log")
+        return Promise.resolve({
+          data: {
+            items: [
+              {
+                id: "log-1",
+                action: "db_mirror.sync",
+                targetType: "System",
+                targetId: "sys",
+                createdAt: new Date().toISOString(),
+                actor: null,
+              },
+            ],
+          },
+        })
+      return Promise.reject(new Error(`unexpected url ${url}`))
+    })
+
+    render(
+      <AdminOverviewSection setError={vi.fn()} isSuperAdmin={true} onViewAuditLog={vi.fn()} />,
+    )
+
+    expect(await screen.findByText("overview.systemActor")).toBeInTheDocument()
+  })
 })
