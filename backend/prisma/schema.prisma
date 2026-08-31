@@ -477,10 +477,13 @@ enum TicketType {
   non_technical
 }
 
-// Freely switchable in either direction — an admin can move a ticket back
-// to unresolved (e.g. a "resolved" turned out not to be), not just
-// forward. Declaration order doesn't carry the same load-bearing meaning
-// TicketType's does; this one's just the natural lifecycle order.
+// Freely switchable between unresolved and contacted in either direction
+// — but `resolved` is terminal (docs/BUSINESS_RULES.md rule 20):
+// TicketsController.updateStatus() archives the ticket and deletes its
+// S3 screenshot the moment status becomes resolved, so there's nothing
+// left to switch back from afterward. Declaration order doesn't carry
+// the same load-bearing meaning TicketType's does; this one's just the
+// natural lifecycle order.
 enum TicketStatus {
   unresolved
   contacted
@@ -504,9 +507,42 @@ model Ticket {
   // switched away, as a "when were they first reached" record; status
   // itself is the source of truth for the current state.
   contactedAt     DateTime?
+  // Set the moment status becomes resolved (TicketsController.
+  // updateStatus) — read by TicketArchiveService when building the
+  // TicketArchive row shortly after. Never cleared; resolved is
+  // terminal, so this row is deleted once archival completes anyway.
+  resolvedAt      DateTime?
 
   @@index([type, createdAt])
   @@index([status])
+}
+
+// Archived copy of a Ticket the moment it's marked resolved — see
+// TicketArchiveService/TicketArchiveWorker. Unlike AuditLogArchive
+// (90-day age-based sweep, kept forever, nothing deleted), this is
+// event-driven off the resolved transition and its whole point is
+// storage reclamation: screenshotS3Key here is a historical record of
+// what the key *was*, not a live reference — the S3 object itself is
+// deleted, and screenshotDeletedAt records when. No FK to the original
+// Ticket row, deliberately — that row is deleted once archival
+// completes (docs/BUSINESS_RULES.md rule 20: resolved is terminal, so
+// there's nothing to keep a live relation to).
+model TicketArchive {
+  id                 String    @id @default(cuid())
+  originalTicketId   String    @unique
+  name               String
+  email              String
+  company            String?
+  type               TicketType
+  details            String
+  screenshotS3Key    String?
+  screenshotDeletedAt DateTime?
+  createdAt          DateTime
+  contactedAt        DateTime?
+  resolvedAt         DateTime
+  archivedAt         DateTime  @default(now())
+
+  @@index([archivedAt])
 }
 
 // Cached machine translation of a source row's translatable fields into

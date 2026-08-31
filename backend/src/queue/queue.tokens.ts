@@ -49,3 +49,17 @@ export const FAILOVER_RECONCILE_QUEUE_NAME = 'failover-reconcile';
 export const FAILOVER_RECONCILE_DLQ_NAME = 'failover-reconcile-dlq';
 
 export type FailoverReconcileJobData = Record<string, never>;
+
+export const TICKET_ARCHIVE_QUEUE = 'TICKET_ARCHIVE_QUEUE';
+export const TICKET_ARCHIVE_DLQ = 'TICKET_ARCHIVE_DLQ';
+
+export const TICKET_ARCHIVE_QUEUE_NAME = 'ticket-archive';
+export const TICKET_ARCHIVE_DLQ_NAME = 'ticket-archive-dlq';
+
+// One job per resolved ticket (enqueued the moment TicketsController.
+// updateStatus() transitions a ticket to resolved) plus a periodic
+// catch-up sweep with the same empty-data shape — see
+// TicketArchiveWorker's two triggers.
+export interface TicketArchiveJobData {
+  ticketId?: string;
+}

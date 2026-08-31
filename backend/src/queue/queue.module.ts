@@ -15,6 +15,10 @@ import {
   FAILOVER_RECONCILE_DLQ_NAME,
   FAILOVER_RECONCILE_QUEUE,
   FAILOVER_RECONCILE_QUEUE_NAME,
+  TICKET_ARCHIVE_DLQ,
+  TICKET_ARCHIVE_DLQ_NAME,
+  TICKET_ARCHIVE_QUEUE,
+  TICKET_ARCHIVE_QUEUE_NAME,
   TRANSLATION_DLQ,
   TRANSLATION_DLQ_NAME,
   TRANSLATION_QUEUE,
@@ -112,6 +116,22 @@ function createBullConnection(failover: FailoverService) {
         }),
       inject: [FailoverService],
     },
+    {
+      provide: TICKET_ARCHIVE_QUEUE,
+      useFactory: (failover: FailoverService) =>
+        new Queue(TICKET_ARCHIVE_QUEUE_NAME, {
+          connection: createBullConnection(failover),
+        }),
+      inject: [FailoverService],
+    },
+    {
+      provide: TICKET_ARCHIVE_DLQ,
+      useFactory: (failover: FailoverService) =>
+        new Queue(TICKET_ARCHIVE_DLQ_NAME, {
+          connection: createBullConnection(failover),
+        }),
+      inject: [FailoverService],
+    },
   ],
   exports: [
     TRANSLATION_QUEUE,
@@ -122,6 +142,8 @@ function createBullConnection(failover: FailoverService) {
     DB_MIRROR_SYNC_DLQ,
     FAILOVER_RECONCILE_QUEUE,
     FAILOVER_RECONCILE_DLQ,
+    TICKET_ARCHIVE_QUEUE,
+    TICKET_ARCHIVE_DLQ,
   ],
 })
 export class QueueModule {}

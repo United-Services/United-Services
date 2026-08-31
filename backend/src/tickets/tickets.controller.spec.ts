@@ -1,8 +1,13 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { TicketsController } from './tickets.controller';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { S3Service } from '../s3/s3.service';
 import type { AuditLogService } from '../audit-log/audit-log.service';
+import type { Queue } from 'bullmq';
 import { Role, type User } from '../generated/prisma';
 import { ROLES_KEY } from '../common/decorators/roles.decorator';
 import { IS_PUBLIC_KEY } from '../common/decorators/public.decorator';
@@ -47,6 +52,7 @@ describe('TicketsController', () => {
       ticket: {
         create: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         findMany: jest.fn(),
         findUnique: jest.fn(),
       },
@@ -64,11 +70,15 @@ describe('TicketsController', () => {
     const auditLog = {
       record: jest.fn().mockResolvedValue(undefined),
     } as unknown as AuditLogService;
+    const archiveQueue = {
+      add: jest.fn().mockResolvedValue(undefined),
+    } as unknown as Queue<any>;
     return {
-      controller: new TicketsController(prisma, s3, auditLog),
+      controller: new TicketsController(prisma, s3, auditLog, archiveQueue),
       prisma,
       s3,
       auditLog,
+      archiveQueue,
     };
   }
 
@@ -432,18 +442,19 @@ describe('TicketsController', () => {
         id: 't-1',
         status: 'unresolved',
         contactedAt: null,
+        resolvedAt: null,
       };
       (prisma.ticket.findUnique as jest.Mock).mockResolvedValue(existing);
-      (prisma.ticket.update as jest.Mock).mockImplementation(({ data }) => ({
-        id: 't-1',
-        ...data,
-      }));
 
-      await controller.updateStatus(admin, 't-1', { status: 'contacted' });
+      const result = await controller.updateStatus(admin, 't-1', {
+        status: 'contacted',
+      });
 
-      const updateArg = (prisma.ticket.update as jest.Mock).mock.calls[0][0];
+      const updateArg = (prisma.ticket.updateMany as jest.Mock).mock
+        .calls[0][0];
       expect(updateArg.data.status).toBe('contacted');
       expect(updateArg.data.contactedAt).toBeInstanceOf(Date);
+      expect(result.contactedAt).toBeInstanceOf(Date);
     });
 
     it('preserves the existing contactedAt when already contacted before, even if status moves away and back', async () => {
@@ -453,27 +464,26 @@ describe('TicketsController', () => {
         id: 't-2',
         status: 'unresolved', // switched away from contacted previously
         contactedAt: firstContact,
+        resolvedAt: null,
       };
       (prisma.ticket.findUnique as jest.Mock).mockResolvedValue(existing);
-      (prisma.ticket.update as jest.Mock).mockImplementation(({ data }) => ({
-        id: 't-2',
-        ...data,
-      }));
 
       await controller.updateStatus(admin, 't-2', { status: 'contacted' });
 
-      const updateArg = (prisma.ticket.update as jest.Mock).mock.calls[0][0];
+      const updateArg = (prisma.ticket.updateMany as jest.Mock).mock
+        .calls[0][0];
       expect(updateArg.data.contactedAt).toBe(firstContact);
     });
 
     it('records an audit log entry with correct from/to metadata', async () => {
       const { controller, prisma, auditLog } = makeController();
-      const existing = { id: 't-3', status: 'unresolved', contactedAt: null };
-      (prisma.ticket.findUnique as jest.Mock).mockResolvedValue(existing);
-      (prisma.ticket.update as jest.Mock).mockResolvedValue({
+      const existing = {
         id: 't-3',
-        status: 'resolved',
-      });
+        status: 'unresolved',
+        contactedAt: null,
+        resolvedAt: null,
+      };
+      (prisma.ticket.findUnique as jest.Mock).mockResolvedValue(existing);
 
       await controller.updateStatus(admin, 't-3', { status: 'resolved' });
 
@@ -484,6 +494,125 @@ describe('TicketsController', () => {
         targetId: 't-3',
         metadata: { from: 'unresolved', to: 'resolved' },
       });
+    });
+
+    // docs/BUSINESS_RULES.md rule 20: resolved is terminal. The guard
+    // lives in the atomic updateMany's own `where` (status not already
+    // resolved), not a preceding read — see the two race-condition tests
+    // below for why that distinction actually matters.
+    it('rejects changing the status of an already-resolved ticket, with ConflictException', async () => {
+      const { controller, prisma } = makeController();
+      const existing = {
+        id: 't-4',
+        status: 'resolved',
+        contactedAt: null,
+        resolvedAt: new Date('2026-01-01'),
+      };
+      (prisma.ticket.findUnique as jest.Mock).mockResolvedValue(existing);
+      (prisma.ticket.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
+
+      await expect(
+        controller.updateStatus(admin, 't-4', { status: 'contacted' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('the updateMany where-clause excludes resolved tickets, guarding atomically rather than via the preceding read', async () => {
+      const { controller, prisma } = makeController();
+      const existing = {
+        id: 't-5',
+        status: 'unresolved',
+        contactedAt: null,
+        resolvedAt: null,
+      };
+      (prisma.ticket.findUnique as jest.Mock).mockResolvedValue(existing);
+
+      await controller.updateStatus(admin, 't-5', { status: 'resolved' });
+
+      expect(prisma.ticket.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 't-5', status: { not: 'resolved' } },
+        }),
+      );
+    });
+
+    // The actual concurrency guarantee: two "simultaneous" updateStatus
+    // calls on the same ticket (one resolving it, one trying to reopen
+    // it) can never both succeed, because the terminal guard lives
+    // inside the atomic updateMany rather than the preceding read. This
+    // simulates the loser of that race directly.
+    it('treats a lost race (updateMany affects 0 rows) as already-resolved, never as a silent reopen of an archiving ticket', async () => {
+      const { controller, prisma, auditLog, archiveQueue } = makeController();
+      const existing = {
+        id: 't-6',
+        status: 'unresolved',
+        contactedAt: null,
+        resolvedAt: null,
+      };
+      (prisma.ticket.findUnique as jest.Mock).mockResolvedValue(existing);
+      (prisma.ticket.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
+
+      await expect(
+        controller.updateStatus(admin, 't-6', { status: 'contacted' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(auditLog.record).not.toHaveBeenCalled();
+      expect(archiveQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('sets resolvedAt and enqueues an archive job when the transition to resolved succeeds', async () => {
+      const { controller, prisma, archiveQueue } = makeController();
+      const existing = {
+        id: 't-7',
+        status: 'unresolved',
+        contactedAt: null,
+        resolvedAt: null,
+      };
+      (prisma.ticket.findUnique as jest.Mock).mockResolvedValue(existing);
+
+      const result = await controller.updateStatus(admin, 't-7', {
+        status: 'resolved',
+      });
+
+      expect(result.resolvedAt).toBeInstanceOf(Date);
+      const updateArg = (prisma.ticket.updateMany as jest.Mock).mock
+        .calls[0][0];
+      expect(updateArg.data.resolvedAt).toBeInstanceOf(Date);
+      expect(archiveQueue.add).toHaveBeenCalledWith(
+        'archive-ticket',
+        { ticketId: 't-7' },
+        expect.objectContaining({ attempts: 3 }),
+      );
+    });
+
+    it('does NOT enqueue an archive job for a transition to unresolved/contacted', async () => {
+      const { controller, prisma, archiveQueue } = makeController();
+      const existing = {
+        id: 't-8',
+        status: 'unresolved',
+        contactedAt: null,
+        resolvedAt: null,
+      };
+      (prisma.ticket.findUnique as jest.Mock).mockResolvedValue(existing);
+
+      await controller.updateStatus(admin, 't-8', { status: 'contacted' });
+
+      expect(archiveQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('does not enqueue the archive job at all if the atomic update itself is rejected (no partial side effects)', async () => {
+      const { controller, prisma, archiveQueue } = makeController();
+      const existing = {
+        id: 't-9',
+        status: 'resolved',
+        contactedAt: null,
+        resolvedAt: new Date(),
+      };
+      (prisma.ticket.findUnique as jest.Mock).mockResolvedValue(existing);
+      (prisma.ticket.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
+
+      await expect(
+        controller.updateStatus(admin, 't-9', { status: 'resolved' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(archiveQueue.add).not.toHaveBeenCalled();
     });
   });
 });

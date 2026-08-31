@@ -182,3 +182,24 @@ changes or a new one is discovered during implementation.
     `FailoverConflict` rather than silently discarded or overwritten.
     Every other model's writes during a fallback window replay as a
     last-write-wins upsert once primary recovers.
+20. A ticket's `resolved` status is terminal — unlike `unresolved`/
+    `contacted`, which stay freely switchable in either direction, moving
+    a ticket to `resolved` immediately and atomically archives it and
+    deletes its S3 screenshot (if any); there is no path back. Enforced
+    at the DB level: `TicketsController.updateStatus()`'s status change
+    is an atomic `updateMany` gated on `status: { not: resolved } }` in
+    the `where` clause (not a preceding read), so two concurrent
+    requests — one resolving a ticket, one trying to reopen it — can
+    never both succeed, exactly the same TOCTOU-safe pattern used by
+    every other decide-style endpoint in this codebase (candidates, RFQ,
+    file-access, appointments). Archival itself
+    (`TicketArchiveService`/`TicketArchiveWorker`) runs off the request
+    path via BullMQ: the ticket's details are copied into
+    `TicketArchive`, its S3 screenshot is deleted (never just marked —
+    the whole point is reclaiming storage, unlike `AuditLogArchive`'s
+    90-day age-based sweep, which keeps everything), and only then is the
+    live `Ticket` row deleted — in that order, so a retry after a
+    mid-archival crash can never orphan an S3 object or lose data. A
+    periodic sweep (`TicketArchiveService.archiveAllResolved`, every 10
+    minutes) is the backstop for a resolved ticket whose immediate
+    archive job was somehow lost.

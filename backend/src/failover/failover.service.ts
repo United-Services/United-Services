@@ -15,6 +15,13 @@ const FAILURE_THRESHOLD = 3;
 const RECOVERY_THRESHOLD = 3;
 const CHECK_INTERVAL_MS = 5_000;
 
+// A thrown value isn't guaranteed to be an Error (a library can reject
+// with a plain string, or something odd) — this must never itself throw
+// while building a log message about a connection failure.
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 // Health-checks Supabase Postgres and Upstash Redis independently and
 // holds the current failover mode for each. Deliberately owns its own
 // minimal, dedicated connections for pinging rather than depending on
@@ -41,6 +48,13 @@ export class FailoverService
   private pingClient: PrismaClient | null = null;
   private postgresTimer: NodeJS.Timeout | null = null;
   private redisTimer: NodeJS.Timeout | null = null;
+  // Reentrancy guards — a check that takes longer than CHECK_INTERVAL_MS
+  // (a slow/hanging network call, not just a fast failure) would
+  // otherwise overlap with the next tick and double-count toward the
+  // failure/success thresholds from two concurrent runs racing the same
+  // counters.
+  private postgresCheckInFlight = false;
+  private redisCheckInFlight = false;
 
   getPostgresMode(): FailoverMode {
     return this.postgresMode;
@@ -70,6 +84,8 @@ export class FailoverService
   }
 
   private async checkPostgres() {
+    if (this.postgresCheckInFlight) return;
+    this.postgresCheckInFlight = true;
     try {
       await this.pingClient!.$queryRaw`SELECT 1`;
       this.postgresFailureCount = 0;
@@ -92,15 +108,19 @@ export class FailoverService
           this.postgresMode = 'local';
           this.postgresFailureCount = 0;
           this.logger.error(
-            `Postgres primary unreachable after ${FAILURE_THRESHOLD} checks — failing over to local standby: ${(err as Error).message}`,
+            `Postgres primary unreachable after ${FAILURE_THRESHOLD} checks — failing over to local standby: ${errorMessage(err)}`,
           );
           this.emit('postgres:failover');
         }
       }
+    } finally {
+      this.postgresCheckInFlight = false;
     }
   }
 
   private async checkRedis() {
+    if (this.redisCheckInFlight) return;
+    this.redisCheckInFlight = true;
     // A fresh, short-lived connection per check rather than a persistent
     // ping connection — simpler and avoids reasoning about reconnecting
     // a connection that's already in a broken state after a failure.
@@ -133,13 +153,14 @@ export class FailoverService
           this.redisMode = 'local';
           this.redisFailureCount = 0;
           this.logger.error(
-            `Redis primary unreachable after ${FAILURE_THRESHOLD} checks — failing over to local standby: ${(err as Error).message}`,
+            `Redis primary unreachable after ${FAILURE_THRESHOLD} checks — failing over to local standby: ${errorMessage(err)}`,
           );
           this.emit('redis:failover');
         }
       }
     } finally {
       client.disconnect();
+      this.redisCheckInFlight = false;
     }
   }
 }

@@ -1,9 +1,11 @@
 import {
   BadRequestException,
   Body,
+  ConflictException,
   Controller,
   DefaultValuePipe,
   Get,
+  Inject,
   NotFoundException,
   Param,
   ParseIntPipe,
@@ -13,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Throttle } from '@nestjs/throttler';
+import type { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -23,10 +26,14 @@ import { matchesContentType } from '../common/utils/file-security';
 import { DEFAULT_PAGE_SIZE, paginate } from '../common/utils/paginate';
 import { SEARCH_SCAN_LIMIT } from '../common/constants/search-scan-limit';
 import { fuzzyMatch, searchableText } from '../common/utils/fuzzy-match';
+import {
+  TICKET_ARCHIVE_QUEUE,
+  type TicketArchiveJobData,
+} from '../queue/queue.tokens';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { PresignTicketScreenshotDto } from './dto/presign-ticket-screenshot.dto';
 import { UpdateTicketStatusDto } from './dto/update-ticket-status.dto';
-import { Role, type User } from '../generated/prisma';
+import { Role, TicketStatus, type User } from '../generated/prisma';
 
 const ALLOWED_SCREENSHOT_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -43,6 +50,8 @@ export class TicketsController {
     private readonly prisma: PrismaService,
     private readonly s3: S3Service,
     private readonly auditLog: AuditLogService,
+    @Inject(TICKET_ARCHIVE_QUEUE)
+    private readonly archiveQueue: Queue<TicketArchiveJobData>,
   ) {}
 
   // Public and unauthenticated (a disabled/locked-out user may not be able
@@ -161,11 +170,20 @@ export class TicketsController {
     return { items, hasMore };
   }
 
-  // Freely switchable in any direction — see schema.prisma's comment on
-  // TicketStatus. `contactedAt` is set the first time status ever moves
-  // to `contacted` and never cleared afterward, even if later switched
-  // away — it's a "when were they first reached" record, not the current
-  // state (status is).
+  // Freely switchable between unresolved and contacted in either
+  // direction, but resolved is terminal (docs/BUSINESS_RULES.md rule
+  // 20) — the moment a ticket is resolved it's archived and its
+  // screenshot deleted (TicketArchiveWorker), so there's nothing left to
+  // switch back from. The terminal guard has to live in the update's own
+  // `where`, not a preceding read — a separate findUnique-then-check
+  // leaves a window where two concurrent requests could both read
+  // "not yet resolved" before either write commits, letting a second
+  // request reopen a ticket that's already being archived. Same fix as
+  // appointments.controller.ts's book() and every other decide-style
+  // endpoint in this codebase. `contactedAt` is set the first time
+  // status ever moves to `contacted` and never cleared afterward, even
+  // if later switched away — it's a "when were they first reached"
+  // record, not the current state (status is).
   //
   // Exclusively super_admin — see the comment on list() above.
   @Roles(Role.super_admin)
@@ -178,16 +196,23 @@ export class TicketsController {
     const existing = await this.prisma.ticket.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Ticket not found');
 
-    const ticket = await this.prisma.ticket.update({
-      where: { id },
-      data: {
-        status: dto.status,
-        contactedAt:
-          dto.status === 'contacted' && !existing.contactedAt
-            ? new Date()
-            : existing.contactedAt,
-      },
+    const now = new Date();
+    const contactedAt =
+      dto.status === TicketStatus.contacted && !existing.contactedAt
+        ? now
+        : existing.contactedAt;
+    const resolvedAt =
+      dto.status === TicketStatus.resolved ? now : existing.resolvedAt;
+
+    const updated = await this.prisma.ticket.updateMany({
+      where: { id, status: { not: TicketStatus.resolved } },
+      data: { status: dto.status, contactedAt, resolvedAt },
     });
+    if (updated.count === 0) {
+      throw new ConflictException(
+        'This ticket has already been resolved and archived — its status can no longer be changed.',
+      );
+    }
 
     await this.auditLog.record({
       actorUserId: admin.id,
@@ -197,6 +222,24 @@ export class TicketsController {
       metadata: { from: existing.status, to: dto.status },
     });
 
-    return ticket;
+    if (dto.status === TicketStatus.resolved) {
+      // Archival (and the S3 screenshot deletion) happens off the
+      // request path — this admin's PATCH shouldn't wait on an S3 call.
+      // Retries/DLQ are TicketArchiveWorker's job; the periodic sweep
+      // (TicketArchiveService.archiveAllResolved) is the backstop if
+      // this enqueue itself is ever lost.
+      await this.archiveQueue.add(
+        'archive-ticket',
+        { ticketId: id },
+        {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 10_000 },
+          removeOnComplete: { age: 3600 },
+          removeOnFail: { age: 86_400 },
+        },
+      );
+    }
+
+    return { ...existing, status: dto.status, contactedAt, resolvedAt };
   }
 }
