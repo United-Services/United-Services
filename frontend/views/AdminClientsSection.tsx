@@ -366,6 +366,7 @@ export default function AdminClientsSection({ setError, isSuperAdmin }: Props) {
                   firstName: e.target.value,
                 }))
               }
+              placeholder={t("clients.firstNamePlaceholder")}
               required
               style={{
                 padding: "9px 12px",
@@ -396,6 +397,7 @@ export default function AdminClientsSection({ setError, isSuperAdmin }: Props) {
                   lastName: e.target.value,
                 }))
               }
+              placeholder={t("clients.lastNamePlaceholder")}
               required
               style={{
                 padding: "9px 12px",
@@ -424,6 +426,7 @@ export default function AdminClientsSection({ setError, isSuperAdmin }: Props) {
               onChange={(e) =>
                 setNewUserForm((f) => ({ ...f, email: e.target.value }))
               }
+              placeholder={t("clients.emailPlaceholder")}
               required
               style={{
                 padding: "9px 12px",
@@ -454,6 +457,7 @@ export default function AdminClientsSection({ setError, isSuperAdmin }: Props) {
                   companyName: e.target.value,
                 }))
               }
+              placeholder={t("clients.companyNamePlaceholder")}
               style={{
                 padding: "9px 12px",
                 borderRadius: 10,
