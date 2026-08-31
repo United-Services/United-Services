@@ -53,6 +53,27 @@ export function createFailoverRedisConnection(
     {
       get(_target, prop, _receiver) {
         const active = failover.getRedisMode() === 'local' ? local : primary;
+        // BullMQ registers its Lua-script commands once, lazily, via
+        // `client.defineCommand(name, {...})` on whichever concrete
+        // client was active at that moment (see bullmq's
+        // RedisConnection.loadCommands, which guards on
+        // `!this._client[commandName]` — through this Proxy that guard
+        // only ever sees whichever client is currently active). Without
+        // this special case, a later failover to the other connection
+        // would leave it missing every custom command BullMQ needs,
+        // producing "client[name] is not a function" instead of a
+        // normal, backoff-eligible connection error — this bit a real
+        // production incident (Upstash quota exhaustion triggering a
+        // fast, unthrottled TypeError retry loop that OOM-crashed the
+        // process). Defining the command on both connections up front
+        // means either one is ready to serve it regardless of which is
+        // active when BullMQ's lazy registration runs.
+        if (prop === 'defineCommand') {
+          return (name: string, definition: unknown) => {
+            (primary.defineCommand as (n: string, d: unknown) => void)(name, definition);
+            (local.defineCommand as (n: string, d: unknown) => void)(name, definition);
+          };
+        }
         const value = Reflect.get(active, prop, active);
         return typeof value === 'function' ? value.bind(active) : value;
       },
