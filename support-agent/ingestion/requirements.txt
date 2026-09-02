@@ -1,0 +1,9 @@
+# Separate from backend/requirements.txt deliberately — this runs inside
+# the Spark/Airflow containers, not the FastAPI backend, and pulling
+# PySpark/sentence-transformers into the API server's image would bloat
+# it for no reason (the backend only ever *reads* Qdrant, via
+# search_knowledge_base.py, and never runs ingestion itself).
+requests==2.32.3
+beautifulsoup4==4.12.3
+pyspark==3.5.4
+qdrant-client==1.12.1

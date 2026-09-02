@@ -8,6 +8,7 @@ import LanguagePrompt from "@/components/LanguagePrompt"
 import PageViewTracker from "@/components/PageViewTracker"
 import GlobalLoadingBar from "@/components/GlobalLoadingBar"
 import PageTransition from "@/components/PageTransition"
+import ChatWidget from "@/components/ChatWidget"
 import "../globals.css"
 
 export const metadata: Metadata = {
@@ -70,6 +71,7 @@ export default async function LocaleLayout({
             <PageViewTracker />
             <PageTransition>{children}</PageTransition>
             {locale === routing.defaultLocale && <LanguagePrompt />}
+            <ChatWidget />
           </NextIntlClientProvider>
         </ClerkProvider>
       </body>

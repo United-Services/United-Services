@@ -1,0 +1,32 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+langchain==0.3.14
+langchain-openai==0.3.1
+langgraph==0.2.62
+pydantic-settings==2.7.1
+python-dotenv==1.0.1
+
+# Phase 2 — search_knowledge_base needs to embed the *query* with the
+# same model ingestion/embed.py used on the documents (see that file's
+# module docstring on why this is duplicated, not imported, across the
+# ingestion/backend Docker build-context boundary). requests, not
+# sentence-transformers/torch — embeddings come from Hugging Face's
+# hosted Inference API instead of a local model.
+requests==2.32.3
+qdrant-client==1.12.1
+
+# Phase 3 — tickets + conversation sessions, persisted to Postgres.
+sqlalchemy==2.0.36
+alembic==1.14.0
+psycopg[binary]==3.2.3
+
+# Phase 4 — live conversation buffer. SSE itself is plain
+# StreamingResponse + manual "data: ...\n\n" formatting, no extra
+# dependency needed for that part.
+redis==5.2.1
+
+# /chat/stream now requires a signed-in visitor (app/security/clerk_auth.py)
+# — verifies the same Clerk session token the main site's ClerkAuthGuard
+# does, so the transcript can be keyed by real user id instead of a
+# client-supplied session_id.
+pyjwt[crypto]==2.10.1
