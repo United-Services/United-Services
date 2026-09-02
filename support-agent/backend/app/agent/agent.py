@@ -48,11 +48,16 @@ SYSTEM_PROMPT = (
 # loop described in the plan; LangChain's own docs now point new code at
 # this over the older AgentExecutor.
 #
-# `state_modifier` (not `prompt`) is the system-prompt argument name on
-# the langgraph==0.2.62 pin in requirements.txt — this changed across
-# langgraph versions, exactly the kind of tutorial-code drift the plan
-# warns about. If you bump langgraph, check this signature again rather
-# than assuming it still matches.
+# `prompt` (not `state_modifier`) is the system-prompt argument name as
+# of langgraph==1.2.11 (requirements.txt) — `state_modifier` was the
+# name on the original 0.2.62 pin and was removed in the 1.0 line, which
+# also moved create_react_agent's actual implementation into the
+# separate langgraph-prebuilt distribution (confirmed live: a fresh
+# install without also force-reinstalling langgraph-prebuilt left
+# langgraph/prebuilt/ missing its __init__.py and chat_agent_executor.py
+# despite pip reporting success — a real install-ordering bug hit during
+# this exact upgrade, not a hypothetical). If you bump langgraph again,
+# check this signature again rather than assuming it still matches.
 #
 # One fully-compiled agent per candidate model (settings.model, then
 # settings.fallback_model_list in order), not LangChain's generic
@@ -64,7 +69,7 @@ SYSTEM_PROMPT = (
 # building one per candidate up front and trying them in order in
 # stream_agent below is the straightforward correct approach here.
 _agents: list[tuple[str, object]] = [
-    (name, create_react_agent(build_llm(name), ALL_TOOLS, state_modifier=SYSTEM_PROMPT))
+    (name, create_react_agent(build_llm(name), ALL_TOOLS, prompt=SYSTEM_PROMPT))
     for name in [settings.model, *settings.fallback_model_list]
 ]
 
