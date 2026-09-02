@@ -1,0 +1,19 @@
+# Applied automatically by `docker compose` whenever this file sits next
+# to docker-compose.yml (no extra flag needed) — this is exactly the
+# drift risk the plan's own "commonly goes wrong" line names: "Env vars
+# for OpenRouter keys, DB URLs, and Redis host drifting between the
+# override file and the base compose file." Keep this file to *only*
+# local-dev conveniences (source mounts, --reload) — never redefine a
+# connection URL or secret here that also lives in docker-compose.yml or
+# backend/.env; if a var needs to differ in dev, it belongs in .env, not
+# duplicated here as a second source of truth.
+#
+# To run production-like without these overrides:
+#   docker compose -f docker-compose.yml up --build
+services:
+  backend:
+    volumes:
+      - ./backend/app:/app/app:ro
+    command: >
+      sh -c "alembic upgrade head && alembic -x db=local upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"

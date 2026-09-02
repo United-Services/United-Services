@@ -1,0 +1,156 @@
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: airflow/Dockerfile
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-support_agent}:${POSTGRES_PASSWORD:-support_agent}@postgres/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+    # Points the DAG's BashOperator commands (see doc_ingestion_dag.py)
+    # at the site to scrape and the Qdrant instance to upsert into —
+    # both reachable by service name on the internal compose network.
+    SITE_BASE_URL: ${SITE_BASE_URL:-http://host.docker.internal:8080}
+    QDRANT_URL: http://qdrant:6333
+    # embed.py (running inside these containers via the DAG's BashOperator
+    # tasks) needs this to call HF's hosted Inference API — same token/
+    # model the backend's search_knowledge_base tool uses, or retrieval
+    # silently breaks (see ingestion/embed.py's module docstring).
+    HF_TOKEN: ${HF_TOKEN:?set HF_TOKEN in .env — https://huggingface.co/settings/tokens}
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./ingestion:/opt/airflow/ingestion
+    - airflow-logs:/opt/airflow/logs
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-support_agent}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-support_agent}
+      POSTGRES_DB: ${POSTGRES_DB:-support_agent}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Creates the separate `airflow` database on first boot only —
+      # see postgres-init/01-create-airflow-db.sql's comment on why this
+      # is one Postgres instance, not two.
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-support_agent}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5433:5432"
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    restart: unless-stopped
+    volumes:
+      - qdrant-data:/qdrant/storage
+    # No curl/wget in this image (confirmed: it has bash, not much
+    # else) — a plain /dev/tcp check is the standard healthcheck
+    # approach for a minimal image like this one.
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/6333'"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "6333:6333"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env
+    environment:
+      QDRANT_URL: http://qdrant:6333
+      # DATABASE_URL (Supabase, primary) comes from backend/.env via
+      # env_file above — no sensible container-network default for an
+      # external managed service. LOCAL_DATABASE_URL is the local
+      # standby FailoverManager fails over to: the `postgres` service
+      # below, same instance Airflow's metadata db lives on (different
+      # database — see postgres-init/), not a second Postgres.
+      LOCAL_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-support_agent}:${POSTGRES_PASSWORD:-support_agent}@postgres/${POSTGRES_DB:-support_agent}
+      REDIS_URL: redis://redis:6379
+      # No CORS env var here — allowed origins are DB-backed
+      # (app/security/cors.py, allowed_origins table), seeded by the
+      # add_allowed_origins migration with the widget's container port
+      # and its Vite dev-server origin. Add a real deployed domain with
+      # a direct INSERT — see README's Phase 6 section.
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  # No separate widget/frontend service here — the chat widget
+  # (components/ChatWidget.tsx + lib/useChatStream.ts) lives inside the
+  # main site's own Next.js app (../frontend, repo root), which already
+  # has its own build/deploy pipeline. This compose file only ever
+  # covers the support-agent backend and its own infrastructure.
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username "${AIRFLOW_ADMIN_USER:-admin}" \
+          --password "${AIRFLOW_ADMIN_PASSWORD:?set AIRFLOW_ADMIN_PASSWORD in .env}" \
+          --firstname support --lastname agent \
+          --role Admin --email admin@example.com || true
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      # Host 8090, not 8080 — this repo's local nginx dev proxy (see
+      # ../nginx/nginx.local.conf) already claims :8080 on the host.
+      - "8090:8080"
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+
+volumes:
+  postgres-data:
+  qdrant-data:
+  redis-data:
+  airflow-logs:
