@@ -48,22 +48,42 @@ export default function LocaleNotFound() {
       >
         The page you&apos;re looking for doesn&apos;t exist or may have moved.
       </p>
-      <Link
-        href="/"
-        style={{
-          background: palette.accent,
-          color: palette.navy,
-          border: "none",
-          borderRadius: 9999,
-          padding: "11px 26px",
-          fontWeight: 700,
-          fontSize: 14,
-          textDecoration: "none",
-          fontFamily: "Poppins, sans-serif",
-        }}
-      >
-        Return home
-      </Link>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+        <Link
+          href="/"
+          style={{
+            background: palette.accent,
+            color: palette.navy,
+            border: "none",
+            borderRadius: 9999,
+            padding: "11px 26px",
+            fontWeight: 700,
+            fontSize: 14,
+            textDecoration: "none",
+            fontFamily: "Poppins, sans-serif",
+          }}
+        >
+          Return home
+        </Link>
+        <Link
+          href="/tickets?type=technical"
+          style={{
+            background: "#fff",
+            color: palette.navy,
+            border: `1.5px solid ${palette.border}`,
+            borderRadius: 9999,
+            padding: "11px 26px",
+            fontWeight: 600,
+            fontSize: 14,
+            textDecoration: "none",
+            fontFamily: "Poppins, sans-serif",
+            display: "inline-flex",
+            alignItems: "center",
+          }}
+        >
+          Submit a ticket
+        </Link>
+      </div>
       {isSignedIn && (
         <button
           onClick={() => signOut(() => { window.location.href = "/" })}

@@ -10,6 +10,21 @@ import { AppModule } from './app.module';
 import { BetterstackLogger } from './logging/betterstack.logger';
 import { configureApp } from './configure-app';
 
+// Outside production (docker-entrypoint.sh is the only place that sets
+// NODE_ENV=production), point REDIS_URL itself at the local dev Redis
+// instead of the real Upstash endpoint — every consumer that reads
+// REDIS_URL (FailoverService's own health-check ping, BullMQ, rate
+// limiting, MFA session state, etc.) reads it lazily at call time, so
+// this one override keeps the app off Upstash entirely during
+// day-to-day local development instead of chipping away at the
+// account's monthly request quota on every dev boot. Must happen before
+// AppModule is imported below, since dotenv itself has to run first
+// (see the comment above) and this has to run before any of that module
+// graph starts executing.
+if (process.env.NODE_ENV !== 'production') {
+  process.env.REDIS_URL = process.env.LOCAL_REDIS_URL ?? 'redis://localhost:6379';
+}
+
 async function bootstrap() {
   const logger = new BetterstackLogger();
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {

@@ -117,6 +117,7 @@ export default function ChangePassword({ onNavigate }: Props) {
                 autoComplete="new-password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                placeholder={t("newPasswordPlaceholder")}
                 required
                 minLength={8}
                 style={inputStyle}
@@ -139,6 +140,7 @@ export default function ChangePassword({ onNavigate }: Props) {
                 autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder={t("confirmPasswordPlaceholder")}
                 required
                 minLength={8}
                 style={inputStyle}

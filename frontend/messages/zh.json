@@ -805,9 +805,9 @@
       "addUser": "Add User",
       "createAccount": "Create Account",
       "firstName": "First Name",
-      "firstNamePlaceholder": "Jane",
+      "firstNamePlaceholder": "First name",
       "lastName": "Last Name",
-      "lastNamePlaceholder": "Doe",
+      "lastNamePlaceholder": "Last name",
       "email": "Email",
       "emailPlaceholder": "username@example.com",
       "companyName": "Company (optional)",
@@ -952,8 +952,11 @@
       "createHeading": "Post a New Position",
       "editHeading": "Edit Position",
       "titleLabel": "Job Title",
+      "titlePlaceholder": "e.g. Senior Pipeline Engineer",
       "departmentLabel": "Department",
+      "departmentPlaceholder": "e.g. Engineering",
       "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Responsibilities, requirements, and any other details for candidates",
       "saving": "Saving…",
       "create": "Post Position",
       "saveChanges": "Save Changes",
@@ -1063,6 +1066,7 @@
     "biometric": "Biometric",
     "currentAuthenticatorCode": "Current Authenticator Code",
     "newPassword": "New Password",
+    "newPasswordPlaceholder": "At least 8 characters",
     "verifyBiometricAndReset": "Verify Biometric & Reset",
     "verifyAndResetPassword": "Verify & Reset Password",
     "messages": {
@@ -1260,14 +1264,18 @@
     "errors": {
       "invalidCode": "验证码无效，请重试。",
       "webauthnFailed": "无法验证您的凭据。请重试，或改用身份验证器应用。",
-      "statusLoadFailed": "无法加载您的多因素验证方式。请刷新后重试。"
+      "statusLoadFailed": "无法加载您的多因素验证方式。请刷新后重试。",
+      "retry": "重试",
+      "submitTicket": "提交工单"
     }
   },
   "changePassword": {
     "title": "设置新密码",
     "subtitle": "您的账户是使用临时密码创建的。请选择一个新密码以继续。",
     "newPasswordLabel": "新密码",
+    "newPasswordPlaceholder": "至少 8 个字符",
     "confirmPasswordLabel": "确认新密码",
+    "confirmPasswordPlaceholder": "请再次输入新密码",
     "submit": "设置密码并继续",
     "errors": {
       "tooShort": "密码长度必须至少为 8 个字符。",

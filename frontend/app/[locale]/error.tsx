@@ -6,6 +6,7 @@
 // context to render defeats the purpose of a safety net.
 
 import { useEffect } from "react"
+import Link from "next/link"
 import { useClerk, useAuth } from "@clerk/nextjs"
 import { palette } from "@/theme"
 export default function LocaleError({
@@ -64,13 +65,9 @@ export default function LocaleError({
         }}
       >
         We hit an unexpected error loading this page. Please try again — if this
-        keeps happening, contact us at{" "}
-        <a href="mailto:info@use-eg.com" style={{ color: palette.accent }}>
-          info@use-eg.com
-        </a>
-        .
+        keeps happening, submit a ticket and we&apos;ll look into it.
       </p>
-      <div style={{ display: "flex", gap: 10 }}>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
         <button
           onClick={() => reset()}
           style={{
@@ -105,6 +102,24 @@ export default function LocaleError({
         >
           Return home
         </button>
+        <Link
+          href="/tickets?type=technical"
+          style={{
+            background: "#fff",
+            color: palette.navy,
+            border: `1.5px solid ${palette.border}`,
+            borderRadius: 9999,
+            padding: "11px 26px",
+            fontWeight: 600,
+            fontSize: 14,
+            textDecoration: "none",
+            fontFamily: "Poppins, sans-serif",
+            display: "inline-flex",
+            alignItems: "center",
+          }}
+        >
+          Submit a ticket
+        </Link>
       </div>
       {isSignedIn && (
         <button

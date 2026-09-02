@@ -11,6 +11,11 @@ interface Props {
   disabled?: boolean
   id?: string
   name?: string
+  // Fires once with the full code as soon as the last digit is entered
+  // (typed, pasted, or IME-committed) — lets a caller auto-submit instead
+  // of making the user find and click a separate button after a code
+  // they just finished typing.
+  onComplete?: (value: string) => void
 }
 
 // A per-digit boxed input for verification codes (email OTP, TOTP) —
@@ -25,14 +30,24 @@ export default function OtpInput({
   disabled,
   id,
   name,
+  onComplete,
 }: Props) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const digits = Array.from({ length }, (_, i) => value[i] ?? "")
 
+  const commit = (next: string[]) => {
+    // A missing digit is an empty string in `next`, which contributes
+    // nothing to `.join("")` — so the joined string only reaches
+    // `length` characters once every box is actually filled in.
+    const joined = next.join("").slice(0, length)
+    onChange(joined)
+    if (joined.length === length) onComplete?.(joined)
+  }
+
   const setDigit = (index: number, digit: string) => {
     const next = digits.slice()
     next[index] = digit
-    onChange(next.join("").slice(0, length))
+    commit(next)
   }
 
   const focusIndex = (index: number) => {
@@ -71,7 +86,7 @@ export default function OtpInput({
             chars.forEach((c, offset) => {
               if (i + offset < length) next[i + offset] = c
             })
-            onChange(next.join("").slice(0, length))
+            commit(next)
             focusIndex(i + chars.length)
           }}
           onKeyDown={(e) => {
@@ -91,7 +106,7 @@ export default function OtpInput({
             e.preventDefault()
             const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, length)
             if (!pasted) return
-            onChange(pasted)
+            commit(pasted.split(""))
             focusIndex(pasted.length - 1)
           }}
           style={{

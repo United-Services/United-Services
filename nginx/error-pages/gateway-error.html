@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>United Services Egypt</title>
+<style>
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px;
+    font-family: -apple-system, "Poppins", Helvetica, Arial, sans-serif;
+    text-align: center;
+    background: #F3F2EE;
+    color: #12213A;
+  }
+  .badge {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: #ECF7A020;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 800;
+    color: #A3D900;
+  }
+  h1 { font-size: 28px; font-weight: 800; margin: 0; }
+  p { font-size: 14px; color: #667085; max-width: 420px; line-height: 1.6; margin: 0; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .btn {
+    border-radius: 9999px;
+    padding: 11px 26px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+  }
+  .btn-primary { background: #A3D900; color: #12213A; border: none; }
+  .btn-secondary { background: #fff; color: #12213A; border: 1.5px solid #E6E5E0; }
+</style>
+</head>
+<body>
+  <div class="badge">!</div>
+  <h1>We're temporarily unavailable</h1>
+  <!-- This is nginx's own static fallback for when the app itself can't
+       be reached at all (a failed deploy/migration, the backend or
+       frontend container down) — it can't depend on the app rendering
+       anything, including the ticket-submission page, so a plain email
+       is the only reachable contact option here. -->
+  <p>
+    We hit a temporary problem reaching our servers. This usually resolves
+    itself within a few minutes — please try again shortly. If it keeps
+    happening, reach us at
+    <a href="mailto:info@use-eg.com" style="color:#A3D900;">info@use-eg.com</a>.
+  </p>
+  <div class="actions">
+    <button class="btn btn-primary" style="border:none;" onclick="location.reload()">Try again</button>
+  </div>
+</body>
+</html>

@@ -14,6 +14,7 @@ import { startAuthentication, startRegistration } from "@simplewebauthn/browser"
 import { palette, inputStyle } from "../theme"
 import { SkeletonPanel } from "../components/Skeleton"
 import { InlineSpinner } from "../components/Spinner"
+import OtpInput from "../components/OtpInput"
 import { isAxiosError } from "axios"
 import { axios, authHeader } from "../lib/api"
 import { getErrorMessage } from "../lib/errors"
@@ -421,14 +422,7 @@ export default function AdminSecuritySection() {
                 {t("manualEntry")} <strong>{totpSecret}</strong>
               </p>
             )}
-            <input
-              value={totpCode}
-              onChange={(e) => setTotpCode(e.target.value)}
-              placeholder={t("codePlaceholder")}
-              autoComplete="one-time-code"
-              required
-              style={inputStyle}
-            />
+            <OtpInput value={totpCode} onChange={setTotpCode} />
             <button
               type="submit"
               disabled={busy === "totp-confirm"}
@@ -648,14 +642,7 @@ export default function AdminSecuritySection() {
               >
                 {t("currentAuthenticatorCode")}
               </label>
-              <input
-                value={resetTotpCode}
-                onChange={(e) => setResetTotpCode(e.target.value)}
-                placeholder={t("codePlaceholder")}
-                autoComplete="one-time-code"
-                required
-                style={inputStyle}
-              />
+              <OtpInput value={resetTotpCode} onChange={setResetTotpCode} />
             </div>
           )}
 
@@ -676,6 +663,7 @@ export default function AdminSecuritySection() {
               autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
+              placeholder={t("newPasswordPlaceholder")}
               required
               minLength={8}
               style={inputStyle}
