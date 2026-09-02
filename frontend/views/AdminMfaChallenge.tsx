@@ -54,11 +54,21 @@ export default function AdminMfaChallenge({ onNavigate }: Props) {
 
   const submitTotp = async (e: React.FormEvent) => {
     e.preventDefault()
+    await verifyTotp(code)
+  }
+
+  // Shared by the form's own submit (Enter key / button click) and
+  // OtpInput's onComplete (typing/pasting the last digit) — both end in
+  // exactly the same request, just triggered differently. Guarded by
+  // `loading` so a fast typist finishing the 6th digit while a submit is
+  // already in flight can't fire a second overlapping request.
+  const verifyTotp = async (submittedCode: string) => {
+    if (loading) return
     setLoading(true)
     setError(null)
     try {
       const token = await getToken()
-      await axios.post("/mfa/challenge/totp", { code }, {
+      await axios.post("/mfa/challenge/totp", { code: submittedCode }, {
         headers: authHeader(token),
       })
       onNavigate("admin-dashboard")
@@ -113,8 +123,71 @@ export default function AdminMfaChallenge({ onNavigate }: Props) {
             padding: 24,
           }}
         >
-          <div style={{ fontSize: 13, color: "#DC2626", fontWeight: 600 }}>
-            {t("errors.statusLoadFailed")}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 16,
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 13, color: "#DC2626", fontWeight: 600 }}>
+              {t("errors.statusLoadFailed")}
+            </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+              <button
+                onClick={() => window.location.reload()}
+                style={{
+                  background: palette.accent,
+                  color: palette.navy,
+                  border: "none",
+                  borderRadius: 9999,
+                  padding: "10px 22px",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  fontFamily: "Poppins, sans-serif",
+                }}
+              >
+                {t("errors.retry")}
+              </button>
+              <a
+                href="/tickets?type=technical"
+                style={{
+                  background: "#fff",
+                  color: palette.navy,
+                  border: `1.5px solid #E6E5E0`,
+                  borderRadius: 9999,
+                  padding: "10px 22px",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  fontFamily: "Poppins, sans-serif",
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                }}
+              >
+                {t("errors.submitTicket")}
+              </a>
+            </div>
+            <button
+              onClick={() => signOut(() => onNavigate("home"))}
+              style={{
+                background: "none",
+                border: "1.5px solid #DC2626",
+                borderRadius: 9999,
+                padding: "9px 20px",
+                fontWeight: 600,
+                fontSize: 13,
+                color: "#DC2626",
+                cursor: "pointer",
+                fontFamily: "Poppins, sans-serif",
+              }}
+            >
+              {t("logout")}
+            </button>
           </div>
         </div>
       </div>
@@ -266,7 +339,13 @@ export default function AdminMfaChallenge({ onNavigate }: Props) {
                 >
                   {t("enterCode")}
                 </label>
-                <OtpInput autoFocus value={code} onChange={setCode} />
+                <OtpInput
+                  autoFocus
+                  value={code}
+                  onChange={setCode}
+                  onComplete={verifyTotp}
+                  disabled={loading}
+                />
                 {error && (
                   <p style={{ fontSize: 13, color: "#DC2626", marginTop: 14 }}>
                     {error}

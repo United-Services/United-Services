@@ -155,13 +155,26 @@ export default function Tickets({ onNavigate, initialType }: Props) {
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: TEXT, marginBottom: 6 }}>
                   Name
                 </label>
-                <input value={form.name} onChange={set("name")} required style={inputStyle} />
+                <input
+                  value={form.name}
+                  onChange={set("name")}
+                  placeholder="Your full name"
+                  required
+                  style={inputStyle}
+                />
               </div>
               <div>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: TEXT, marginBottom: 6 }}>
                   Email
                 </label>
-                <input type="email" value={form.email} onChange={set("email")} required style={inputStyle} />
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={set("email")}
+                  placeholder="username@example.com"
+                  required
+                  style={inputStyle}
+                />
               </div>
             </div>
 
@@ -169,7 +182,12 @@ export default function Tickets({ onNavigate, initialType }: Props) {
               <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: TEXT, marginBottom: 6 }}>
                 Company <span style={{ color: MUTED, fontWeight: 400 }}>(optional)</span>
               </label>
-              <input value={form.company} onChange={set("company")} style={inputStyle} />
+              <input
+                value={form.company}
+                onChange={set("company")}
+                placeholder="Acme Inc."
+                style={inputStyle}
+              />
             </div>
 
             <div>

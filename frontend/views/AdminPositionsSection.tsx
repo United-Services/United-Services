@@ -167,6 +167,7 @@ export default function AdminPositionsSection({ setError }: Props) {
                   title: e.target.value,
                 }))
               }
+              placeholder={t("positions.titlePlaceholder")}
               required
               style={{
                 width: "100%",
@@ -198,6 +199,7 @@ export default function AdminPositionsSection({ setError }: Props) {
                   department: e.target.value,
                 }))
               }
+              placeholder={t("positions.departmentPlaceholder")}
               required
               style={{
                 width: "100%",
@@ -230,6 +232,7 @@ export default function AdminPositionsSection({ setError }: Props) {
                 description: e.target.value,
               }))
             }
+            placeholder={t("positions.descriptionPlaceholder")}
             required
             rows={3}
             style={{

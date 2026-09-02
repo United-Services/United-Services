@@ -805,9 +805,9 @@
       "addUser": "Add User",
       "createAccount": "Create Account",
       "firstName": "First Name",
-      "firstNamePlaceholder": "Jane",
+      "firstNamePlaceholder": "First name",
       "lastName": "Last Name",
-      "lastNamePlaceholder": "Doe",
+      "lastNamePlaceholder": "Last name",
       "email": "Email",
       "emailPlaceholder": "username@example.com",
       "companyName": "Company (optional)",
@@ -952,8 +952,11 @@
       "createHeading": "Post a New Position",
       "editHeading": "Edit Position",
       "titleLabel": "Job Title",
+      "titlePlaceholder": "e.g. Senior Pipeline Engineer",
       "departmentLabel": "Department",
+      "departmentPlaceholder": "e.g. Engineering",
       "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Responsibilities, requirements, and any other details for candidates",
       "saving": "Saving…",
       "create": "Post Position",
       "saveChanges": "Save Changes",
@@ -1063,6 +1066,7 @@
     "biometric": "Biometric",
     "currentAuthenticatorCode": "Current Authenticator Code",
     "newPassword": "New Password",
+    "newPasswordPlaceholder": "At least 8 characters",
     "verifyBiometricAndReset": "Verify Biometric & Reset",
     "verifyAndResetPassword": "Verify & Reset Password",
     "messages": {
@@ -1260,14 +1264,18 @@
     "errors": {
       "invalidCode": "Invalid code. Please try again.",
       "webauthnFailed": "Could not verify your credential. Please try again, or use an authenticator app instead.",
-      "statusLoadFailed": "Could not load your MFA methods. Please refresh and try again."
+      "statusLoadFailed": "Could not load your MFA methods. Please refresh and try again.",
+      "retry": "Try again",
+      "submitTicket": "Submit a ticket"
     }
   },
   "changePassword": {
     "title": "Set a New Password",
     "subtitle": "Your account was created with a temporary password. Choose a new one to continue.",
     "newPasswordLabel": "New password",
+    "newPasswordPlaceholder": "At least 8 characters",
     "confirmPasswordLabel": "Confirm new password",
+    "confirmPasswordPlaceholder": "Re-enter your new password",
     "submit": "Set password and continue",
     "errors": {
       "tooShort": "Password must be at least 8 characters.",
