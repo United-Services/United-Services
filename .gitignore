@@ -56,3 +56,14 @@ nginx/cloudflare-ips.d/*.conf
 # mirroring nginx/nginx.conf's routing so browser API calls resolve
 # same-origin. Never used in production (nginx/nginx.conf is).
 nginx/nginx.local.conf
+
+# support-agent/ (Python/FastAPI) — the service itself lives on the
+# support-agent branch (not merged into main yet), but these rules are
+# added here too so a .venv/.env under support-agent/ never shows up as
+# untracked/stageable while working from main in the meantime.
+support-agent/.env
+support-agent/backend/.env
+support-agent/**/__pycache__/
+support-agent/**/*.pyc
+support-agent/**/.venv/
+support-agent/ingestion/output/
