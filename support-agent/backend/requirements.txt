@@ -29,4 +29,4 @@ redis==5.2.1
 # — verifies the same Clerk session token the main site's ClerkAuthGuard
 # does, so the transcript can be keyed by real user id instead of a
 # client-supplied session_id.
-pyjwt[crypto]==2.10.1
+pyjwt[crypto]==2.13.0
