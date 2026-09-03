@@ -96,7 +96,15 @@ class DynamicCORSMiddleware(BaseHTTPMiddleware):
                 headers={
                     "Access-Control-Allow-Origin": origin,  # type: ignore[dict-item]
                     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-                    "Access-Control-Allow-Headers": "Content-Type",
+                    # Authorization — confirmed live this was missing:
+                    # the widget sends "Authorization: Bearer <Clerk
+                    # token>" (Fix 6 of the security review made this
+                    # the *only* accepted credential, dropping the
+                    # __session cookie fallback), and the browser's own
+                    # preflight check rejected the real request outright
+                    # because this header wasn't in the allow-list —
+                    # never reached app/security/clerk_auth.py at all.
+                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
                     "Vary": "Origin",
                 },
             )

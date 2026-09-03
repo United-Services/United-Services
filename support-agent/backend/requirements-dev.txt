@@ -3,3 +3,7 @@
 -r requirements.txt
 pytest==9.1.1
 pytest-asyncio==1.4.0
+# FastAPI's TestClient (tests/test_cors.py) requires this explicitly —
+# was only ever present as an unpinned transitive dep of something else
+# until this test suite actually needed it directly.
+httpx==0.28.1

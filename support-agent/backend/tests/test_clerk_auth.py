@@ -11,6 +11,7 @@ import time
 
 import jwt as pyjwt
 import pytest
+import requests
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import HTTPException, Request
 
@@ -125,6 +126,29 @@ def test_wrong_issuer_rejected(monkeypatch, keypair):
     private_key, public_key = keypair
     _install_jwks(monkeypatch, public_key)
     token = _sign(private_key, iss="https://some-other-clerk-instance.clerk.accounts.dev")
+
+    with pytest.raises(HTTPException) as exc:
+        clerk_auth.get_current_user_id(_request_with_bearer(token))
+    assert exc.value.status_code == 401
+
+
+def test_jwks_fetch_failure_degrades_to_clean_401_not_a_crash(monkeypatch, keypair):
+    # Real regression, not hypothetical: a container still running with
+    # a pre-rotation CLERK_SECRET_KEY made Clerk's real JWKS endpoint
+    # return 401, and that raw requests.exceptions.HTTPError propagated
+    # unhandled all the way to a 500 — which also skipped
+    # DynamicCORSMiddleware's Access-Control-Allow-Origin header
+    # entirely (never reached, since the exception left call_next
+    # without returning), showing up in the browser purely as a
+    # misleading CORS error. Any Clerk-JWKS-reachability failure must
+    # degrade to the same 401 every other auth failure here produces.
+    private_key, public_key = keypair
+    token = _sign(private_key)
+
+    def _raise(*args, **kwargs):
+        raise requests.exceptions.HTTPError("401 Client Error: Unauthorized for url: ...")
+
+    monkeypatch.setattr(clerk_auth.requests, "get", _raise)
 
     with pytest.raises(HTTPException) as exc:
         clerk_auth.get_current_user_id(_request_with_bearer(token))
