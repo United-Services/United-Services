@@ -7,14 +7,27 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # Credentials live in the main United-Services backend's own .env, not a
 # separate copy here (there is no backend/.env in this project anymore —
 # deleted deliberately, per the instruction that led to this file's
-# current shape). This resolves to
-# <repo-root>/backend/.env regardless of which directory the process is
-# actually launched from.
-MAIN_BACKEND_ENV_FILE = Path(__file__).resolve().parents[3] / "backend" / ".env"
+# current shape). This resolves to <repo-root>/backend/.env regardless
+# of which directory the process is actually launched from — but only
+# on the host: a container's filesystem is only ever a handful of levels
+# deep (this file lands at /app/app/config.py in backend/Dockerfile's
+# image), so parents[3] doesn't exist there and indexing it raises
+# IndexError before Settings() is even reached — confirmed hitting this
+# live the first time `docker compose up` actually got this far. Inside
+# Docker, docker-compose.yml's `env_file: ../backend/.env` on the
+# backend service supplies these as real environment variables instead
+# (which pydantic-settings reads regardless, env_file or not), so
+# env_file here only needs to degrade to "no file" rather than crash.
+_env_file_candidate = Path(__file__).resolve()
+MAIN_BACKEND_ENV_FILE = (
+    _env_file_candidate.parents[3] / "backend" / ".env" if len(_env_file_candidate.parents) > 3 else None
+)
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=str(MAIN_BACKEND_ENV_FILE), extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=str(MAIN_BACKEND_ENV_FILE) if MAIN_BACKEND_ENV_FILE else None, extra="ignore"
+    )
 
     openrouter_api_key: str
     # Free-tier model availability/names on OpenRouter shift over time —

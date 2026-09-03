@@ -75,6 +75,9 @@ SECRET_KEYS=(
   NGINX_PORT
   NEXT_PUBLIC_API_URL
   APP_ENV
+  OPENROUTER_API_KEY
+  MODEL
+  HF_TOKEN
 )
 
 echo "Pushing secrets to /united-services/${ENVIRONMENT}/* ..."

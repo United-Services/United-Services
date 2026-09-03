@@ -115,6 +115,7 @@ async def stream_agent(message: str, history: list[dict]):
 
     for model_name, candidate_agent in _agents:
         yielded_anything = False
+        got_text_token = False
         try:
             async for event in candidate_agent.astream_events(
                 {"messages": _to_messages(history, message)},
@@ -143,7 +144,35 @@ async def stream_agent(message: str, history: list[dict]):
                     content = getattr(chunk, "content", None)
                     if content:
                         yielded_anything = True
+                        got_text_token = True
                         yield {"type": "token", "content": content}
+
+            if seen_tool_run_ids and not got_text_token:
+                # langgraph's create_react_agent has its own internal
+                # `remaining_steps` cap (langgraph/prebuilt/chat_agent_
+                # executor.py) that can trip *before* recursion_limit
+                # does, one real tool call earlier than
+                # GraphRecursionError below would ever fire — and when
+                # it does, it doesn't raise anything at all. It injects
+                # a hardcoded "Sorry, need more steps to process this
+                # request." message directly into graph state, bypassing
+                # the model entirely — confirmed live while deriving
+                # RECURSION_LIMIT (tests/test_agent_loop.py): zero
+                # on_chat_model_stream events fire for it, so without
+                # this check the client would see tool_start/tool_end
+                # pairs and then silence — no visible answer, and no
+                # escalation, for what is exactly the same "genuinely
+                # stuck" situation the except GraphRecursionError branch
+                # below exists to catch. At least one real tool call
+                # happening (seen_tool_run_ids non-empty) with no text
+                # ever produced is what distinguishes this from a
+                # legitimate short answer that just never needed a tool.
+                escalate_to_human.invoke(
+                    {"reason": "Agent's tool-call loop ended without producing a real answer (langgraph's internal step cap)."}
+                )
+                yield {"type": "token", "content": LOOP_GUARD_MESSAGE}
+                return
+
             return  # this candidate completed the whole turn successfully
         except GraphRecursionError:
             # "the agent hits its tool-call cap without resolving the

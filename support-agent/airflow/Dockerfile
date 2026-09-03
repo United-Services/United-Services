@@ -19,4 +19,9 @@ ENV JAVA_HOME=/usr/lib/jvm/default-java
 
 USER airflow
 COPY ingestion/requirements.txt /opt/airflow/ingestion-requirements.txt
-RUN pip install --no-cache-dir -r /opt/airflow/ingestion-requirements.txt
+# Longer socket timeout + a couple of retries — pyspark's wheel is ~300MB+
+# and the default pip timeout (15s of no new data) was enough to abort a
+# real build partway through it on an ordinary connection, confirmed live
+# (a plain ReadTimeoutError from files.pythonhosted.org, not a bad URL or
+# missing package).
+RUN pip install --no-cache-dir --timeout 180 --retries 5 -r /opt/airflow/ingestion-requirements.txt
