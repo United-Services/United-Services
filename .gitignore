@@ -60,6 +60,10 @@ nginx/nginx.local.conf
 # support-agent/ (Python/FastAPI)
 support-agent/.env
 support-agent/backend/.env
+# The support-agent-scoped secrets file docker-compose.yml's backend
+# service actually reads (see that file's comment) — never the shared
+# main-platform ../backend/.env.
+support-agent/backend/.env.support-agent
 support-agent/**/__pycache__/
 support-agent/**/*.pyc
 # Matches backend/.venv/, ingestion/.venv/, and any other venv created

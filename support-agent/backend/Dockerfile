@@ -1,4 +1,8 @@
-FROM python:3.12-slim
+# Pinned to a specific patch, not the floating python:3.12-slim tag —
+# every other image in this project pins similarly (apache/airflow:
+# 2.10.4-python3.12, qdrant/qdrant:v1.12.4). Re-check the current 3.12.x
+# tag list at apply time; floating tags drift, this doesn't.
+FROM python:3.12.7-slim
 
 WORKDIR /app
 
@@ -8,6 +12,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini .
+
+# No USER directive previously meant uvicorn/alembic ran as root inside
+# the container for no reason — confirmed live via `docker exec ...
+# whoami`. A non-root user removes that as a free privilege-escalation
+# step if the app itself is ever compromised (e.g. a future dependency
+# RCE). chown after both COPYs, not before, so it covers everything the
+# process actually touches at runtime.
+RUN useradd -m appuser && chown -R appuser /app
+USER appuser
 
 EXPOSE 8000
 # Migrations run against both Supabase (primary) and the local standby

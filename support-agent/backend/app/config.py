@@ -74,6 +74,15 @@ class Settings(BaseSettings):
     app_name: str = "United Services Support Agent"
 
     qdrant_url: str = "http://localhost:6333"
+    # Required in every real environment (docker-compose.yml sets
+    # QDRANT__SERVICE__API_KEY on the qdrant service itself) — Qdrant was
+    # confirmed live to allow full unauthenticated read/write/delete on
+    # this port with no key configured. Empty string, not a required
+    # field, only so a bare host-mode run against an intentionally
+    # unauthenticated local Qdrant (e.g. a from-scratch manual `docker
+    # run qdrant/qdrant` with no key set) doesn't hard-fail — every real
+    # docker-compose-managed instance sets this.
+    qdrant_api_key: str = ""
     # Free token from https://huggingface.co/settings/tokens — used by
     # search_knowledge_base to embed the query via HF's hosted Inference
     # API (see ingestion/embed.py's module docstring for why this
@@ -106,6 +115,18 @@ class Settings(BaseSettings):
     # always-on local standby FailoverManager fails over to. Genuinely
     # local-only, so not something the main backend's .env would ever
     # have a value for — kept as its own default here.
+    #
+    # This default's password is a placeholder, not a real credential —
+    # docker-compose.yml now requires a real POSTGRES_PASSWORD (no
+    # insecure fallback; that was itself a live-confirmed vulnerability,
+    # see Fix 4 in the support-agent security review), generated fresh
+    # per install into support-agent/.env. A host-mode `uvicorn --reload`
+    # run against `docker compose up postgres` needs to export
+    # LOCAL_DATABASE_URL explicitly with that real password (see
+    # support-agent/.env) rather than relying on this default — it's
+    # kept only so Settings() doesn't hard-fail when local_database_url
+    # is simply never going to be reached (e.g. this test/host process
+    # never fails over).
     local_database_url: str = "postgresql+psycopg://support_agent:support_agent@localhost:5433/support_agent"
 
     # Phase 4 — the live conversation buffer (app/memory/redis_memory.py).
@@ -120,6 +141,11 @@ class Settings(BaseSettings):
     # gates on this client-side; this is the actual enforcement). Reused
     # from the main backend's .env, same Clerk application.
     clerk_secret_key: str
+    # Same Clerk application's publishable key (already in the shared
+    # .env for the frontend's own NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) —
+    # used only to derive the expected `iss` claim for JWT verification
+    # (app/security/clerk_auth.py), not for any Clerk API call itself.
+    clerk_publishable_key: str
 
     # Phase 5 — per-IP throttle on /chat/stream (app/security/rate_limit.py).
     # Deliberately conservative: OpenRouter's free tier is a shared

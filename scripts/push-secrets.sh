@@ -35,7 +35,17 @@ fi
 # everything" so a stray non-secret var added to .env later doesn't
 # silently end up encrypted-and-forgotten in SSM, and a genuinely public
 # NEXT_PUBLIC_* var never gets treated as if it needs protecting.
-SECRET_KEYS=(
+#
+# Split into two allowlists/two SSM prefixes, not one — confirmed live
+# via `docker inspect` that support-agent's container had been getting
+# the *entire* platform secret set (AWS keys, Clerk secrets, GeoIP
+# license, Betterstack token) through the shared prefix even though it
+# only ever touches a handful of these. Scoping only the container's
+# env_file (docker-compose.yml) fixes where the secret ends up, not
+# where it's stored — this fixes the storage layer too, so
+# support-agent's own deploy role never needs read access to the
+# platform's shared /united-services/<env>/ path at all.
+PLATFORM_KEYS=(
   DATABASE_URL
   DIRECT_URL
   NEXT_PUBLIC_CLERK_SIGN_IN_URL
@@ -70,38 +80,65 @@ SECRET_KEYS=(
   TRANSLATION_LOCK_TTL_MS
   TRANSLATION_SYNC_WAIT_MS
   ALERTING_ENABLED
-  NTFY_TOPIC_URL
   SPRITE_KEY
   NGINX_PORT
   NEXT_PUBLIC_API_URL
   APP_ENV
+)
+
+# support-agent's own container only ever needs these — read from the
+# same local backend/.env.prod (real values are identical to the
+# platform's own DATABASE_URL/CLERK_SECRET_KEY/etc., just stored a
+# second time under a narrower path), plus support-agent-only values
+# (QDRANT_API_KEY, REDIS_PASSWORD) that must already be present in
+# backend/.env.prod before running this — this script doesn't invent
+# secret values, it only pushes what's already decided.
+SUPPORT_AGENT_KEYS=(
+  DATABASE_URL
+  CLERK_SECRET_KEY
+  CLERK_PUBLISHABLE_KEY
   OPENROUTER_API_KEY
   MODEL
   HF_TOKEN
+  QDRANT_API_KEY
+  REDIS_PASSWORD
 )
 
-echo "Pushing secrets to /united-services/${ENVIRONMENT}/* ..."
-for key in "${SECRET_KEYS[@]}"; do
-  # Strips optional surrounding quotes — backend/.env sometimes wraps
-  # values in "double quotes" (e.g. connection strings), SSM shouldn't
-  # store the literal quote characters as part of the value.
-  # `grep` (correctly) exits nonzero when a key isn't in .env at all —
-  # under `set -e`, that would otherwise kill the whole script right here
-  # instead of hitting the "skip and warn" handling below, which is the
-  # actual intended behavior for an optional/not-yet-set key. `|| true`
-  # neutralizes that so the emptiness check further down is what decides.
-  value=$( (grep -E "^${key}=" "$ENV_FILE" || true) | head -n1 | cut -d'=' -f2- | sed -E 's/^"(.*)"$/\1/')
-  if [ -z "$value" ]; then
-    echo "WARNING: $key not found (or empty) in $ENV_FILE, skipping" >&2
-    continue
-  fi
-  aws ssm put-parameter \
-    --name "/united-services/${ENVIRONMENT}/${key}" \
-    --value "$value" \
-    --type SecureString \
-    --overwrite \
-    --output text >/dev/null
-  echo "  pushed $key"
-done
+push_keys() {
+  local prefix="$1"
+  shift
+  local keys=("$@")
+  for key in "${keys[@]}"; do
+    # Strips optional surrounding quotes — backend/.env sometimes wraps
+    # values in "double quotes" (e.g. connection strings), SSM shouldn't
+    # store the literal quote characters as part of the value.
+    # `grep` (correctly) exits nonzero when a key isn't in .env at all —
+    # under `set -e`, that would otherwise kill the whole script right
+    # here instead of hitting the "skip and warn" handling below, which
+    # is the actual intended behavior for an optional/not-yet-set key.
+    # `|| true` neutralizes that so the emptiness check further down is
+    # what decides.
+    value=$( (grep -E "^${key}=" "$ENV_FILE" || true) | head -n1 | cut -d'=' -f2- | sed -E 's/^"(.*)"$/\1/')
+    if [ -z "$value" ]; then
+      echo "WARNING: $key not found (or empty) in $ENV_FILE, skipping" >&2
+      continue
+    fi
+    aws ssm put-parameter \
+      --name "${prefix}${key}" \
+      --value "$value" \
+      --type SecureString \
+      --overwrite \
+      --output text >/dev/null
+    echo "  pushed $key -> ${prefix}${key}"
+  done
+}
 
-echo "Done. Verify (never prints values): aws ssm get-parameters-by-path --path \"/united-services/${ENVIRONMENT}/\" --query \"Parameters[*].Name\""
+echo "Pushing platform secrets to /united-services/${ENVIRONMENT}/* ..."
+push_keys "/united-services/${ENVIRONMENT}/" "${PLATFORM_KEYS[@]}"
+
+echo "Pushing support-agent secrets to /united-services/support-agent/${ENVIRONMENT}/* ..."
+push_keys "/united-services/support-agent/${ENVIRONMENT}/" "${SUPPORT_AGENT_KEYS[@]}"
+
+echo "Done. Verify (never prints values):"
+echo "  aws ssm get-parameters-by-path --path \"/united-services/${ENVIRONMENT}/\" --query \"Parameters[*].Name\""
+echo "  aws ssm get-parameters-by-path --path \"/united-services/support-agent/${ENVIRONMENT}/\" --query \"Parameters[*].Name\""

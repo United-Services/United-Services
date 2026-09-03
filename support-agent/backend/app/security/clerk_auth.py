@@ -22,9 +22,16 @@ https://api.clerk.com/v1/jwks (authenticated with the shared secret
 key — this is what the SDK does internally too), cache it for an hour,
 and check the token's RS256 signature + expiry with PyJWT. No audience
 check: Clerk's own session tokens don't set one by default (matching
-verifyToken's own default behavior on the Node side).
+verifyToken's own default behavior on the Node side). `iss` IS checked
+(pinned to this specific Clerk instance's frontend API domain, derived
+from the publishable key) — the JWKS endpoint above is fetched using
+this app's own secret key, which scopes it to whatever Clerk
+application(s) that key can see; an explicit issuer check is what
+actually pins verification to this one instance rather than trusting
+that scoping alone.
 """
 
+import base64
 import json
 import time
 
@@ -38,6 +45,23 @@ _JWKS_URL = "https://api.clerk.com/v1/jwks"
 _CACHE_TTL_SECONDS = 3600
 
 _jwks_cache: dict[str, object] = {"keys": None, "fetched_at": 0.0}
+
+
+def _derive_issuer(publishable_key: str) -> str:
+    # A Clerk publishable key is "pk_{test|live}_" + base64(frontend-api-
+    # domain + "$") — e.g. pk_test_Y29t...ZGV2JA decodes to
+    # "composed-bengal-53.clerk.accounts.dev$". Clerk's own frontend SDKs
+    # derive the frontend API host the same way rather than hardcoding
+    # it, which is what makes this robust across dev/staging/prod
+    # instances without a manually-maintained domain string that drifts.
+    _, _, encoded = publishable_key.partition("_")
+    _, _, encoded = encoded.partition("_")
+    padded = encoded + "=" * (-len(encoded) % 4)
+    domain = base64.b64decode(padded).decode().rstrip("$")
+    return f"https://{domain}"
+
+
+_CLERK_ISSUER = _derive_issuer(settings.clerk_publishable_key)
 
 
 def _fetch_jwks(force: bool = False) -> list[dict]:
@@ -55,12 +79,19 @@ def _fetch_jwks(force: bool = False) -> list[dict]:
 
 
 def _extract_token(request: Request) -> str:
+    # Bearer header only — no __session cookie fallback. /chat/stream is
+    # a state-changing POST (files tickets, can trigger
+    # escalate_to_human), and a cookie is ambient authority a
+    # cross-site page can ride along with; CORS (app/security/cors.py)
+    # blocks that page from reading the response, but not the request
+    # itself from firing (CORS isn't a CSRF defense without an explicit
+    # preflight-blocking custom header). The widget is this app's own
+    # JS talking to its own backend, so it can always send a real Bearer
+    # header instead — see frontend/lib/useChatStream.ts in the main
+    # site's repo.
     auth_header = request.headers.get("authorization")
     if auth_header and auth_header.startswith("Bearer "):
         return auth_header[len("Bearer ") :]
-    cookie_token = request.cookies.get("__session")
-    if cookie_token:
-        return cookie_token
     raise HTTPException(status_code=401, detail="Missing session token")
 
 
@@ -89,6 +120,7 @@ def get_current_user_id(request: Request) -> str:
             token,
             key=public_key,
             algorithms=["RS256"],
+            issuer=_CLERK_ISSUER,
             options={"verify_aud": False},
         )
     except jwt.PyJWTError as exc:
