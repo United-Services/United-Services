@@ -2,7 +2,9 @@
 keypair standing in for Clerk's real JWKS — no network call, no real
 Clerk instance needed. Exercises the exact failure modes /chat/stream
 depends on being rejected: no token, wrong signature, unknown key id,
-expired token, and a token with no sub claim.
+expired token, wrong issuer, a token with no sub claim, and (since the
+CSRF-motivated removal of the __session cookie fallback) a forged
+cookie no longer working as a credential at all.
 """
 
 import time
@@ -48,13 +50,10 @@ def _request_with_bearer(token: str | None) -> Request:
     return Request(scope)
 
 
-def _sign(private_key, kid=KID, sub="user_123", exp_delta=3600):
-    return pyjwt.encode(
-        {"sub": sub, "exp": int(time.time()) + exp_delta},
-        private_key,
-        algorithm="RS256",
-        headers={"kid": kid},
-    )
+def _sign(private_key, kid=KID, sub="user_123", exp_delta=3600, iss=None):
+    claims = {"sub": sub, "exp": int(time.time()) + exp_delta}
+    claims["iss"] = clerk_auth._CLERK_ISSUER if iss is None else iss
+    return pyjwt.encode(claims, private_key, algorithm="RS256", headers={"kid": kid})
 
 
 def test_valid_token_returns_sub_claim(monkeypatch, keypair):
@@ -116,12 +115,35 @@ def test_token_without_sub_claim_rejected(monkeypatch, keypair):
     assert exc.value.status_code == 401
 
 
-def test_session_cookie_accepted_as_fallback(monkeypatch, keypair):
+def test_wrong_issuer_rejected(monkeypatch, keypair):
+    # A validly-signed, unexpired, correctly-keyed token for a
+    # *different* Clerk instance must not be accepted — the JWKS fetch
+    # is scoped by this app's own secret key, which could in principle
+    # see more than one Clerk application; the explicit iss check is
+    # what actually pins verification to this one instance rather than
+    # relying on that scoping alone.
+    private_key, public_key = keypair
+    _install_jwks(monkeypatch, public_key)
+    token = _sign(private_key, iss="https://some-other-clerk-instance.clerk.accounts.dev")
+
+    with pytest.raises(HTTPException) as exc:
+        clerk_auth.get_current_user_id(_request_with_bearer(token))
+    assert exc.value.status_code == 401
+
+
+def test_session_cookie_no_longer_accepted(monkeypatch, keypair):
+    # Fix for a live-confirmed CSRF gap: /chat/stream is a state-changing
+    # POST reachable purely from a signed-in browser's ambient cookie,
+    # with no CSRF token and no preflight-blocking custom header — CORS
+    # blocks a cross-site page from *reading* the response, not the
+    # request from *firing*. Bearer-only removes the ambient-authority
+    # path entirely; a forged/replayed __session cookie must now be
+    # rejected exactly like having no credential at all.
     private_key, public_key = keypair
     _install_jwks(monkeypatch, public_key)
     token = _sign(private_key, sub="user_via_cookie")
     scope = {"type": "http", "headers": [(b"cookie", f"__session={token}".encode())]}
 
-    user_id = clerk_auth.get_current_user_id(Request(scope))
-
-    assert user_id == "user_via_cookie"
+    with pytest.raises(HTTPException) as exc:
+        clerk_auth.get_current_user_id(Request(scope))
+    assert exc.value.status_code == 401

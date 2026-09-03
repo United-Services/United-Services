@@ -19,6 +19,13 @@ from qdrant_client.models import Distance, PointStruct, VectorParams
 from embed import EMBEDDING_DIM
 
 QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
+# Required in every real environment now (see docker-compose.yml's
+# QDRANT__SERVICE__API_KEY) — Qdrant was confirmed live to allow full
+# unauthenticated read/write/delete on this port before this was added.
+# No default: an ingestion run silently writing/reading against an
+# unauthenticated Qdrant is exactly the gap that was closed, so a
+# missing key should fail loudly here too, not connect anyway.
+QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY")
 COLLECTION_NAME = os.environ.get("QDRANT_COLLECTION", "site_docs")
 UPSERT_BATCH_SIZE = 100
 
@@ -69,7 +76,7 @@ def upsert_chunks(client: QdrantClient, chunks: list[dict]) -> int:
 def main(input_path: str) -> None:
     with open(input_path) as f:
         chunks = json.load(f)
-    client = QdrantClient(url=QDRANT_URL)
+    client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
     ensure_collection(client)
     count = upsert_chunks(client, chunks)
     print(f"upserted {count} point(s) into '{COLLECTION_NAME}'")
