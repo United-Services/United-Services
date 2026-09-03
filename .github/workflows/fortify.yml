@@ -66,11 +66,13 @@ jobs:
           ##### Remove this section if you're integrating with Fortify Hosted/Software Security Center (see below)
           ### Required configuration
           FOD_URL: https://ams.fortify.com                 # Must be hardcoded or configured through GitHub variable, not secret
-          FOD_TENANT: ${{secrets.FOD_TENANT}}              # Either tenant/user/password or client id/secret are required;
-          FOD_USER: ${{secrets.FOD_USER}}                  # these should be configured through GitHub secrets.
-          FOD_PASSWORD: ${{secrets.FOD_PAT}}
-          # FOD_CLIENT_ID: ${{secrets.FOD_CLIENT_ID}}
-          # FOD_CLIENT_SECRET: ${{secrets.FOD_CLIENT_SECRET}}
+          # API key (client id/secret) auth, not tenant/user/password —
+          # matches the credential type actually obtained for this repo.
+          FOD_CLIENT_ID: ${{secrets.FOD_CLIENT_ID}}
+          FOD_CLIENT_SECRET: ${{secrets.FOD_CLIENT_SECRET}}
+          # FOD_TENANT: ${{secrets.FOD_TENANT}}
+          # FOD_USER: ${{secrets.FOD_USER}}
+          # FOD_PASSWORD: ${{secrets.FOD_PAT}}
           ### Optional configuration
           # FOD_LOGIN_EXTRA_OPTS: --socket-timeout=60s     # Extra 'fcli fod session login' options
           # FOD_RELEASE: MyApp:MyRelease                   # FoD release name, default: <org>/<repo>:<branch>
