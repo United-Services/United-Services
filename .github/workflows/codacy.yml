@@ -54,18 +54,24 @@ jobs:
           # This will handover control about PR rejection to the GitHub side
           max-allowed-issues: 2147483647
 
-      # Upload the SARIF file generated in the previous step. Confirmed
-      # live: with no explicit category, this collided with another
-      # tool's SARIF upload under the same default category — Codacy's
-      # CLI bundles multiple sub-tools (eslint, bandit, etc.) into one
-      # SARIF whose run names apparently match OSSAR's own eslint/bandit
-      # uploads (ossar.yml), and GitHub's Code Scanning API rejects two
-      # uploads sharing a category outright ("does not support
-      # uploading multiple SARIF runs with the same category"). An
-      # explicit, Codacy-specific category namespaces this upload away
-      # from every other tool's.
+      # Upload the SARIF file generated in the previous step — best
+      # effort, not blocking. Confirmed live: this fails regardless of
+      # an explicit category (tried that first; didn't help) —
+      # Codacy's CLI bundles several sub-tools into ONE SARIF file as
+      # multiple internal "runs", and GitHub's Code Scanning API now
+      # requires exactly one run per category (2025-07-21 policy
+      # change), so a single category on the upload step can't resolve
+      # a collision that's between runs *inside the same file*. The
+      # actual analysis already succeeds independent of this step
+      # (results.sarif is generated and processed fine) and is already
+      # visible via the native Codacy GitHub App check ("Codacy Static
+      # Code Analysis", which passes) — this upload is a redundant
+      # mirror into GitHub's own dashboard, not the only place results
+      # show up, so a platform incompatibility here shouldn't fail the
+      # whole job.
       - name: Upload SARIF results file
         uses: github/codeql-action/upload-sarif@v3
+        continue-on-error: true
         with:
           sarif_file: results.sarif
           category: codacy
