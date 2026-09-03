@@ -7,6 +7,28 @@ on:
     branches: [main]
 
 jobs:
+  semgrep:
+    name: Semgrep
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v7
+      # `semgrep ci` (not `semgrep scan`) — the CI-aware subcommand: pulls
+      # this repo's rule config from the Semgrep dashboard (tied to the
+      # GitHub App install), posts results back there and as PR comments,
+      # and exits non-zero on a finding that should block the PR. Runs as
+      # a job in this same "CI" workflow (not left as a separate App-only
+      # check off to the side) specifically so it's covered by
+      # auto-merge.yml's workflow_run gate — branch protection isn't
+      # available on this org's Free plan (see that workflow's own
+      # comment), so a finding here has to fail the whole "CI" workflow's
+      # conclusion to actually block a merge, not just show up as an
+      # informational comment nothing enforces.
+      - run: semgrep ci
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
   secret-scan:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
