@@ -99,7 +99,6 @@ support-agent/
     alembic/                    # migrations — applied to BOTH primary and local on boot
     requirements.txt
     Dockerfile
-    .env.example
   # No separate frontend/ here — the chat widget lives inside the main
   # site's own Next.js app instead (../frontend, repo root):
   #   frontend/components/ChatWidget.tsx  — floating launcher + panel
@@ -121,9 +120,8 @@ support-agent/
     Dockerfile                 # apache/airflow + JDK + ingestion/'s deps
   postgres-init/
     01-create-airflow-db.sql   # local Postgres: app's failover-standby db + airflow's metadata db
-  docker-compose.yml           # postgres, qdrant, redis, backend, frontend widget, airflow
-  docker-compose.override.yml  # local-dev only: source mounts + --reload (see Phase 6 below)
-  .env.example                 # compose-level vars (Postgres creds, Airflow admin login)
+  docker-compose.yml           # postgres, qdrant, redis, backend, airflow
+  docker-compose.override.yml  # local-dev only: source mounts, --reload, 127.0.0.1-only host ports
 ```
 
 ## Setup
@@ -163,17 +161,54 @@ Local-only settings that have no equivalent in the main backend's `.env`
 `config.py` — override any of them the normal way (an actual
 environment variable takes priority over the `.env` file).
 
-Or the whole stack via Docker (not attempted yet — see "Not verified"
-below): `docker compose up --build` from `support-agent/`. Compose-level
-vars (Postgres creds for the *local standby*, Airflow admin login) still
-need their own `.env` — `cp .env.example .env` in `support-agent/` and
-fill in real passwords; those aren't credentials the main backend's
-`.env` has any reason to carry.
+Or the whole stack via Docker — live-verified end to end (all 6
+services healthy, real DAG run against the real site, real chat
+requests through the real agent): `docker compose up --build` from
+`support-agent/`.
+
+Two separate `.env` files, neither committed (both gitignored), doing
+two different jobs:
+
+- **`support-agent/.env`** — compose-level substitution vars only
+  (`POSTGRES_USER`/`POSTGRES_PASSWORD`, `QDRANT_API_KEY`,
+  `REDIS_PASSWORD`, `AIRFLOW_ADMIN_USER`/`PASSWORD`, `SITE_BASE_URL`,
+  `HF_TOKEN`). `docker compose` reads this automatically because it
+  sits next to `docker-compose.yml` — no flag needed. `POSTGRES_PASSWORD`/
+  `QDRANT_API_KEY`/`REDIS_PASSWORD` have **no insecure fallback default**
+  (`docker compose up` hard-fails with `set X in .env` if missing) —
+  confirmed live during the security review that the old defaults left
+  Qdrant/Redis fully unauthenticated and Postgres on a guessable
+  password, all three reachable from the local network, not just
+  localhost. Generate real random values for local dev
+  (`python3 -c "import secrets; print(secrets.token_urlsafe(32))"`), or
+  fetch real ones with `AWS_PROFILE=united-services
+  scripts/fetch-secrets-support-agent.sh` at the repo root (see below).
+- **`support-agent/backend/.env.support-agent`** — the backend
+  *container's* own scoped secrets (`DATABASE_URL`, `HF_TOKEN`,
+  `OPENROUTER_API_KEY`, `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY`,
+  `MODEL`). **Not** the main backend's `../backend/.env` — confirmed
+  live via `docker inspect` that pointing the container at that shared
+  file (the original design) leaked the *entire* platform's secret set
+  into it (live AWS IAM keys, Clerk webhook secret, GeoIP license,
+  Betterstack token — none of which this service touches). Generate it
+  with `AWS_PROFILE=united-services
+  scripts/fetch-secrets-support-agent.sh` (repo root) — reads from a
+  support-agent-only SSM prefix (`/united-services/support-agent/<env>/`),
+  separate from the platform's own `/united-services/<env>/`, so
+  support-agent's own deploy role never needs read access to the
+  platform's shared secrets at all. (A bare host-mode `uvicorn --reload`
+  run, not through Docker, still reads the shared `../backend/.env`
+  directly via `config.py`'s path traversal — that's a local-dev
+  convenience for running outside Docker, unrelated to what the
+  container gets.)
 
 Once up:
 - Backend: `http://localhost:8000`
-- Airflow UI: `http://localhost:8090` (admin login from `.env`)
-- Qdrant: `http://localhost:6333/dashboard`
+- Airflow UI: `http://localhost:8090` (admin login from `support-agent/.env`)
+- Qdrant: `http://localhost:6333/dashboard` — needs the `api-key`
+  request header now (or `docker-compose.override.yml`'s
+  `127.0.0.1:6333` mapping plus that header from a local tool); a bare
+  browser tab hitting the dashboard URL with no header gets a 401.
 
 Trigger the ingestion DAG once from the Airflow UI (or `airflow dags
 trigger doc_ingestion_dag` inside the scheduler container) before
@@ -459,6 +494,78 @@ neither of those two accepted types. Building one compiled agent per
 candidate and trying them in sequence sidesteps that typing conflict
 entirely — and compiling a LangGraph graph is cheap (no network call),
 so there's no real cost to building several up front.
+
+## Security remediation (2026-09-03)
+
+A combined review (static code audit, live penetration test against the
+real running local stack, and an infra/Docker audit) found and this
+project fixed, in order of severity:
+
+- **Qdrant had zero authentication** — confirmed live: listed
+  collections, pulled real document payloads, created and deleted a
+  throwaway collection with no credential at all. Now requires
+  `QDRANT__SERVICE__API_KEY` (`app/agent/tools/search_knowledge_base.py`
+  and `ingestion/upsert_qdrant.py` both pass it).
+- **The backend container inherited the platform's entire secret set**,
+  not just its own — confirmed live via `docker inspect` (live AWS IAM
+  keys, Clerk webhook secret, GeoIP license, Betterstack token, none of
+  which this service touches). Now reads a scoped
+  `backend/.env.support-agent`, populated from its own SSM prefix
+  (`/united-services/support-agent/<env>/`, separate from the
+  platform's `/united-services/<env>/`) — see the Setup section above
+  and `scripts/fetch-secrets-support-agent.sh`/`scripts/push-secrets.sh`
+  at the repo root.
+- **Redis and Postgres had no/weak authentication**, all three
+  (including Qdrant) reachable from the local network on `0.0.0.0`, not
+  just localhost. Redis now requires `--requirepass`; Postgres's
+  insecure fallback default is gone (`POSTGRES_PASSWORD` now required,
+  no default); all three host port mappings moved out of the base
+  `docker-compose.yml` into `docker-compose.override.yml`, bound to
+  `127.0.0.1` only.
+- **The backend container ran as root** — confirmed live via `docker
+  exec ... whoami`. `Dockerfile` now creates and switches to a
+  non-root `appuser`, and is pinned to `python:3.12.7-slim` instead of
+  the floating `python:3.12-slim` tag.
+- **CSRF gap on `/chat/stream` via a `__session` cookie fallback** — a
+  state-changing endpoint reachable purely from a signed-in browser's
+  ambient cookie, with no CSRF token and no preflight-blocking header
+  (CORS blocks a cross-site page from *reading* the response, not the
+  request from *firing*). `app/security/clerk_auth.py` is Bearer-only
+  now; the widget already only ever sent a Bearer header, so no
+  frontend change was needed.
+- **The Clerk JWT's `iss` claim was never checked** — RS256 pinning
+  itself was already solid (verified live: alg-confusion and forged-
+  signature attempts all correctly rejected), but nothing pinned
+  verification to this one specific Clerk instance. Now derived from
+  `CLERK_PUBLISHABLE_KEY` (the same publishable-key-decoding trick
+  Clerk's own SDKs use), not a hardcoded domain string, so it stays
+  correct across dev/staging/prod instances without manual upkeep.
+- **Prompt-injection defense was entirely prompt-based, no code-level
+  enforcement** — anything in a scraped page became trusted-looking
+  tool output with nothing structurally stopping an embedded
+  instruction. `search_knowledge_base` now wraps retrieved chunks in
+  `<untrusted_document>` tags, and `SYSTEM_PROMPT` explicitly instructs
+  the model to treat their contents as reference material only. Defense
+  in depth, not a substitute for the Qdrant auth fix above — verified
+  live that this doesn't change normal answer quality (a real query
+  against the real scraped knowledge base, real grounded answer back).
+
+All of the above verified against the real running stack, not just
+code review — curl/redis-cli/psql against the hardened services
+directly, `docker exec ... whoami`, and a real end-to-end chat request
+through the real agent after every change. 22 tests in `tests/`,
+including new ones for the issuer check and the removed cookie
+fallback, all passing in CI (`Support-agent — tests`, now a required
+branch-protection check alongside `Secret scan (gitleaks)` — the latter
+was itself not required at the time this review's own CI placeholder
+tripped it, which is exactly why it's required now).
+
+**Deliberately not done by this remediation, left as an explicit
+decision for a human:** rotating the AWS IAM key pair and the Clerk
+secret key that were reachable outside their intended scope while the
+container had the platform's full secret set — both should be treated
+as compromised regardless of whether exploitation is provable, and both
+require console access no automated process here has.
 
 ## Verified — Phase 6 is done
 
