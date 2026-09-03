@@ -10,25 +10,40 @@ jobs:
   secret-scan:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
-    # gitleaks-action calls the PR-commits API to diff exactly this PR's
-    # commits and (on a finding) comments on the PR — both need scopes the
-    # default GITHUB_TOKEN doesn't carry unless granted here explicitly.
     permissions:
       contents: read
-      pull-requests: write
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       # Free substitute for GitHub's own secret scanning/push protection —
       # those require GitHub Advanced Security, which isn't purchasable on
-      # this repo's (personal-account) plan. gitleaks scans the full commit
-      # history on every push/PR and fails the build on a match, so this
-      # runs in addition to (not instead of) never committing real secrets
-      # in the first place.
-      - uses: gitleaks/gitleaks-action@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # this repo's plan. Confirmed live moving to the United-Services org:
+      # the gitleaks/gitleaks-action wrapper itself requires a paid license
+      # for organization-owned repos ("[United-Services] is an
+      # organization. License key is required.") — free only for personal
+      # accounts. The underlying gitleaks scanner is still fully open
+      # source regardless of who owns the repo; installing and running the
+      # real binary directly sidesteps the wrapper action's license gate
+      # entirely, not a workaround of gitleaks' own actual licensing.
+      - name: Install gitleaks
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz \
+            | tar -xz gitleaks
+          sudo mv gitleaks /usr/local/bin/gitleaks
+      # Same scan scope the old action used: this PR's own new commits
+      # (--first-parent <base>..<head>) rather than the whole repo history
+      # every single run — a PR's commits are what a fresh run actually
+      # needs to catch; a push straight to main (no PR base to diff
+      # against) scans just the one new commit instead.
+      - name: Run gitleaks
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            gitleaks detect --redact -v --exit-code=1 \
+              --log-opts="--no-merges --first-parent ${{ github.event.pull_request.base.sha }}..${{ github.sha }}"
+          else
+            gitleaks detect --redact -v --exit-code=1 --log-opts="-1"
+          fi
 
   backend:
     name: Backend — typecheck & build
