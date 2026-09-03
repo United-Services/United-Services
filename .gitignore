@@ -66,6 +66,7 @@ support-agent/backend/.env
 support-agent/backend/.env.support-agent
 support-agent/**/__pycache__/
 support-agent/**/*.pyc
+support-agent/**/.pytest_cache/
 # Matches backend/.venv/, ingestion/.venv/, and any other venv created
 # under support-agent/ — narrower per-directory entries kept missing
 # ingestion/.venv/ until this was caught.
