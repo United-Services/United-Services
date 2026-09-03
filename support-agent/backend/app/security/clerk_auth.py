@@ -33,6 +33,7 @@ that scoping alone.
 
 import base64
 import json
+import logging
 import time
 
 import jwt
@@ -40,6 +41,8 @@ import requests
 from fastapi import HTTPException, Request
 
 from app.config import settings
+
+logger = logging.getLogger("clerk_auth")
 
 _JWKS_URL = "https://api.clerk.com/v1/jwks"
 _CACHE_TTL_SECONDS = 3600
@@ -67,12 +70,31 @@ _CLERK_ISSUER = _derive_issuer(settings.clerk_publishable_key)
 def _fetch_jwks(force: bool = False) -> list[dict]:
     now = time.time()
     if force or _jwks_cache["keys"] is None or now - _jwks_cache["fetched_at"] > _CACHE_TTL_SECONDS:
-        response = requests.get(
-            _JWKS_URL,
-            headers={"Authorization": f"Bearer {settings.clerk_secret_key}"},
-            timeout=5,
-        )
-        response.raise_for_status()
+        try:
+            response = requests.get(
+                _JWKS_URL,
+                headers={"Authorization": f"Bearer {settings.clerk_secret_key}"},
+                timeout=5,
+            )
+            response.raise_for_status()
+        except requests.exceptions.RequestException as exc:
+            # Confirmed live: a stale CLERK_SECRET_KEY (a container
+            # still running with a pre-rotation env value — `docker
+            # compose restart` reuses the already-materialized
+            # environment, it does not re-read env_file) made this
+            # 401 and crashed the whole request into an *unhandled*
+            # 500 — which also skipped app/security/cors.py's
+            # Access-Control-Allow-Origin header entirely (never
+            # reached, since the exception propagated straight past
+            # DynamicCORSMiddleware's post-call_next code), showing up
+            # in the browser as a misleading CORS error instead of the
+            # real auth-service failure. Any failure reaching Clerk's
+            # JWKS endpoint — network, a bad/rotated key, Clerk itself
+            # being down — must degrade to the same clean 401 every
+            # other auth failure here produces, never propagate as a
+            # raw exception.
+            logger.error("Clerk JWKS fetch failed: %s", exc)
+            raise HTTPException(status_code=401, detail="Invalid session token") from exc
         _jwks_cache["keys"] = response.json()["keys"]
         _jwks_cache["fetched_at"] = now
     return _jwks_cache["keys"]  # type: ignore[return-value]
