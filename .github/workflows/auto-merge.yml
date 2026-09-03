@@ -1,22 +1,57 @@
 name: Auto-merge
 
-# Enables GitHub's native auto-merge on a PR as soon as it's opened/updated.
-# GitHub then merges it automatically once all required status checks
-# (the 3 CI jobs, per branch protection) pass — no manual click needed.
+# Native branch protection (and the required-status-checks gate this
+# workflow used to lean on entirely) isn't available on this org's Free
+# plan for a private repo — confirmed live moving to United-Services/
+# United-Services: "Upgrade to GitHub Pro or make this repository
+# public to enable this feature." GitHub's native `gh pr merge --auto`
+# only blocks on checks that are still *pending* — with no
+# required-checks list configured, it has no rule saying a check must
+# actually *succeed*, so it would merge the moment CI finishes, red or
+# green. This workflow does the actual gating itself now instead of
+# delegating it: it waits for the "CI" workflow's own completion and
+# merges only if its overall conclusion is success (a GitHub Actions
+# workflow's conclusion is only "success" if every job in it
+# succeeded, so this alone covers all of ci.yml's jobs — Backend/
+# Frontend typecheck & build, Backend integration tests, Support-agent
+# tests, Secret scan — with no need to enumerate them here).
+#
+# Real, stated limitation, not hidden: this only gates the automated
+# path through this workflow. Nothing here can stop a human clicking
+# "Merge" manually on a red or still-running PR, or a direct push to
+# main — that specific enforcement belongs to native branch protection/
+# rulesets, which is exactly what's paid-gated right now. If that's
+# ever restored (Team plan, or making the repo public — not applicable
+# here, this is proprietary code), prefer it over this workaround.
 on:
-  pull_request_target:
-    types: [opened, reopened, synchronize, ready_for_review]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
 
 permissions:
   pull-requests: write
   contents: write
 
 jobs:
-  enable-auto-merge:
-    if: github.event.pull_request.draft == false
+  merge-if-green:
+    # .event == 'pull_request' skips CI runs triggered by a direct push
+    # to main (ci.yml's own `on: push: branches: [main]`) — those have
+    # no open PR to merge, so the lookup below would just no-op anyway,
+    # but this avoids running the job at all for that case.
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - run: gh pr merge --auto --squash "$PR_URL"
+      - name: Find and merge the PR this CI run belongs to
         env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          PR_NUMBER=$(gh api "repos/${REPO}/commits/${HEAD_SHA}/pulls" \
+            --jq '[.[] | select(.state == "open")] | .[0].number // empty')
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No open PR found for commit ${HEAD_SHA} — nothing to merge."
+            exit 0
+          fi
+          echo "Merging PR #${PR_NUMBER} (CI passed on ${HEAD_SHA})"
+          gh pr merge "$PR_NUMBER" --squash --repo "$REPO"
