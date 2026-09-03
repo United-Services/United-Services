@@ -195,6 +195,11 @@ jobs:
       # default in app/config.py.
       OPENROUTER_API_KEY: ci-placeholder
       CLERK_SECRET_KEY: sk_test_ci-placeholder-key
+      # Validly-shaped, not a real Clerk key — app/security/clerk_auth.py
+      # derives its expected `iss` claim from this at import time
+      # (base64("test.clerk.accounts.dev$")), so it has to decode
+      # cleanly even though no test hits the real Clerk JWKS.
+      CLERK_PUBLISHABLE_KEY: pk_test_dGVzdC5jbGVyay5hY2NvdW50cy5kZXYk
       DATABASE_URL: postgresql://support_agent:support_agent@localhost:5433/support_agent
       LOCAL_DATABASE_URL: postgresql+psycopg://support_agent:support_agent@localhost:5433/support_agent
     steps:

@@ -12,6 +12,7 @@ x-airflow-common: &airflow-common
     # both reachable by service name on the internal compose network.
     SITE_BASE_URL: ${SITE_BASE_URL:-http://host.docker.internal:8080}
     QDRANT_URL: http://qdrant:6333
+    QDRANT_API_KEY: ${QDRANT_API_KEY:?set QDRANT_API_KEY in .env}
     # embed.py (running inside these containers via the DAG's BashOperator
     # tasks) needs this to call HF's hosted Inference API — same token/
     # model the backend's search_knowledge_base tool uses, or retrieval
@@ -31,7 +32,12 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-support_agent}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-support_agent}
+      # No insecure fallback default anymore — confirmed live that the
+      # fallback (`support_agent`) was what was actually in effect, on a
+      # port reachable from the local network, not just localhost. A
+      # missing POSTGRES_PASSWORD now fails loudly at `docker compose up`
+      # instead of silently running with a guessable password.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set a strong POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-support_agent}
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -44,66 +50,96 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-    ports:
-      - "5433:5432"
+    # No `ports:` here anymore — confirmed live this was reachable from
+    # the local network on 5433, not just localhost. The backend and
+    # airflow containers reach this over the internal compose network by
+    # service name regardless. Host-side access (a local GUI client, ad
+    # hoc psql) goes through docker-compose.override.yml's 127.0.0.1-only
+    # mapping instead.
 
   qdrant:
     image: qdrant/qdrant:v1.12.4
     restart: unless-stopped
+    environment:
+      # Confirmed live: with no key set, this port allowed full
+      # unauthenticated read/write/delete — listed collections, pulled
+      # real document payloads, and created+deleted a collection with no
+      # credential at all. This is the datastore the chatbot answers
+      # questions from.
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?set QDRANT_API_KEY in .env}
     volumes:
       - qdrant-data:/qdrant/storage
     # No curl/wget in this image (confirmed: it has bash, not much
     # else) — a plain /dev/tcp check is the standard healthcheck
-    # approach for a minimal image like this one.
+    # approach for a minimal image like this one. Doesn't need the API
+    # key: a bare TCP connect check, not an authenticated HTTP request.
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/6333'"]
       interval: 5s
       timeout: 5s
       retries: 10
-    ports:
-      - "6333:6333"
+    # No `ports:` here anymore — see postgres's comment above; same
+    # reasoning, same live-confirmed exposure. The backend and airflow
+    # containers reach this over the internal network at qdrant:6333.
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    # Confirmed live: PONG with zero credentials on this port, reachable
+    # from the local network. Empty at the time this was found, but
+    # anything written here (session/cache data) would have been fully
+    # readable/writable by anything that could reach it.
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}"]
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      # redis-cli ping alone now fails (NOAUTH) once --requirepass is
+      # set — the healthcheck itself needs the same password, sourced
+      # from the same env var Docker Compose already resolves here.
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping"]
       interval: 5s
       timeout: 5s
       retries: 10
-    # Host 6380, not 6379 — a native (non-Docker) redis-server was
-    # already listening on 6379 on the host the first time this stack
-    # actually got run end-to-end, the same kind of collision
-    # postgres's 5433 mapping below already avoids for 5432. Only
-    # affects host-side access (redis-cli against localhost); the
-    # backend service still reaches this over the internal compose
-    # network at redis:6379 regardless (see REDIS_URL below).
-    ports:
-      - "6380:6379"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+    # No `ports:` here anymore — see postgres's comment above; same
+    # reasoning. The backend reaches this over the internal network at
+    # redis:6379 regardless (see REDIS_URL below).
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    # The real United-Services backend's own .env, not a copy here —
-    # same file app/config.py reads via its parents[3] traversal when
-    # run directly on the host (see that file's comment). Compose
-    # resolves env_file paths relative to this compose file's own
-    # directory, so ../backend/.env is <repo-root>/backend/.env.
+    # A support-agent-scoped file, not the main backend's own ../backend/.env
+    # — confirmed live via `docker inspect` that the previous env_file
+    # (the *entire* main platform's .env) put every production secret
+    # in the whole stack into this container: live AWS IAM keys, the
+    # Clerk secret + webhook keys, the GeoIP license, Betterstack's
+    # token — none of which this service ever touches. This file (never
+    # committed — see .gitignore) carries only what support-agent
+    # actually uses: DATABASE_URL, HF_TOKEN, OPENROUTER_API_KEY,
+    # CLERK_SECRET_KEY. Generate/refresh it with
+    # scripts/fetch-secrets-support-agent.sh (repo root) rather than by
+    # hand, same atomic-write pattern as the main backend's own
+    # fetch-secrets.sh. See app/config.py's own comment for how a bare
+    # host-mode `uvicorn --reload` run (not through this compose file)
+    # still separately reads the shared ../backend/.env directly — that
+    # path is a local-dev convenience for running outside Docker, not
+    # something this container does.
     env_file:
-      - ../backend/.env
+      - ./backend/.env.support-agent
     environment:
       QDRANT_URL: http://qdrant:6333
-      # DATABASE_URL (Supabase, primary) comes from backend/.env via
-      # env_file above — no sensible container-network default for an
-      # external managed service. LOCAL_DATABASE_URL is the local
-      # standby FailoverManager fails over to: the `postgres` service
-      # below, same instance Airflow's metadata db lives on (different
-      # database — see postgres-init/), not a second Postgres.
-      LOCAL_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-support_agent}:${POSTGRES_PASSWORD:-support_agent}@postgres/${POSTGRES_DB:-support_agent}
-      REDIS_URL: redis://redis:6379
+      QDRANT_API_KEY: ${QDRANT_API_KEY:?set QDRANT_API_KEY in .env}
+      # DATABASE_URL (Supabase, primary) comes from
+      # backend/.env.support-agent via env_file above — no sensible
+      # container-network default for an external managed service.
+      # LOCAL_DATABASE_URL is the local standby FailoverManager fails
+      # over to: the `postgres` service below, same instance Airflow's
+      # metadata db lives on (different database — see postgres-init/),
+      # not a second Postgres.
+      LOCAL_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-support_agent}:${POSTGRES_PASSWORD:?set a strong POSTGRES_PASSWORD in .env}@postgres/${POSTGRES_DB:-support_agent}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}@redis:6379
       # No CORS env var here — allowed origins are DB-backed
       # (app/security/cors.py, allowed_origins table), seeded by the
       # add_allowed_origins migration with the widget's container port

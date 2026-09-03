@@ -17,3 +17,22 @@ services:
     command: >
       sh -c "alembic upgrade head && alembic -x db=local upgrade head &&
       uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  # Host-side access for local dev tooling only (a GUI client, ad hoc
+  # psql/redis-cli/curl against Qdrant's API) — bound to 127.0.0.1
+  # specifically, not the bare "host:container" shorthand (which
+  # defaults to 0.0.0.0 and was confirmed live to be reachable from the
+  # local network, not just this machine). The backend/airflow
+  # containers never go through these — they reach each service by name
+  # over the internal compose network regardless.
+  postgres:
+    ports:
+      - "127.0.0.1:5433:5432"
+
+  qdrant:
+    ports:
+      - "127.0.0.1:6333:6333"
+
+  redis:
+    ports:
+      - "127.0.0.1:6380:6379"
