@@ -5,6 +5,26 @@ No part of this repository may be copied, modified, distributed, sublicensed,
 or used in any form without the prior written permission of United Services
 Egypt.
 
+## Source Code
+
+All source code in this repository — every file under `backend/`, `frontend/`,
+`support-agent/`, and elsewhere — is the exclusive property of United
+Services Egypt ("USE"). All rights reserved. Making this repository publicly
+visible does not change its license or grant any rights to it; visibility
+and licensing are independent, and public visibility exists for reasons
+unrelated to permission to use, copy, or reuse the code.
+
+### No use permitted
+
+No file in this repository may be copied, downloaded, cloned, forked,
+modified, distributed, publicly displayed, sublicensed, incorporated into
+another project, or used in any way, for any purpose — commercial or
+non-commercial, in whole or in part — under any conditions, without the
+prior written permission of United Services Egypt. This applies regardless
+of how the code was obtained (direct download, git clone, fork, scraping,
+or otherwise) and regardless of the repository's visibility setting at the
+time.
+
 ## Images
 
 All images in `frontend/public/images/`, and any images added to that
