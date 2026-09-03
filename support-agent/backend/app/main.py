@@ -5,8 +5,14 @@ from fastapi import FastAPI
 from app.config import settings
 from app.failover.manager import get_failover_manager, init_failover_manager
 from app.failover.mirror_sync import start_mirror_sync_loop
+from app.logging_setup import install_betterstack_logging
 from app.routers.chat import router as chat_router
 from app.security.cors import DynamicCORSMiddleware, start_cors_refresh_loop
+
+# Before anything else logs — the failover manager's own startup
+# messages (init_failover_manager below) are exactly the kind of thing
+# worth having in Betterstack, not just this process's own stdout.
+install_betterstack_logging()
 
 
 @asynccontextmanager

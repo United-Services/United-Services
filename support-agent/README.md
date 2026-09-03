@@ -495,6 +495,35 @@ candidate and trying them in sequence sidesteps that typing conflict
 entirely — and compiling a LangGraph graph is cheap (no network call),
 so there's no real cost to building several up front.
 
+## Logging (Betterstack)
+
+`app/logging_setup.py`'s `install_betterstack_logging()` (called once
+at import time in `app/main.py`, before anything else can log) adds a
+handler to the root logger that ships every INFO-and-above line — from
+every module (`agent`, `cors`, `failover`, `failover.mirror_sync`) —
+to the same Betterstack source the main NestJS backend already ships
+to (`backend/src/logging/betterstack.logger.ts`). Same dashboard, same
+live tail; each line is tagged `"service": "support-agent"` in the
+payload to distinguish it from the main backend's own
+`"service": "backend"` lines, rather than using a second Betterstack
+source.
+
+Unlike the NestJS logger's ship-only design, this is an *additional*
+handler — existing console output (what `docker logs
+support-agent-backend-1` shows, this service's primary debugging tool
+throughout its own development) is untouched. Fire-and-forget via a
+background thread per log line, not a blocking call inside the handler
+itself — this app is async (FastAPI/uvicorn), and a blocking POST
+inside logging would stall the event loop every time Betterstack is
+slow or unreachable. Verified live: a direct POST with the real
+`BETTERSTACK_INGEST_URL`/`BETTERSTACK_SOURCE_TOKEN` (now part of
+support-agent's own scoped secret set — see Setup above) returns `202`.
+
+`BETTERSTACK_INGEST_URL`/`BETTERSTACK_SOURCE_TOKEN` are optional
+(empty-string defaults in `config.py`) — missing either one just means
+nothing ships, same fail-open behavior the NestJS logger uses, not a
+crash.
+
 ## Security remediation (2026-09-03)
 
 A combined review (static code audit, live penetration test against the
