@@ -14,14 +14,27 @@ later. (This project doesn't build that reconciliation step — see
 README's "Known limitation" note; it's a smaller, portfolio-scale
 Postgres failover, not the full write-log/replay system the main site
 has.)
+
+Built entirely on SQLAlchemy's Core query builder against the real ORM
+model tables (ConversationSession.__table__, Ticket.__table__) — no
+sqlalchemy.text()/raw SQL string-building anywhere in this module.
+Earlier versions built each query as an f-string with the table name
+interpolated in, guarded by a runtime allowlist check
+(_validated_table()) since Semgrep's avoid-sqlalchemy-text rule can't
+see that a fixed list makes that safe — reworked to use real model
+Table objects instead so the question doesn't arise at all: there is no
+string to interpolate a table name into anymore, the same guarantee the
+main backend's Prisma-generated queries get by construction.
 """
 
 import logging
 import threading
 
-from sqlalchemy import bindparam, text
+from sqlalchemy import Table, delete, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import Engine
 
+from app.db.models import ConversationSession, Ticket
 from app.failover.manager import FailoverManager
 
 logger = logging.getLogger("failover.mirror_sync")
@@ -29,64 +42,36 @@ logger = logging.getLogger("failover.mirror_sync")
 SYNC_INTERVAL_SECONDS = 600  # 10 minutes — matches the main backend's DbMirrorSyncWorker cadence.
 
 # Parent-before-child for upserts; reversed for delete-reconciliation —
-# see this module's docstring.
-TABLES_IN_FK_ORDER = ["conversation_sessions", "tickets"]
-_KNOWN_TABLES = frozenset(TABLES_IN_FK_ORDER)
+# see this module's docstring. Real ORM model classes, not table-name
+# strings — the fixed list itself is still what keeps this bounded to
+# exactly these two tables, same as before, just enforced by Python's
+# own type system now instead of a runtime string check.
+MODELS_IN_FK_ORDER = [ConversationSession, Ticket]
 
 
-def _validated_table(table: str) -> str:
-    # Every text(f"... {table} ...") below interpolates a table name
-    # that, today, only ever comes from TABLES_IN_FK_ORDER — never
-    # request/user input — so there's no actual injection path
-    # (Semgrep's avoid-sqlalchemy-text rule can't see that; it flags
-    # any text() usage regardless of whether the interpolated value is
-    # attacker-reachable). This turns "safe because of where callers
-    # happen to be today" into an actual runtime-enforced guarantee, so
-    # a future call site can't accidentally pass something dynamic
-    # through the same helpers without it failing loudly here first.
-    if table not in _KNOWN_TABLES:
-        raise ValueError(f"refusing to build SQL against unrecognized table {table!r}")
-    return table
-
-
-def _fetch_all(engine: Engine, table: str) -> list[dict]:
-    table = _validated_table(table)
+def _fetch_all(engine: Engine, table: Table) -> list[dict]:
     with engine.connect() as conn:
-        result = conn.execute(text(f"SELECT * FROM {table}"))
-        return [dict(row._mapping) for row in result]
+        result = conn.execute(select(table))
+        return [dict(row) for row in result.mappings()]
 
 
-def _upsert_rows(engine: Engine, table: str, rows: list[dict]) -> None:
+def _upsert_rows(engine: Engine, table: Table, rows: list[dict]) -> None:
     if not rows:
         return
-    table = _validated_table(table)
     columns = list(rows[0].keys())
-    col_list = ", ".join(columns)
-    placeholders = ", ".join(f":{c}" for c in columns)
-    update_clause = ", ".join(f"{c} = EXCLUDED.{c}" for c in columns if c != "id")
-    stmt = text(
-        f"INSERT INTO {table} ({col_list}) VALUES ({placeholders}) "
-        f"ON CONFLICT (id) DO UPDATE SET {update_clause}"
-    )
+    stmt = pg_insert(table).values(rows)
+    update_cols = {c: stmt.excluded[c] for c in columns if c != "id"}
+    stmt = stmt.on_conflict_do_update(index_elements=["id"], set_=update_cols)
     with engine.begin() as conn:
-        for row in rows:
-            conn.execute(stmt, row)
+        conn.execute(stmt)
 
 
-def _delete_stale(engine: Engine, table: str, keep_ids: set) -> int:
-    table = _validated_table(table)
+def _delete_stale(engine: Engine, table: Table, keep_ids: set) -> int:
     with engine.begin() as conn:
         if not keep_ids:
-            result = conn.execute(text(f"DELETE FROM {table}"))
-            return result.rowcount
-        # expanding=True lets SQLAlchemy turn a single bound list into the
-        # right number of positional placeholders for IN (...) — a plain
-        # bindparams(ids=[...]) without it sends the list as one opaque
-        # parameter, which the driver can't expand into SQL itself.
-        stmt = text(f"DELETE FROM {table} WHERE id NOT IN :ids").bindparams(
-            bindparam("ids", expanding=True)
-        )
-        result = conn.execute(stmt, {"ids": list(keep_ids)})
+            result = conn.execute(delete(table))
+        else:
+            result = conn.execute(delete(table).where(table.c.id.not_in(keep_ids)))
         return result.rowcount
 
 
@@ -97,16 +82,18 @@ def sync_once(manager: FailoverManager) -> None:
 
     primary_ids_by_table: dict[str, set] = {}
 
-    for table in TABLES_IN_FK_ORDER:
+    for model in MODELS_IN_FK_ORDER:
+        table = model.__table__
         rows = _fetch_all(manager.primary_engine, table)
         _upsert_rows(manager.local_engine, table, rows)
-        primary_ids_by_table[table] = {row["id"] for row in rows}
-        logger.info("mirror sync: upserted %d row(s) into local.%s", len(rows), table)
+        primary_ids_by_table[model.__tablename__] = {row["id"] for row in rows}
+        logger.info("mirror sync: upserted %d row(s) into local.%s", len(rows), model.__tablename__)
 
-    for table in reversed(TABLES_IN_FK_ORDER):
-        deleted = _delete_stale(manager.local_engine, table, primary_ids_by_table[table])
+    for model in reversed(MODELS_IN_FK_ORDER):
+        table = model.__table__
+        deleted = _delete_stale(manager.local_engine, table, primary_ids_by_table[model.__tablename__])
         if deleted:
-            logger.info("mirror sync: deleted %d stale row(s) from local.%s", deleted, table)
+            logger.info("mirror sync: deleted %d stale row(s) from local.%s", deleted, model.__tablename__)
 
 
 def start_mirror_sync_loop(manager: FailoverManager) -> threading.Thread:
