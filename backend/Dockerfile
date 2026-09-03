@@ -15,8 +15,10 @@ FROM node:22-slim AS build
 WORKDIR /app
 
 # openssl: Prisma's query engine needs it at generate time too, not just
-# at runtime, to detect the right libssl variant.
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+# at runtime, to detect the right libssl variant. --no-install-recommends:
+# skips openssl's recommended-but-unneeded extras — smaller layer, nothing
+# this build actually uses.
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -25,8 +27,7 @@ COPY . .
 # build` (nest build) needs the generated client's types to compile
 # against; a schema-valid DATABASE_URL is enough, no reachable DB needed
 # (matches how CI's own `prisma generate` step works).
-RUN npx prisma generate
-RUN npm run build
+RUN npx prisma generate && npm run build
 
 # ---
 
@@ -40,8 +41,17 @@ WORKDIR /app
 # *system* store and fails outright without this ("x509: certificate
 # signed by unknown authority", confirmed live). openssl: same Prisma
 # engine-detection reason as the build stage, needed again at runtime.
+#
+# Deliberately not pinning exact package=version here (a Codacy
+# suggestion, not applied): Debian's apt mirrors purge old package
+# versions as the distro rolls forward, so a hardcoded version pin
+# eventually starts failing a from-scratch build with "unable to locate
+# package" — a real, recurring failure mode for pinned apt versions on
+# a rolling base image, not a hypothetical. node:22-slim's own tag
+# already pins what actually matters for reproducibility (the Debian
+# release these packages come from).
 RUN sed -i 's/^Components: main$/Components: main contrib/' /etc/apt/sources.list.d/debian.sources \
-    && apt-get update -y && apt-get install -y openssl ca-certificates geoipupdate && rm -rf /var/lib/apt/lists/* \
+    && apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates geoipupdate && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 1001 nodejs \
     && useradd --system --create-home --uid 1001 --gid nodejs nestjs
 

@@ -57,7 +57,6 @@ COPY --from=build /app/i18n ./i18n
 COPY --from=build /app/messages ./messages
 COPY scripts/fetch-secrets.sh scripts/fetch-secrets.mjs ./scripts/
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x docker-entrypoint.sh
 
 # Only .next, not `-R /app` — chowning the whole tree (node_modules
 # included) after npm ci forces the overlay filesystem to materialize a
@@ -65,7 +64,7 @@ RUN chmod +x docker-entrypoint.sh
 # confirmed live on backend/Dockerfile). `next start` writes ISR/fetch
 # cache entries under .next/cache at runtime, so nextjs needs write access
 # there; everything else it only reads.
-RUN chown -R nextjs:nodejs /app/.next
+RUN chmod +x docker-entrypoint.sh && chown -R nextjs:nodejs /app/.next
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
