@@ -54,10 +54,19 @@ function buildCsp(nonce: string) {
     // /api/* same-origin — no cross-origin API call ever happens there.
     // Local `pnpm dev` has no nginx in front, so the frontend calls the
     // backend directly at NEXT_PUBLIC_API_URL (http://localhost:3002) —
-    // allow that origin in connect-src only outside production.
+    // allow that origin in connect-src only outside production. Same
+    // reasoning for support-agent's own separate backend
+    // (NEXT_PUBLIC_SUPPORT_AGENT_API_URL, default http://localhost:8000
+    // — see lib/useChatStream.ts): confirmed live this was missing
+    // entirely (browser CSP blocked the fetch() before it ever left the
+    // page, distinct from and unrelated to support-agent's own
+    // DB-backed CORS allowlist, which only governs whether *it* accepts
+    // an incoming cross-origin request, not what this page's own JS is
+    // permitted to initiate).
     [
       "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.use-eg.com https://clerk-telemetry.com https://*.s3.us-east-1.amazonaws.com",
       isDev ? "http://localhost:3002" : "",
+      isDev ? (process.env.NEXT_PUBLIC_SUPPORT_AGENT_API_URL ?? "http://localhost:8000") : "",
     ]
       .filter(Boolean)
       .join(" "),
