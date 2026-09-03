@@ -31,9 +31,26 @@ SYNC_INTERVAL_SECONDS = 600  # 10 minutes — matches the main backend's DbMirro
 # Parent-before-child for upserts; reversed for delete-reconciliation —
 # see this module's docstring.
 TABLES_IN_FK_ORDER = ["conversation_sessions", "tickets"]
+_KNOWN_TABLES = frozenset(TABLES_IN_FK_ORDER)
+
+
+def _validated_table(table: str) -> str:
+    # Every text(f"... {table} ...") below interpolates a table name
+    # that, today, only ever comes from TABLES_IN_FK_ORDER — never
+    # request/user input — so there's no actual injection path
+    # (Semgrep's avoid-sqlalchemy-text rule can't see that; it flags
+    # any text() usage regardless of whether the interpolated value is
+    # attacker-reachable). This turns "safe because of where callers
+    # happen to be today" into an actual runtime-enforced guarantee, so
+    # a future call site can't accidentally pass something dynamic
+    # through the same helpers without it failing loudly here first.
+    if table not in _KNOWN_TABLES:
+        raise ValueError(f"refusing to build SQL against unrecognized table {table!r}")
+    return table
 
 
 def _fetch_all(engine: Engine, table: str) -> list[dict]:
+    table = _validated_table(table)
     with engine.connect() as conn:
         result = conn.execute(text(f"SELECT * FROM {table}"))
         return [dict(row._mapping) for row in result]
@@ -42,6 +59,7 @@ def _fetch_all(engine: Engine, table: str) -> list[dict]:
 def _upsert_rows(engine: Engine, table: str, rows: list[dict]) -> None:
     if not rows:
         return
+    table = _validated_table(table)
     columns = list(rows[0].keys())
     col_list = ", ".join(columns)
     placeholders = ", ".join(f":{c}" for c in columns)
@@ -56,6 +74,7 @@ def _upsert_rows(engine: Engine, table: str, rows: list[dict]) -> None:
 
 
 def _delete_stale(engine: Engine, table: str, keep_ids: set) -> int:
+    table = _validated_table(table)
     with engine.begin() as conn:
         if not keep_ids:
             result = conn.execute(text(f"DELETE FROM {table}"))

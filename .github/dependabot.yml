@@ -4,6 +4,14 @@ updates:
     directory: /backend
     schedule:
       interval: weekly
+    # Waits this many days after a version is published before Dependabot
+    # proposes it — a newly-published package can be malicious (a
+    # compromised maintainer account, a typosquat) or just genuinely
+    # unstable; most real-world incidents get caught/yanked within days,
+    # so this buys time for that to happen before it ever reaches a PR
+    # here.
+    cooldown:
+      default-days: 7
     groups:
       backend-dependencies:
         patterns:
@@ -13,6 +21,8 @@ updates:
     directory: /frontend
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       frontend-dependencies:
         patterns:
@@ -22,3 +32,5 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7

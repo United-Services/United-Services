@@ -51,6 +51,28 @@ describe('TotpCryptoService', () => {
     await expect(crypto.decryptSecret(tampered)).rejects.toThrow();
   });
 
+  it('rejects a truncated auth tag rather than accepting a shorter-than-16-byte tag', async () => {
+    // GCM's forgery resistance degrades sharply with a shorter tag —
+    // this is the actual mechanism the Semgrep gcm-no-tag-length finding
+    // flagged: without an explicit authTagLength, decryption would trust
+    // whatever length the stored/attacker-supplied tag happens to be.
+    const store = await FakeKekKeyStore.create();
+    store.addActiveKey('kek-test-1');
+    const crypto = new TotpCryptoService(store.asKekKeyStore());
+
+    const envelope = await crypto.encryptSecret('JBSWY3DPEHPK3PXP');
+    const truncated = {
+      ...envelope,
+      totpAuthTag: Buffer.from(envelope.totpAuthTag, 'base64')
+        .subarray(0, 8)
+        .toString('base64'),
+    };
+
+    await expect(crypto.decryptSecret(truncated)).rejects.toThrow(
+      /Invalid auth tag length/,
+    );
+  });
+
   it('throws when the ciphertext has been tampered with', async () => {
     const store = await FakeKekKeyStore.create();
     store.addActiveKey('kek-test-1');
