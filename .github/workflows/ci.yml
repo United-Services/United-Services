@@ -206,5 +206,17 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: support-agent/backend/requirements-dev.txt
+      # CLERK_PUBLISHABLE_KEY computed here, not committed as a static
+      # value — app/security/clerk_auth.py derives its expected `iss`
+      # claim from this at import time (a Clerk publishable key is
+      # "pk_test_" + base64(frontend-api-domain + "$")), so it has to
+      # decode to something domain-shaped even though no test here hits
+      # the real Clerk JWKS. A fixed high-entropy blob sitting in source
+      # is exactly the pattern gitleaks' generic-api-key rule exists to
+      # catch, correctly, even when the value itself is fake — the fix
+      # is to not have a static secret-shaped literal in the repo at
+      # all, not to tell the scanner to stop looking here.
+      - name: Compute placeholder CLERK_PUBLISHABLE_KEY
+        run: echo "CLERK_PUBLISHABLE_KEY=pk_test_$(echo -n 'ci-test.clerk.accounts.dev$' | base64 -w0)" >> "$GITHUB_ENV"
       - run: pip install -r requirements-dev.txt
       - run: python -m pytest tests/ -v
