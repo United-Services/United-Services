@@ -1,10 +1,13 @@
 from functools import lru_cache
+from urllib.parse import urlparse
 
 import requests
 from langchain_core.tools import tool
 from qdrant_client import QdrantClient
 
 from app.config import settings
+
+_TRUSTED_EMBEDDING_HOSTS = frozenset({"router.huggingface.co", "api-inference.huggingface.co"})
 
 # Must match ingestion/embed.py's EMBEDDING_MODEL_NAME/EMBEDDING_DIM/
 # HF_API_URL/_to_vector exactly — see that file's module docstring for
@@ -29,6 +32,9 @@ TOP_K = 4
 def _embed_query(text: str) -> list[float]:
     if not settings.hf_token:
         raise RuntimeError("HF_TOKEN is not set — get a free token at https://huggingface.co/settings/tokens")
+    parsed = urlparse(HF_API_URL)
+    if parsed.hostname not in _TRUSTED_EMBEDDING_HOSTS:
+        raise ValueError(f"Refusing to send credentials to untrusted host: {parsed.hostname}")
     resp = requests.post(
         HF_API_URL,
         headers={"Authorization": f"Bearer {settings.hf_token}"},
