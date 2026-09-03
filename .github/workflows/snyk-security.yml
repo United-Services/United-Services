@@ -34,6 +34,16 @@ jobs:
       security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
       actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
     runs-on: ubuntu-latest
+    # Job-level, not on a single step — confirmed live this was the real
+    # cause of a persistent 401 across every real `snyk` command
+    # regardless of the token's own value: a step-level `env:` (as this
+    # was originally, only on "Set up Snyk CLI") only applies to that
+    # one step's process, never to sibling steps. Every step below that
+    # actually authenticates (code test, monitor, container monitor)
+    # needs this too, so it belongs at the job level where all of them
+    # inherit it.
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Snyk CLI to check for security issues
@@ -46,10 +56,6 @@ jobs:
         #- uses: actions/setup-node@v4
         #  with:
         #    node-version: 20
-
-        env:
-          # This is where you will need to introduce the Snyk API token created with your Snyk account
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
         # Runs Snyk Code (SAST) analysis and uploads result into GitHub.
         # Use || true to not fail the pipeline
@@ -65,12 +71,17 @@ jobs:
       - name: Snyk IaC test and report
         run: snyk iac test --report # || true
 
-        # Build the docker image for testing
+        # Build the docker image for testing. This repo builds several
+        # separate images (backend/frontend/support-agent), not one —
+        # scanning the main backend image here specifically, since it's
+        # the one actually handling user data; the placeholder template
+        # value ("your/image-to-test", repo root, no such Dockerfile)
+        # would have failed this step outright on any real run.
       - name: Build a Docker image
-        run: docker build -t your/image-to-test .
+        run: docker build -t united-services-backend:scan-test ./backend
         # Runs Snyk Container (Container and SCA) analysis and uploads result to Snyk.
       - name: Snyk Container monitor
-        run: snyk container monitor your/image-to-test --file=Dockerfile
+        run: snyk container monitor united-services-backend:scan-test --file=backend/Dockerfile
 
         # Push the Snyk Code results into GitHub Code Scanning tab
       - name: Upload result to GitHub Code Scanning
