@@ -154,5 +154,16 @@ class Settings(BaseSettings):
     # budget, not just this one client's fair share of it.
     rate_limit_per_minute: int = 10
 
+    # Same Betterstack source the main backend ships to
+    # (backend/src/logging/betterstack.logger.ts) — logs land in the
+    # same dashboard, distinguished by app/logging_setup.py's
+    # "service": "support-agent" tag rather than a second Betterstack
+    # source. Optional (empty string default, not a required field):
+    # app/logging_setup.py's handler silently no-ops without these,
+    # same fail-open behavior the NestJS logger uses, so a missing
+    # value degrades to "no shipping" rather than crashing the app.
+    betterstack_ingest_url: str = ""
+    betterstack_source_token: str = ""
+
 
 settings = Settings()

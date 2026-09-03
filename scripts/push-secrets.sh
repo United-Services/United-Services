@@ -102,6 +102,13 @@ SUPPORT_AGENT_KEYS=(
   HF_TOKEN
   QDRANT_API_KEY
   REDIS_PASSWORD
+  # Ships to the same Betterstack source the platform backend uses
+  # (app/logging_setup.py tags "service": "support-agent" so the two
+  # are distinguishable in the same dashboard) — real value is
+  # identical to the platform's own, stored a second time under this
+  # narrower path like DATABASE_URL/CLERK_SECRET_KEY above.
+  BETTERSTACK_INGEST_URL
+  BETTERSTACK_SOURCE_TOKEN
 )
 
 push_keys() {
