@@ -217,6 +217,6 @@ jobs:
       # is to not have a static secret-shaped literal in the repo at
       # all, not to tell the scanner to stop looking here.
       - name: Compute placeholder CLERK_PUBLISHABLE_KEY
-        run: echo "CLERK_PUBLISHABLE_KEY=pk_test_$(echo -n 'ci-test.clerk.accounts.dev$' | base64 -w0)" >> "$GITHUB_ENV"
+        run: echo "CLERK_PUBLISHABLE_KEY=pk_test_$(echo -n 'ci-test.clerk.accounts.dev$' | base64 -w0)" >> "$GITHUB_ENV" # nothing static committed here for gitleaks to flag
       - run: pip install -r requirements-dev.txt
       - run: python -m pytest tests/ -v
