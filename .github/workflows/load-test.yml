@@ -7,6 +7,11 @@ name: Load test
 on:
   workflow_dispatch: {}
 
+# Only checks out the repo and boots the app locally to hit it with
+# k6 — no write access needed anywhere.
+permissions:
+  contents: read
+
 jobs:
   load-test:
     name: k6 load test (public endpoints + rate limiter + WebSocket gateway)

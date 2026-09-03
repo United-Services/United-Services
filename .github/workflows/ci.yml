@@ -6,6 +6,18 @@ on:
   pull_request:
     branches: [main]
 
+# Least-privilege default for every job below — none of them push
+# commits, comment on PRs, or touch releases; they only read the repo
+# to test/build/scan it. Without this, each job's GITHUB_TOKEN falls
+# back to whatever the org/repo's default token permissions are, which
+# is exactly the kind of implicit, could-silently-change scope CodeQL's
+# "Workflow does not contain permissions" flags. secret-scan already
+# had its own `permissions: contents: read` before this existed at the
+# root — redundant now but harmless to leave, since an explicit
+# per-job block always wins over this default regardless.
+permissions:
+  contents: read
+
 jobs:
   semgrep:
     name: Semgrep
