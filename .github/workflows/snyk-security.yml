@@ -58,18 +58,32 @@ jobs:
         #    node-version: 20
 
         # Runs Snyk Code (SAST) analysis and uploads result into GitHub.
-        # Use || true to not fail the pipeline
+        # continue-on-error: findings should surface via the SARIF upload
+        # to GitHub Code Scanning below, not fail this job outright — the
+        # trailing `# || true` this line originally had was a dead shell
+        # comment (everything after `#` is inert), which is why this
+        # step still failed the whole workflow on real findings even
+        # though that clearly wasn't the intent. continue-on-error is
+        # used instead of a shell-level `|| true` so a real failure still
+        # shows as failed in the Actions UI rather than being masked.
       - name: Snyk Code test
-        run: snyk code test --sarif > snyk-code.sarif # || true
+        continue-on-error: true
+        run: snyk code test --sarif > snyk-code.sarif
 
         # Runs Snyk Open Source (SCA) analysis and uploads result to Snyk.
+        # continue-on-error: exits non-zero even on a partial success (e.g.
+        # one sub-project missing a lockfile) once other projects in the
+        # same run already monitored fine — see this step's own dashboard
+        # links in the run log for what actually got uploaded.
       - name: Snyk Open Source monitor
+        continue-on-error: true
         run: snyk monitor --all-projects
 
         # Runs Snyk Infrastructure as Code (IaC) analysis and uploads result to Snyk.
-        # Use || true to not fail the pipeline.
+        # Same dead-comment issue as above — continue-on-error now actually applies.
       - name: Snyk IaC test and report
-        run: snyk iac test --report # || true
+        continue-on-error: true
+        run: snyk iac test --report
 
         # Build the docker image for testing. This repo builds several
         # separate images (backend/frontend/support-agent), not one —
