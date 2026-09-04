@@ -97,7 +97,9 @@
   },
   "overrides": {
     "deepmerge-ts": "^8.0.1",
-    "mysql2": "^3.24.3"
+    "mysql2": "^3.24.3",
+    "multer": "^2.3.0",
+    "fast-uri": "^4.1.4"
   },
   "jest": {
     "moduleFileExtensions": [
