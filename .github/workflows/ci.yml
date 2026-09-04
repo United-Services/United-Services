@@ -112,11 +112,14 @@ jobs:
       # failure, since a registry blip isn't a finding.
       - name: npm audit
         run: |
-          for i in 1 2 3; do
-            npm audit --audit-level=high && exit 0
-            echo "npm audit attempt $i failed, retrying..."
-            sleep 10
+          for i in 1 2 3 4 5; do
+            npm audit --audit-level=high 2>audit-err.log && { cat audit-err.log; exit 0; }
+            echo "npm audit attempt $i failed (registry error, not a finding — see below), retrying in $((i * 10))s..."
+            tail -c 500 audit-err.log
+            sleep $((i * 10))
           done
+          echo "npm audit still failing after 5 attempts:"
+          cat audit-err.log
           exit 1
 
   backend-integration:
@@ -221,11 +224,14 @@ jobs:
       # See backend job's npm audit step for why this retries.
       - name: npm audit
         run: |
-          for i in 1 2 3; do
-            npm audit --audit-level=high && exit 0
-            echo "npm audit attempt $i failed, retrying..."
-            sleep 10
+          for i in 1 2 3 4 5; do
+            npm audit --audit-level=high 2>audit-err.log && { cat audit-err.log; exit 0; }
+            echo "npm audit attempt $i failed (registry error, not a finding — see below), retrying in $((i * 10))s..."
+            tail -c 500 audit-err.log
+            sleep $((i * 10))
           done
+          echo "npm audit still failing after 5 attempts:"
+          cat audit-err.log
           exit 1
 
   support-agent:
