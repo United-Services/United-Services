@@ -32,11 +32,11 @@ def keypair():
 
 @pytest.fixture(autouse=True)
 def _reset_jwks_cache():
-    clerk_auth._jwks_cache["keys"] = None
-    clerk_auth._jwks_cache["fetched_at"] = 0.0
+    clerk_auth._jwks_keys = None
+    clerk_auth._jwks_fetched_at = 0.0
     yield
-    clerk_auth._jwks_cache["keys"] = None
-    clerk_auth._jwks_cache["fetched_at"] = 0.0
+    clerk_auth._jwks_keys = None
+    clerk_auth._jwks_fetched_at = 0.0
 
 
 def _install_jwks(monkeypatch, public_key, kid=KID):

@@ -47,7 +47,8 @@ logger = logging.getLogger("clerk_auth")
 _JWKS_URL = "https://api.clerk.com/v1/jwks"
 _CACHE_TTL_SECONDS = 3600
 
-_jwks_cache: dict[str, object] = {"keys": None, "fetched_at": 0.0}
+_jwks_keys: list[dict] | None = None
+_jwks_fetched_at: float = 0.0
 
 
 def _derive_issuer(publishable_key: str) -> str:
@@ -68,8 +69,9 @@ _CLERK_ISSUER = _derive_issuer(settings.clerk_publishable_key)
 
 
 def _fetch_jwks(force: bool = False) -> list[dict]:
+    global _jwks_keys, _jwks_fetched_at
     now = time.time()
-    if force or _jwks_cache["keys"] is None or now - _jwks_cache["fetched_at"] > _CACHE_TTL_SECONDS:
+    if force or _jwks_keys is None or now - _jwks_fetched_at > _CACHE_TTL_SECONDS:
         try:
             response = requests.get(
                 _JWKS_URL,
@@ -95,9 +97,10 @@ def _fetch_jwks(force: bool = False) -> list[dict]:
             # raw exception.
             logger.error("Clerk JWKS fetch failed: %s", exc)
             raise HTTPException(status_code=401, detail="Invalid session token") from exc
-        _jwks_cache["keys"] = response.json()["keys"]
-        _jwks_cache["fetched_at"] = now
-    return _jwks_cache["keys"]  # type: ignore[return-value]
+        _jwks_keys = response.json()["keys"]
+        _jwks_fetched_at = now
+    assert _jwks_keys is not None
+    return _jwks_keys
 
 
 def _extract_token(request: Request) -> str:
