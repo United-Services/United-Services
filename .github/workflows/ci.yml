@@ -106,7 +106,18 @@ jobs:
       - name: Unit tests
         run: npm test -- --ci
       - run: npm run build
-      - run: npm audit --audit-level=high
+      # npm's audit-quick endpoint intermittently 500s (it's being
+      # retired in favor of a bulk advisory endpoint per npm's own
+      # notice) — retry a few times before treating it as a real
+      # failure, since a registry blip isn't a finding.
+      - name: npm audit
+        run: |
+          for i in 1 2 3; do
+            npm audit --audit-level=high && exit 0
+            echo "npm audit attempt $i failed, retrying..."
+            sleep 10
+          done
+          exit 1
 
   backend-integration:
     name: Backend — integration tests (real Postgres + Redis)
@@ -207,7 +218,15 @@ jobs:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2ktcGxhY2Vob2xkZXIta2V5LmNsZXJrLmFjY291bnRzLmRldiQ
           CLERK_SECRET_KEY: sk_test_ci-placeholder-key
           NEXT_PUBLIC_API_URL: http://localhost:3002/api/v1
-      - run: npm audit --audit-level=high
+      # See backend job's npm audit step for why this retries.
+      - name: npm audit
+        run: |
+          for i in 1 2 3; do
+            npm audit --audit-level=high && exit 0
+            echo "npm audit attempt $i failed, retrying..."
+            sleep 10
+          done
+          exit 1
 
   support-agent:
     name: Support-agent — tests
