@@ -2,7 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaService } from './prisma.service';
 import { FailoverService } from '../failover/failover.service';
-import { PrismaClient } from '../generated/prisma';
+import { Prisma, PrismaClient } from '../generated/prisma';
 
 // Write operations logged for later replay against primary once it
 // recovers — see FailoverReconciliationWorker. Batch ops (createMany
@@ -45,10 +45,7 @@ function withWriteLog(client: PrismaClient): PrismaClient {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
           const result = await query(args);
-          if (
-            EXCLUDED_MODELS.has(model) ||
-            !WRITE_OPERATIONS.has(operation)
-          ) {
+          if (EXCLUDED_MODELS.has(model) || !WRITE_OPERATIONS.has(operation)) {
             return result;
           }
           const primaryKey =
@@ -65,7 +62,14 @@ function withWriteLog(client: PrismaClient): PrismaClient {
                 tableName,
                 operation,
                 primaryKey,
-                payload: args as object,
+                // Prisma types `args` as the union of every model's
+                // operation args; the value is a plain JSON-shaped
+                // object at runtime and Prisma serializes it to JSONB
+                // unchanged, so the cast preserves current behavior
+                // rather than round-tripping through JSON.stringify
+                // (which would turn Dates into strings and change what
+                // FailoverReconciliationWorker replays).
+                payload: args as Prisma.InputJsonValue,
               },
             })
             .catch(() => {
@@ -134,7 +138,7 @@ function withWriteLog(client: PrismaClient): PrismaClient {
               return PrismaClient.prototype;
             },
           },
-        ) as unknown as PrismaService;
+        );
       },
       inject: [FailoverService],
     },

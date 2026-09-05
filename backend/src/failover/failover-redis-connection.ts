@@ -17,7 +17,9 @@ const logger = new Logger('FailoverRedisConnection');
 // somewhere to send the event instead of stdout, not to add new logic.
 function silenceUnhandledErrorEvent(client: IORedis, role: string): IORedis {
   client.on('error', (err: Error) => {
-    logger.debug(`${role} connection error (handled elsewhere): ${err.message}`);
+    logger.debug(
+      `${role} connection error (handled elsewhere): ${err.message}`,
+    );
   });
   return client;
 }
@@ -44,7 +46,10 @@ export function createFailoverRedisConnection(
     'primary',
   );
   const local = silenceUnhandledErrorEvent(
-    new IORedis(process.env.LOCAL_REDIS_URL ?? 'redis://localhost:6379', options),
+    new IORedis(
+      process.env.LOCAL_REDIS_URL ?? 'redis://localhost:6379',
+      options,
+    ),
     'local',
   );
 
@@ -69,9 +74,12 @@ export function createFailoverRedisConnection(
         // means either one is ready to serve it regardless of which is
         // active when BullMQ's lazy registration runs.
         if (prop === 'defineCommand') {
-          return (name: string, definition: unknown) => {
-            (primary.defineCommand as (n: string, d: unknown) => void)(name, definition);
-            (local.defineCommand as (n: string, d: unknown) => void)(name, definition);
+          return (
+            name: string,
+            definition: Parameters<IORedis['defineCommand']>[1],
+          ) => {
+            primary.defineCommand(name, definition);
+            local.defineCommand(name, definition);
           };
         }
         const value = Reflect.get(active, prop, active);
