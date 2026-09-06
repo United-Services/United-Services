@@ -69,6 +69,11 @@ export class IncidentAlertService {
           Tags: 'rotating_light',
         },
         body,
+        // Bounded so a hung ntfy can never hold this promise (and the
+        // Redis cooldown key's setter above it) open for undici's 300s
+        // default — the alert is fire-and-forget from the filter's point
+        // of view, but the awaiting code here still has to finish.
+        signal: AbortSignal.timeout(5_000),
       });
 
       if (!res.ok) {

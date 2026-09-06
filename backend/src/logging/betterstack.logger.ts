@@ -31,6 +31,12 @@ export class BetterstackLogger extends ConsoleLogger {
         context,
         service: 'backend',
       }),
+      // Without this, undici's defaults apply: 300s headers/body timeouts.
+      // A slow or hung Betterstack would hold every one of these
+      // fire-and-forget requests open for five minutes — and this runs
+      // once per request (RequestLoggingMiddleware), so under load that
+      // is hundreds of pinned sockets and their retained bodies.
+      signal: AbortSignal.timeout(5_000),
     }).catch(() => {
       // Never let log shipping itself throw or block the request lifecycle.
     });
