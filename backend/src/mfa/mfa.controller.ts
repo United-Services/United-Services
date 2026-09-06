@@ -6,9 +6,11 @@ import {
   Get,
   Param,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { createClerkClient } from '@clerk/backend';
 import { MfaService } from './mfa.service';
+import { MfaBootstrapOnlyGuard } from './mfa-bootstrap-only.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CurrentSessionId } from '../common/decorators/current-session-id.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -32,6 +34,11 @@ import type {
 // global RolesGuard. super_admin goes through the exact same enrollment
 // and per-session challenge flow, not a separate one. See
 // MfaEnrolledGuard for why this controller is @MfaExempt().
+//
+// @MfaExempt() alone is NOT sufficient for the routes that add, replace
+// or delete a factor — those additionally carry MfaBootstrapOnlyGuard,
+// which re-imposes the fresh-session requirement once the account is
+// enrolled. See that guard for the bypass it closes.
 @Controller('mfa')
 @Roles(...ADMIN_ROLES)
 @MfaExempt()
@@ -51,11 +58,13 @@ export class MfaController {
   }
 
   @Post('totp/enroll')
+  @UseGuards(MfaBootstrapOnlyGuard)
   enrollTotp(@CurrentUser() user: User) {
     return this.mfa.enrollTotp(user);
   }
 
   @Post('totp/confirm')
+  @UseGuards(MfaBootstrapOnlyGuard)
   confirmTotp(@CurrentUser() user: User, @Body() dto: TotpCodeDto) {
     return this.mfa.confirmTotp(user, dto.code);
   }
@@ -64,6 +73,7 @@ export class MfaController {
   // MfaService rejects this if it would leave the account with zero
   // working MFA methods.
   @Delete('totp')
+  @UseGuards(MfaBootstrapOnlyGuard)
   async deleteTotp(@CurrentUser() user: User) {
     const result = await this.mfa.deleteTotpCredential(user);
     await this.auditLog.record({
@@ -76,11 +86,13 @@ export class MfaController {
   }
 
   @Post('webauthn/register-options')
+  @UseGuards(MfaBootstrapOnlyGuard)
   webauthnRegisterOptions(@CurrentUser() user: User) {
     return this.mfa.webauthnRegisterOptions(user);
   }
 
   @Post('webauthn/register-verify')
+  @UseGuards(MfaBootstrapOnlyGuard)
   webauthnRegisterVerify(
     @CurrentUser() user: User,
     @Body() dto: WebAuthnRegisterVerifyDto,
@@ -96,6 +108,7 @@ export class MfaController {
   // replace it (enroll a new one, then delete the old). MfaService rejects
   // this if it would leave the account with zero working MFA methods.
   @Delete('webauthn/:id')
+  @UseGuards(MfaBootstrapOnlyGuard)
   async deleteWebauthn(@CurrentUser() user: User, @Param('id') id: string) {
     const result = await this.mfa.deleteWebauthnCredential(user, id);
     await this.auditLog.record({
