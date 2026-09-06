@@ -403,21 +403,28 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                     <div
                       className={done ? "step-circle-done" : undefined}
                       style={{
-                        width: 20,
-                        height: 20,
+                        width: 24,
+                        height: 24,
                         borderRadius: "50%",
                         flexShrink: 0,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: 700,
+                        // Measured on the live page: the ACTIVE step was
+                        // white on lime at 1.15:1 — invisible — and the
+                        // pending steps #A9A9A9 on #E6E5E0 at 1.86:1. A
+                        // seven-step wizard whose stepper can't be read.
+                        // Now: active ink-on-lime 16.7:1, done white on
+                        // #15803D 5.0:1 (#16A34A was 3.3:1), pending
+                        // 5.3:1.
                         background: done
-                          ? "#16A34A"
+                          ? "#15803D"
                           : current
                             ? palette.accent
                             : "#E6E5E0",
-                        color: done || current ? "#fff" : "#A9A9A9",
+                        color: current ? "#0E0E10" : done ? "#fff" : "#5C5C58",
                         transition: "background 0.3s",
                       }}
                     >
