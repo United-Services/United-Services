@@ -72,6 +72,15 @@ export default function PublicNav({ current, onNavigate, transparentOverHero }: 
           margin: "0 auto",
           padding: "0 28px",
           height: 68,
+          // Without these three the row's min-content width resolved to
+          // 459px regardless of viewport (content-box padding + a
+          // flexShrink: 0 logo), which pushed the hamburger toggle's
+          // right edge to x=431: 56px off-screen on an iPhone (375),
+          // untappable, and the page gained horizontal scroll. Measured
+          // at 320 (+139), 375 (+84) and 414 (+45).
+          boxSizing: "border-box",
+          width: "100%",
+          minWidth: 0,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -89,13 +98,16 @@ export default function PublicNav({ current, onNavigate, transparentOverHero }: 
             alignItems: "center",
             gap: 10,
             padding: 0,
-            flexShrink: 0,
+            // Let the logo give way on narrow screens rather than force
+            // the row wider than the viewport.
+            flexShrink: 1,
+            minWidth: 0,
           }}
         >
           <img
             src={navLogo}
             alt="United Services Egypt"
-            style={{ height: 40, width: "auto", objectFit: "contain" }}
+            style={{ height: 40, width: "auto", maxWidth: "60vw", objectFit: "contain" }}
           />
         </button>
 
@@ -134,7 +146,11 @@ export default function PublicNav({ current, onNavigate, transparentOverHero }: 
               onClick={() => go(id)}
               onMouseEnter={prefetchOnHover(id)}
               style={{
-                background: overlay ? "rgba(24,24,26,0.38)" : current === id ? "rgba(216,255,62,0.35)" : "none",
+                // 0.72, not 0.38: the lighter scrim left the white nav
+                // labels at 2.64:1 over the hero — and the ratio moved
+                // with whatever image pixel sat behind them. Worst case
+                // (scrim over pure white) is now 7.92:1.
+                background: overlay ? "rgba(14,14,16,0.72)" : current === id ? "rgba(216,255,62,0.35)" : "none",
                 backdropFilter: overlay ? "blur(10px)" : "none",
                 border: "none",
                 cursor: "pointer",
