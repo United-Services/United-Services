@@ -245,6 +245,7 @@ export default function AdminRfqsSection({ setError }: Props) {
         </table>
         <LoadMoreButton
           hasMore={rfqsList.hasMore}
+          truncated={rfqsList.truncated}
           loading={rfqsList.loadingMore}
           onClick={loadMoreRfqs}
         />

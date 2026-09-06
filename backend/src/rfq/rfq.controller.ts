@@ -101,7 +101,7 @@ export class RfqController {
           ),
         )
       : rfqs;
-    return paginate(filtered, skip, take);
+    return paginate(filtered, skip, take, rfqs.length);
   }
 
   // Free to move between pending <-> in_review in either direction, but

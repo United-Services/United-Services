@@ -312,15 +312,18 @@ describe('TicketsController', () => {
       };
     }
 
-    it('orders by type (technical, disabled_account, non_technical) then createdAt ascending', async () => {
+    it('scans the NEWEST rows first so a new ticket can never fall outside the bounded window', async () => {
       const { controller, prisma } = makeController();
-      // findMany's orderBy does the real sorting in Postgres; here we
-      // assert the controller requests that exact ordering.
+      // The scan used to be `type asc, createdAt asc` — oldest first —
+      // so past SEARCH_SCAN_LIMIT rows the newest tickets were the ones
+      // outside the window and a freshly filed ticket never appeared in
+      // the admin queue at all. The triage ordering is applied in-app
+      // (next test); the scan itself must take the newest window.
       (prisma.ticket.findMany as jest.Mock).mockResolvedValue([]);
       await controller.list(undefined, 0, 20);
       expect(prisma.ticket.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: [{ type: 'asc' }, { createdAt: 'asc' }],
+          orderBy: { createdAt: 'desc' },
         }),
       );
     });
@@ -353,6 +356,29 @@ describe('TicketsController', () => {
 
       const result = await controller.list(undefined, 0, 20);
       expect(result.items.map((i: any) => i.id)).toEqual(['a', 'b', 'c', 'd']);
+    });
+
+    it('re-applies the triage order in-app to rows that arrive in scan order (newest first, types mixed)', async () => {
+      const { controller, prisma } = makeController();
+      // What the newest-first scan actually hands back.
+      const rows = [
+        ticket({ id: 'newest-non-technical', type: 'non_technical', createdAt: new Date('2026-01-04') }),
+        ticket({ id: 'newer-technical', type: 'technical', createdAt: new Date('2026-01-03') }),
+        ticket({ id: 'disabled', type: 'disabled_account', createdAt: new Date('2026-01-02') }),
+        ticket({ id: 'oldest-technical', type: 'technical', createdAt: new Date('2026-01-01') }),
+      ];
+      (prisma.ticket.findMany as jest.Mock).mockResolvedValue(rows);
+
+      const result = await controller.list(undefined, 0, 20);
+      // type priority first (technical → disabled_account → non_technical),
+      // oldest-first within a type — the queue order the SQL used to give.
+      expect(result.items.map((i: any) => i.id)).toEqual([
+        'oldest-technical',
+        'newer-technical',
+        'disabled',
+        'newest-non-technical',
+      ]);
+      expect(result.truncated).toBe(false);
     });
 
     it('q fuzzy-search matches on a single field (company) and excludes non-matches', async () => {

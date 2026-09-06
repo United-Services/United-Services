@@ -188,7 +188,7 @@ export class AdminUsersController {
           ),
         )
       : users;
-    return paginate(filtered, skip, take);
+    return paginate(filtered, skip, take, users.length);
   }
 
   @Patch(':id/disable')

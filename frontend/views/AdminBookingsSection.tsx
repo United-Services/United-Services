@@ -680,6 +680,7 @@ export default function AdminBookingsSection({ setError }: Props) {
         </table>
         <LoadMoreButton
           hasMore={appointmentsList.hasMore}
+          truncated={appointmentsList.truncated}
           loading={appointmentsList.loadingMore}
           onClick={loadMoreAppointments}
         />

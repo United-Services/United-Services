@@ -63,6 +63,6 @@ export class AuditLogService {
           fuzzyMatch(searchableText(r.action, r.targetType, r.targetId), q),
         )
       : rows;
-    return paginate(filtered, skip, take);
+    return paginate(filtered, skip, take, rows.length);
   }
 }

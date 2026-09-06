@@ -1238,7 +1238,8 @@
       "retry": "Retry"
     },
     "loadMore": "Load more",
-    "loadingMore": "Loading…"
+    "loadingMore": "Loading…",
+    "truncated": "Showing the most recent 1,000 records — narrow your search to find older ones."
   },
   "auth": {
     "signInTagline": "Sign in to manage your services, requests, and documents.",

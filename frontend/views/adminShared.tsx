@@ -173,13 +173,38 @@ export function LoadMoreButton({
   hasMore,
   loading,
   onClick,
+  truncated,
 }: {
   hasMore: boolean
   loading: boolean
   onClick: () => void
+  // From the API's Page shape: the backend scans at most 1,000 rows
+  // before fuzzy-matching and paginating in-app. When that window was
+  // hit, "no more results" is NOT the end of the data — an older record
+  // can exist beyond it. Before this, that state was indistinguishable
+  // from the true end, so past 1,000 rows a search for an older account
+  // returned nothing and looked authoritative.
+  truncated?: boolean
 }) {
   const tCommon = useTranslations("common")
-  if (!hasMore) return null
+  if (!hasMore) {
+    if (!truncated) return null
+    return (
+      <p
+        role="status"
+        style={{
+          textAlign: "center",
+          padding: "14px 16px",
+          margin: 0,
+          fontSize: 13,
+          color: "#5C5C58",
+          fontFamily: "Poppins, sans-serif",
+        }}
+      >
+        {tCommon("truncated")}
+      </p>
+    )
+  }
   return (
     <div style={{ display: "flex", justifyContent: "center", padding: 16 }}>
       <button
