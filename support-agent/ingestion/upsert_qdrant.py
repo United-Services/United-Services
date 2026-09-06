@@ -10,6 +10,7 @@ chunk IDs" and "commonly goes wrong" sections both call out.
 
 import json
 import os
+import re
 import sys
 import uuid
 
@@ -48,6 +49,38 @@ def ensure_collection(client: QdrantClient) -> None:
     print(f"created collection '{COLLECTION_NAME}' (dim={EMBEDDING_DIM}, cosine)")
 
 
+# Ingestion-side defense against indirect prompt injection — the source
+# is scraped from the public site (scrape.py), so anything that reaches
+# a public page becomes agent context. Runtime defenses exist too (the
+# agent escapes and nonce-delimits retrieved text, and filters its own
+# output for foreign contact points); this stops the two most mechanical
+# payloads from ever being stored, and flags the rest for a human.
+_FORGED_DELIMITER_RE = re.compile(r"</?\s*untrusted_document[^>]*>", re.IGNORECASE)
+_INJECTION_HINT_RE = re.compile(
+    r"(ignore (all |any )?(previous|prior|above) instructions"
+    r"|system override|system prompt|you are now|new instructions"
+    r"|for (support )?staff and automated assistants"
+    r"|do not (tell|inform) the user"
+    r"|email .{0,80}(password|national id|account details))",
+    re.IGNORECASE,
+)
+
+
+def sanitize_chunk_text(text: str, source_url: str = "") -> str:
+    cleaned = _FORGED_DELIMITER_RE.sub("", text)
+    if cleaned != text:
+        print(f"WARNING: stripped forged <untrusted_document> delimiter from chunk at {source_url}", file=sys.stderr)
+    hint = _INJECTION_HINT_RE.search(cleaned)
+    if hint:
+        # Not removed — a legitimate page could conceivably contain one
+        # of these phrases — but loud, so the chunk gets a human look.
+        print(
+            f"WARNING: chunk at {source_url} contains instruction-shaped text ({hint.group(0)!r}) — review before trusting it",
+            file=sys.stderr,
+        )
+    return cleaned
+
+
 def upsert_chunks(client: QdrantClient, chunks: list[dict]) -> int:
     points = [
         PointStruct(
@@ -62,7 +95,7 @@ def upsert_chunks(client: QdrantClient, chunks: list[dict]) -> int:
                 "source_url": c["source_url"],
                 "title": c["title"],
                 "chunk_index": c["chunk_index"],
-                "text": c["text"],
+                "text": sanitize_chunk_text(c["text"], c.get("source_url", "")),
                 "scraped_at": c["scraped_at"],
             },
         )
