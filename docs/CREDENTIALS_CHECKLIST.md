@@ -20,8 +20,8 @@ start:dev`, no Docker) — each app reads its own `backend/.env` /
 `frontend/.env` directly.
 
 The `docker compose` deployment (`docker-compose.yml` at the repo root) is
-different on purpose: the repo-root `.env` it reads holds only four
-variables —
+different on purpose: the repo-root `.env` it reads holds only a handful
+of bootstrap variables —
 
 ```
 AWS_ACCESS_KEY_ID=
@@ -29,9 +29,20 @@ AWS_SECRET_ACCESS_KEY=
 AWS_REGION=
 APP_ENV=
 NGINX_PORT=80
+BACKEND_POSTGRES_PASSWORD=
+BACKEND_REDIS_PASSWORD=
 ```
 
-— and every other secret/config value (`DATABASE_URL`, Clerk keys, S3
+— the first four/five are the true bootstrap set (needed before SSM can
+even be reached); the last two are needed because `docker-compose.yml`
+itself configures the `postgres`/`redis` standby services at `docker
+compose up` time, which happens before any container — and its
+in-container SSM fetch — has started. `scripts/fetch-secrets.sh` writes
+both of these into this file too (see §5b below), so in practice you
+create it once with the first five and `fetch-secrets.sh` fills in the
+last two on the first run.
+
+Every other secret/config value (`DATABASE_URL`, Clerk keys, S3
 bucket, Betterstack tokens, WebAuthn RP config, GeoIP account, translation
 budget, etc.) is fetched at container start from **AWS Systems Manager
 Parameter Store**, under `/united-services/${APP_ENV}/<VAR_NAME>` — one
@@ -253,6 +264,54 @@ yourself in the Redis config).
 
 ---
 
+## 5b. Local standby Postgres/Redis (`BACKEND_POSTGRES_PASSWORD`, `BACKEND_REDIS_PASSWORD`)
+
+**What these are:** credentials for `docker-compose.yml`'s own `postgres`/
+`redis` services — the always-on local standby `FailoverService` fails
+over to if Supabase/Upstash becomes unreachable (see
+`docs/DISASTER_RECOVERY.md`). Not the primary `DATABASE_URL`/`REDIS_URL`
+above — a second, separate pair.
+
+**Why `BACKEND_`-prefixed:** support-agent's own `docker-compose.yml` has
+its own `POSTGRES_PASSWORD`/`REDIS_PASSWORD` for its own standby. The two
+already live under separate SSM paths (`/united-services/<env>/` vs
+`/united-services/support-agent/<env>/`) and separate local `.env` files,
+so there's no *technical* collision — but `backend/.env.prod` (the local
+staging file `scripts/push-secrets.sh` reads from) holds both platform and
+support-agent secrets side by side keyed by exact variable name, and
+support-agent's own `REDIS_PASSWORD=` line already lives there. An
+unprefixed `REDIS_PASSWORD` added for the platform's standby would have
+been read by `push_keys()` ambiguously — whichever line happened to match
+first — silently pushing the wrong password. The prefix removes the
+ambiguity at the name level, not just the path level.
+
+**Generating a value:**
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+```
+`base64url`, not plain `base64` — these values are embedded in connection
+strings (`postgresql://user:<pw>@host/db`, `redis://:<pw>@host:6379`), and
+plain base64's `+`, `/` and `=` need percent-encoding there, a routine
+source of "authentication failed" errors that look like a wrong password.
+
+**Where these live:**
+- **Docker deploy** — `scripts/fetch-secrets.sh` writes these two into the
+  **repo-root** `.env` (in addition to `backend/.env`), because
+  `docker-compose.yml` needs them to configure the `postgres`/`redis`
+  services at `docker compose up` time — before the backend container's
+  own in-container SSM fetch (`docker-entrypoint.sh`) ever runs.
+  `scripts/deploy.sh` already calls `fetch-secrets.sh` before `docker
+  compose pull/up`, so no extra deploy step is needed.
+- **Host-run dev (no Docker)** — set `LOCAL_DATABASE_URL`/
+  `LOCAL_REDIS_URL` directly in `backend/.env` as full connection strings
+  with the password embedded (`FailoverService` reads those, not the raw
+  password vars) — see the `.env.example` shape below.
+- **Pushing to SSM** — add `BACKEND_POSTGRES_PASSWORD=`/
+  `BACKEND_REDIS_PASSWORD=` to `backend/.env.prod` (same file as every
+  other platform secret) before running `scripts/push-secrets.sh`.
+
+---
+
 ## 6. Domain / DNS / Cloudflare
 
 **What you need now:** access to whichever registrar the `use-egypt.com` (or
@@ -364,6 +423,15 @@ NTFY_TOPIC_URL=
 
 # Redis
 REDIS_URL=
+
+# Local standby Postgres/Redis (see section 5b) — FailoverService's
+# fallback target if the two above become unreachable. Required: the app
+# refuses to boot without these. Full connection strings with the
+# password embedded, pointed at wherever docker-compose.yml's postgres/
+# redis services are reachable from the host (127.0.0.1:5432 and a
+# published redis port — see docker-compose.override.yml for local dev).
+LOCAL_DATABASE_URL=
+LOCAL_REDIS_URL=
 
 # Geo-IP (see section 7 — MaxMind, the only implemented path)
 GEOIP_MAXMIND_ACCOUNT_ID=

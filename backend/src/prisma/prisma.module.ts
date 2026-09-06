@@ -100,11 +100,22 @@ function withWriteLog(client: PrismaClient): PrismaClient {
             max: poolSize(),
           }),
         });
+        // No hardcoded fallback: that string
+        // (postgresql://united_services:united_services_local_standby@...)
+        // was both a known-plaintext credential and a silent stand-in —
+        // an unset LOCAL_DATABASE_URL used to arm a failover target that
+        // might not even exist, with nothing surfacing that until an
+        // actual outage tried to fail over to it. Missing it now fails
+        // loudly at boot instead.
+        if (!process.env.LOCAL_DATABASE_URL) {
+          throw new Error(
+            'LOCAL_DATABASE_URL is not set — FailoverService has no local standby to fail over to. ' +
+              'Set it (see docker-compose.yml) or the API will not start.',
+          );
+        }
         const localBase = new PrismaClient({
           adapter: new PrismaPg({
-            connectionString:
-              process.env.LOCAL_DATABASE_URL ??
-              'postgresql://united_services:united_services_local_standby@localhost:5432/united_services',
+            connectionString: process.env.LOCAL_DATABASE_URL,
             max: poolSize(),
           }),
         });

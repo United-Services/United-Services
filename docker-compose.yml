@@ -16,18 +16,32 @@
 # Supabase/Upstash by DbMirrorSyncWorker, and switched to automatically
 # if the cloud primary becomes unreachable. Not opt-in/local-dev-only
 # anymore: backend needs them up at all times for failover to actually
-# work. POSTGRES_USER/PASSWORD/DB default rather than require a .env
-# value — this database is never exposed outside the internal Docker
-# network, so a fixed default carries no real exposure, and not
-# requiring it keeps the existing .env (which never needed these before)
-# working unmodified.
+# work.
+#
+# POSTGRES_PASSWORD/REDIS_PASSWORD are REQUIRED (${VAR:?...}), not
+# defaulted. This standby holds a full replica of production data, and
+# until this was fixed, Postgres defaulted to a known password
+# (`united_services_local_standby`, committed to this file) and Redis
+# had no password at all — reachable, unauthenticated, from anything on
+# the internal network. Neither is port-mapped to the host, so neither
+# was directly exposed, but a known-plaintext credential on a production
+# replica is one container-network foothold away from a full data read.
+# Same pattern support-agent/docker-compose.yml already used. Generate
+# each with a CSPRNG, e.g.:
+#   node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+# — base64url specifically: these values are embedded in connection
+# strings (postgresql://user:<pw>@host/db, redis://:<pw>@host:6379), and
+# plain base64's +, / and = need percent-encoding there, a routine
+# source of "authentication failed" errors that look like a wrong
+# password. Use separate values per environment; never reuse the
+# support-agent's.
 services:
   postgres:
     image: postgres:16
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-united_services}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-united_services_local_standby}
+      POSTGRES_PASSWORD: ${BACKEND_POSTGRES_PASSWORD:?set a strong BACKEND_POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-united_services}
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -41,13 +55,20 @@ services:
   redis:
     image: redis:7
     restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${BACKEND_REDIS_PASSWORD:?set BACKEND_REDIS_PASSWORD in .env}"]
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      # Plain `redis-cli ping` fails with NOAUTH once --requirepass is
+      # set — the healthcheck needs the same password, sourced from the
+      # container env rather than compose interpolation so it never
+      # surfaces in `docker inspect`'s command output.
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping"]
       interval: 5s
       timeout: 5s
       retries: 10
+    environment:
+      REDIS_PASSWORD: ${BACKEND_REDIS_PASSWORD:?set BACKEND_REDIS_PASSWORD in .env}
     networks: [internal]
 
   # Self-hosted machine translation for OpenPosition/Service content — see
@@ -110,8 +131,8 @@ services:
       # reachable outside it). Built here, not fetched from SSM, since
       # it's this file's own topology, same reasoning as INTERNAL_API_URL
       # below on the frontend service.
-      LOCAL_DATABASE_URL: postgresql://${POSTGRES_USER:-united_services}:${POSTGRES_PASSWORD:-united_services_local_standby}@postgres:5432/${POSTGRES_DB:-united_services}
-      LOCAL_REDIS_URL: redis://redis:6379
+      LOCAL_DATABASE_URL: postgresql://${POSTGRES_USER:-united_services}:${BACKEND_POSTGRES_PASSWORD:?set a strong BACKEND_POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-united_services}
+      LOCAL_REDIS_URL: redis://:${BACKEND_REDIS_PASSWORD:?set BACKEND_REDIS_PASSWORD in .env}@redis:6379
     volumes:
       # TOTP KEK private keys must survive container restarts/redeploys —
       # never let this be an ephemeral container filesystem path.
