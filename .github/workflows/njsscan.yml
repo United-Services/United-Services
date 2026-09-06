@@ -31,11 +31,20 @@ jobs:
     steps:
     - name: Checkout the code
       uses: actions/checkout@v4
+    # continue-on-error at the STEP level, not `|| true` inside `args`.
+    # The shell-level `|| true` that used to live in the args string
+    # meant the scan could never fail this step regardless of findings —
+    # which also made any continue-on-error setting on the step
+    # meaningless. Step-level lets the SARIF upload below still run on a
+    # scan failure while leaving the step's own conclusion honest.
+    # (This workflow is advisory either way — see SECURITY.md; the
+    # blocking gates are the jobs inside ci.yml.)
     - name: nodejsscan scan
       id: njsscan
+      continue-on-error: true
       uses: ajinabraham/njsscan-action@7237412fdd36af517e2745077cedbf9d6900d711
       with:
-        args: '. --sarif --output results.sarif || true'
+        args: '. --sarif --output results.sarif'
     - name: Upload njsscan report
       uses: github/codeql-action/upload-sarif@v3
       with:
