@@ -40,10 +40,25 @@ export class FakeKekKeyStore {
     this.keys.delete(keyId);
   }
 
-  getPrivateKey(keyId: string): Uint8Array {
+  // Async to match the real KekKeyStore, whose getPrivateKey now reloads
+  // from the registry on a miss (a key generated after boot). Keeping the
+  // fake's signature identical is what lets tests exercise
+  // TotpCryptoService exactly as it runs in production.
+  getPrivateKey(keyId: string): Promise<Uint8Array> {
     const key = this.keys.get(keyId);
-    if (!key) throw new Error(`No private key loaded for KEK "${keyId}"`);
-    return key.privateKey;
+    if (!key)
+      return Promise.reject(
+        new Error(`No private key loaded for KEK "${keyId}"`),
+      );
+    return Promise.resolve(key.privateKey);
+  }
+
+  hasPrivateKey(keyId: string): boolean {
+    return this.keys.has(keyId);
+  }
+
+  reload(): Promise<void> {
+    return Promise.resolve();
   }
 
   getPublicKey(keyId: string): Promise<Uint8Array> {

@@ -127,11 +127,54 @@ itself a risk worth flagging.
    versioning above and should be set up together.
 
 ### Application
-Stateless — redeploy the last known-good commit from `main`. No data
-migration needed unless the incident coincided with a database restore to
-an earlier point, in which case redeploy the commit that matches that
-schema version (check `prisma/migrations/` history against the restore
-point's timestamp).
+Redeploy the last known-good commit from `main`. No data migration needed
+unless the incident coincided with a database restore to an earlier
+point, in which case redeploy the commit that matches that schema version
+(check `prisma/migrations/` history against the restore point's
+timestamp).
+
+The application is **not** stateless — see the next section.
+
+### KEK private keys
+
+Admin TOTP secrets are envelope-encrypted: each secret is sealed under a
+KEK whose **private key exists only as a file** in the `kek-keys` Docker
+volume (`KEK_KEYS_DIR`). The database holds the public halves and the
+ciphertext; a database backup is useless for MFA without the private key
+files. Losing them makes every `TotpCredential` permanently undecryptable
+— every admin loses TOTP, and has to re-enroll after an operator resets
+their MFA.
+
+**Backup.** With `KEK_SSM_BACKUP_ENABLED=true` (required in production),
+every private key is also written to SSM Parameter Store as a
+`SecureString` at `/united-services/<ENVIRONMENT>/kek/<keyId>` the moment
+it is generated — by the rotation worker and by `npm run kek:generate`
+alike (`src/crypto/kek-ssm-backup.service.ts`). This is the same
+namespace and the same AWS credentials `scripts/fetch-secrets.sh` already
+uses.
+
+**Restore.** Automatic. On boot and on any key-store reload, a registry
+row whose key file is missing locally is fetched from SSM and written
+back at `0400` (`KekKeyStore.reload()`). So a fresh volume or a new host
+recovers on its own, and a missing file **no longer prevents the API
+from starting** — that one key is unavailable and logged at `error`
+until restored, but every other route serves.
+
+**Rotation.** Automatic, daily at 03:30 (`KekRotationWorker`): a new key
+is generated once the active one is older than `KEK_ROTATION_MAX_AGE_DAYS`
+(default 90), every credential is force-re-wrapped off the retiring key,
+and the retiring key is retired and its file shredded once nothing
+references it. Each step is audit-logged (`kek.rotated`,
+`mfa.totp_rewrapped`, `kek.retired`) and logged at `warn` for Betterstack.
+
+**Manual override.** `npm run kek:generate` rotates immediately;
+`npm run kek:retire -- --keyId=<id>` retires a specific key. Both refuse
+unsafe states (retiring the active key; retiring a key still referenced).
+
+**If SSM backup was never enabled and the volume is lost:** there is no
+recovery. Reset MFA for every admin (`mfaEnrolled = false`, delete their
+`TotpCredential` and `WebAuthnCredential` rows) and have them re-enroll.
+This is the scenario the backup exists to prevent.
 
 ## Alerting
 
