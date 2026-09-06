@@ -5,7 +5,7 @@ import { useUser } from "@clerk/nextjs"
 import LanguageSwitcher from "./LanguageSwitcher"
 import { usePrefetchOnHover } from "../lib/navigate"
 import { PAPER, TEXT, MUTED, LIME, BODY } from "../lib/publicTheme"
-const navLogo = "/images/logo-nav-future-energy.webp"
+import Logo from "./Logo"
 
 interface Props {
   current: string
@@ -104,11 +104,9 @@ export default function PublicNav({ current, onNavigate, transparentOverHero }: 
             minWidth: 0,
           }}
         >
-          <img
-            src={navLogo}
-            alt="United Services Egypt"
-            style={{ height: 40, width: "auto", maxWidth: "60vw", objectFit: "contain" }}
-          />
+          <span style={{ maxWidth: "60vw", overflow: "hidden" }}>
+            <Logo variant="dark" size={40} />
+          </span>
         </button>
 
         {}

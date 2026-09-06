@@ -41,15 +41,25 @@ export function createFailoverRedisConnection(
   failover: FailoverService,
   options: RedisOptions = {},
 ): IORedis {
+  // LOCAL_REDIS_URL previously defaulted to the unauthenticated
+  // 'redis://localhost:6379' — a silent stand-in for the actual standby,
+  // and (before docker-compose.yml required REDIS_PASSWORD) one with no
+  // password at all. An unset value now fails loudly at boot instead of
+  // quietly arming a target that may not exist or isn't the real
+  // standby. REDIS_URL (primary) is unrelated to this — it comes from
+  // SSM/env in every real environment, never from this compose file.
+  if (!process.env.LOCAL_REDIS_URL) {
+    throw new Error(
+      'LOCAL_REDIS_URL is not set — FailoverService has no local standby to fail over to. ' +
+        'Set it (see docker-compose.yml) or the API will not start.',
+    );
+  }
   const primary = silenceUnhandledErrorEvent(
     new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', options),
     'primary',
   );
   const local = silenceUnhandledErrorEvent(
-    new IORedis(
-      process.env.LOCAL_REDIS_URL ?? 'redis://localhost:6379',
-      options,
-    ),
+    new IORedis(process.env.LOCAL_REDIS_URL, options),
     'local',
   );
 

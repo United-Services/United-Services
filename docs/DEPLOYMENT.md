@@ -301,6 +301,17 @@ decision in "Hosting options" above, not yet made as of this writing:
 frontend also needs the new value (rare, since `NEXT_PUBLIC_*` vars are
 never secrets and never go through SSM in the first place).
 
+Rotating `BACKEND_POSTGRES_PASSWORD`/`BACKEND_REDIS_PASSWORD` specifically
+needs one extra step: `fetch-secrets.sh` writes the new value into the
+repo-root `.env`, but the running `postgres`/`redis` containers were
+already started under the OLD password baked into their data directory —
+Postgres/Redis only apply `POSTGRES_PASSWORD`/`--requirepass` from the
+environment on first init, not on every restart. After fetching, also run
+`docker compose exec postgres psql -U united_services -c "ALTER ROLE united_services WITH PASSWORD '<new value>';"`
+and restart the `redis` container (its password isn't persisted to disk,
+so a plain restart with the new `BACKEND_REDIS_PASSWORD` in the
+environment is enough) before restarting `backend`.
+
 **Verifying without ever printing a secret value**:
 ```bash
 aws ssm get-parameters-by-path --path "/united-services/staging/" --query "Parameters[*].Name"

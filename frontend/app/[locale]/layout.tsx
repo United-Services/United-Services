@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { Poppins, Space_Grotesk, Inter } from "next/font/google"
+import { Poppins, Space_Grotesk, Inter, Barlow, Barlow_Condensed } from "next/font/google"
 import { hasLocale, NextIntlClientProvider } from "next-intl"
 import { notFound } from "next/navigation"
 import { ClerkProvider } from "@clerk/nextjs"
@@ -41,6 +41,22 @@ const inter = Inter({
   variable: "--font-inter",
   display: "swap",
 })
+// Logo wordmark only (components/Logo.tsx) — "United Services Egypt" in
+// Barlow Condensed bold uppercase, the "Petroleum Services" tagline in
+// plain Barlow. Kept separate from the site's other three families
+// (Poppins/Space Grotesk/Inter) since nothing else uses them.
+const barlow = Barlow({
+  subsets: ["latin"],
+  weight: ["500"],
+  variable: "--font-barlow",
+  display: "swap",
+})
+const barlowCondensed = Barlow_Condensed({
+  subsets: ["latin"],
+  weight: ["700"],
+  variable: "--font-barlow-condensed",
+  display: "swap",
+})
 
 export default async function LocaleLayout({
   children,
@@ -58,7 +74,7 @@ export default async function LocaleLayout({
     <html
       lang={locale}
       dir={dir}
-      className={`${poppins.variable} ${spaceGrotesk.variable} ${inter.variable}`}
+      className={`${poppins.variable} ${spaceGrotesk.variable} ${inter.variable} ${barlow.variable} ${barlowCondensed.variable}`}
     >
       <body>
         <ClerkProvider

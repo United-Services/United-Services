@@ -13,6 +13,20 @@
 # docker-compose) with values docker-compose's defaults don't cover: set
 # those in backend/.env yourself after running this, same as any other
 # local override.
+#
+# Two of the fetched keys — BACKEND_POSTGRES_PASSWORD/
+# BACKEND_REDIS_PASSWORD — are also written into the REPO-ROOT .env (in
+# addition to backend/.env, below), because docker-compose.yml needs them
+# to configure the postgres/redis services' own POSTGRES_PASSWORD/
+# --requirepass at `docker compose up` time — a host-side, pre-container
+# resolution that happens before docker-entrypoint.sh's own in-container
+# SSM fetch ever runs. scripts/deploy.sh already calls this script before
+# `docker compose pull && up`, so this is the one place that has to
+# bridge the two. Existing lines in the root .env (AWS creds, APP_ENV,
+# NGINX_PORT) are left untouched — only those two keys are updated/added.
+# BACKEND_-prefixed (not plain POSTGRES_PASSWORD/REDIS_PASSWORD) so they
+# can never be confused with support-agent's own identically-named vars,
+# even though the two already live under separate SSM paths.
 set -euo pipefail
 
 # Resolve the repo root relative to this script's own location, so it works
@@ -61,12 +75,60 @@ if [ -z "$PARAMS" ]; then
   exit 1
 fi
 
+# No associative arrays (bash 3.2, the macOS system default, doesn't
+# support `declare -A` — see this script's other bash-3.2 note above) —
+# just two plain variables, since there are only two keys to watch for.
+root_pw=""
+root_redis_pw=""
+
 while IFS=$'\t' read -r name value; do
   key="${name##*/}"
   printf '%s=%s\n' "$key" "$value" >> "$TMP"
+  case "$key" in
+    BACKEND_POSTGRES_PASSWORD) root_pw="$value" ;;
+    BACKEND_REDIS_PASSWORD) root_redis_pw="$value" ;;
+  esac
 done <<< "$PARAMS"
 
 chmod 600 "$TMP"
 mv "$TMP" "$OUT"
 trap - EXIT
 echo "Wrote $(wc -l < "$OUT" | tr -d ' ') lines to $OUT"
+
+# Merge the two docker-compose-facing keys into the repo-root .env,
+# in place — every other line there (AWS creds, APP_ENV, NGINX_PORT) is
+# preserved untouched. Same atomic-temp-file-then-rename pattern as the
+# write above, so a failure partway through never leaves the root .env
+# half-written (that file also holds the AWS credentials this whole
+# script needs to run at all).
+if [ -n "$root_pw" ] || [ -n "$root_redis_pw" ]; then
+  ROOT_ENV="$REPO_ROOT/.env"
+  if [ ! -f "$ROOT_ENV" ]; then
+    echo "ERROR: $ROOT_ENV does not exist — create it with the bootstrap AWS/APP_ENV/NGINX_PORT vars first (see docs/CREDENTIALS_CHECKLIST.md)." >&2
+    exit 1
+  fi
+  ROOT_TMP="$(mktemp "$REPO_ROOT/.env.fetch-secrets.XXXXXX")"
+  trap 'rm -f "$ROOT_TMP"' EXIT
+
+  found_pw=0
+  found_redis_pw=0
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      BACKEND_POSTGRES_PASSWORD=*)
+        if [ -n "$root_pw" ]; then printf 'BACKEND_POSTGRES_PASSWORD=%s\n' "$root_pw"; found_pw=1
+        else printf '%s\n' "$line"; fi ;;
+      BACKEND_REDIS_PASSWORD=*)
+        if [ -n "$root_redis_pw" ]; then printf 'BACKEND_REDIS_PASSWORD=%s\n' "$root_redis_pw"; found_redis_pw=1
+        else printf '%s\n' "$line"; fi ;;
+      *) printf '%s\n' "$line" ;;
+    esac
+  done < "$ROOT_ENV" > "$ROOT_TMP"
+
+  [ -n "$root_pw" ] && [ "$found_pw" = 0 ] && printf 'BACKEND_POSTGRES_PASSWORD=%s\n' "$root_pw" >> "$ROOT_TMP"
+  [ -n "$root_redis_pw" ] && [ "$found_redis_pw" = 0 ] && printf 'BACKEND_REDIS_PASSWORD=%s\n' "$root_redis_pw" >> "$ROOT_TMP"
+
+  chmod 600 "$ROOT_TMP"
+  mv "$ROOT_TMP" "$ROOT_ENV"
+  trap - EXIT
+  echo "Updated docker-compose var(s) in $ROOT_ENV"
+fi

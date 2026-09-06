@@ -2,11 +2,11 @@
  
 /* Sidebar */ /* Main */ /* ── SERVICES ── */ /* ── RFQ ── */ /* ── APPOINTMENTS ── */ /* ── PROFILE ── */
 import { useEffect, useState } from "react"
-import Image from "next/image"
 import { io } from "socket.io-client"
 import { useAuth } from "@clerk/nextjs"
 import { useLocale, useTranslations } from "next-intl"
 import { palette, inputStyle } from "../theme"
+import Logo from "../components/Logo"
 import { InlineSpinner } from "../components/Spinner"
 import { Skeleton, SkeletonCards, SkeletonRows } from "../components/Skeleton"
 import { warmImageCache } from "../lib/specsPrefetch"
@@ -318,13 +318,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
               gap: 8,
             }}
           >
-            <Image
-              src="/images/logo-footer.webp"
-              alt="United Services Egypt"
-              width={89}
-              height={64}
-              style={{ height: 28, width: "auto", objectFit: "contain" }}
-            />
+            <Logo variant="light" size={28} tagline={false} />
             <div className="sidebar-label">
               <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
                 {t("portalLabel")}
