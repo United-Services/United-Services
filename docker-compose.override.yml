@@ -1,0 +1,25 @@
+# Local dev override — NOT committed (see .gitignore).
+#
+# docker-compose.yml puts `postgres` and `redis` on the internal network
+# with no published ports, which is correct when the backend also runs
+# as a container and reaches them as `postgres:5432` / `redis:6379`.
+# But when the backend runs on the host (npm run start:dev from a
+# terminal), FailoverService's local standby targets resolve to
+# localhost — so the standby has to be reachable from the host, or
+# (since prisma.module.ts / failover-redis-connection.ts no longer
+# silently fall back to a guessable/unauthenticated default) the
+# backend refuses to boot.
+#
+# Both bound to 127.0.0.1 so neither is exposed off the machine.
+# redis on 6381, not 6379: this host already runs an unrelated,
+# unauthenticated native redis-server on 6379 (a leftover from earlier
+# local work, unaffiliated with this compose project) — real port
+# conflict, not a stylistic choice. backend/.env's LOCAL_REDIS_URL
+# points at 6381.
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
+  redis:
+    ports:
+      - "127.0.0.1:6381:6379"
