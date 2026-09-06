@@ -140,11 +140,6 @@ export default function AdminDashboard({ role, onLogout, onNavigate }: Props) {
               gap: 8,
             }}
           >
-            <img
-              src="/images/logo-icon-light.svg"
-              alt="United Services Egypt"
-              style={{ height: 26, width: "auto", objectFit: "contain" }}
-            />
             <div className="sidebar-label">
               <div style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>
                 {t("panelLabel")}
