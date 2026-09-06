@@ -11,7 +11,7 @@ import json
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.agent.agent import stream_agent
 from app.memory import redis_memory, transcript_store
@@ -22,8 +22,19 @@ from app.session_context import set_current_session_id
 router = APIRouter()
 
 
+# 4,000 characters is roughly a full page of text — far more than any
+# real support message, and small enough to bound what one request can
+# cost. Without a cap a 20 MB body was accepted and fully buffered
+# (verified live), the message was written to Redis and Postgres BEFORE
+# the agent ran (three 2 MB messages left one Redis key at 8 MB, re-read
+# and re-written on every later turn), and the same text became the
+# prompt: 10 req/min × ~250k tokens each is a quota/cost amplifier from
+# a single IP.
+MAX_MESSAGE_CHARS = 4_000
+
+
 class ChatStreamRequest(BaseModel):
-    message: str
+    message: str = Field(min_length=1, max_length=MAX_MESSAGE_CHARS)
 
 
 def _sse(event_type: str, **fields) -> str:
@@ -53,8 +64,14 @@ async def _event_stream(message: str, user_id: str):
         yield _sse(event["type"], **{k: v for k, v in event.items() if k != "type"})
 
     final_text = "".join(full_response)
-    redis_memory.append_turn(user_id, "assistant", final_text)
-    transcript_store.append_message(user_id, "assistant", final_text)
+    # Never persist an empty assistant turn. A content-filtered or
+    # otherwise empty completion used to land here as "" and be written
+    # to both stores, poisoning every later turn's context with a blank
+    # assistant message. agent.py now escalates that case itself; this
+    # is the second layer so it can't recur from any other path.
+    if final_text.strip():
+        redis_memory.append_turn(user_id, "assistant", final_text)
+        transcript_store.append_message(user_id, "assistant", final_text)
 
     yield _sse("done", session_id=user_id)
 
