@@ -26,9 +26,36 @@ const WRITE_OPERATIONS = new Set([
 const EXCLUDED_MODELS = new Set(['FailoverWriteLog', 'FailoverConflict']);
 
 function poolSize(): number {
-  return process.env.DATABASE_POOL_SIZE
+  const parsed = process.env.DATABASE_POOL_SIZE
     ? parseInt(process.env.DATABASE_POOL_SIZE, 10)
     : 10;
+  // parseInt('abc') is NaN, which pg.Pool would accept as `max` and
+  // then behave unpredictably — fall back rather than arm a broken pool.
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 10;
+}
+
+// Shared by both the primary and the local-standby pool. Every one of
+// these was previously left at its default, and every default is
+// "wait forever":
+//   connectionTimeoutMillis  pg default 0  — a request that can't get a
+//                            pool connection queues indefinitely instead
+//                            of failing fast; under saturation the API
+//                            becomes a black hole rather than shedding
+//                            load (measured: p90 333ms → p99 5.9s knee).
+//   idleTimeoutMillis        pg default 10s — raised so the pool doesn't
+//                            churn connections against a remote pooler.
+//   statement_timeout /      Postgres session GUCs (node-postgres
+//   idle_in_transaction_     forwards them as startup parameters). One
+//   session_timeout          runaway query, or a transaction left open by
+//                            a crashed request, can otherwise pin a
+//                            connection for the life of the process.
+function poolTimeouts() {
+  return {
+    connectionTimeoutMillis: 5_000,
+    idleTimeoutMillis: 30_000,
+    statement_timeout: 15_000,
+    idle_in_transaction_session_timeout: 15_000,
+  };
 }
 
 // Every write that reaches this client only does so because
@@ -102,6 +129,7 @@ function withWriteLog(client: PrismaClient): PrismaClient {
           adapter: new PrismaPg({
             connectionString: process.env.DATABASE_URL,
             max: poolSize(),
+            ...poolTimeouts(),
           }),
         });
         const localBase = new PrismaClient({
@@ -110,6 +138,7 @@ function withWriteLog(client: PrismaClient): PrismaClient {
               process.env.LOCAL_DATABASE_URL ??
               'postgresql://united_services:united_services_local_standby@localhost:5432/united_services',
             max: poolSize(),
+            ...poolTimeouts(),
           }),
         });
         const local = withWriteLog(localBase);
