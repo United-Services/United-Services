@@ -1238,7 +1238,8 @@
       "retry": "Retry"
     },
     "loadMore": "Load more",
-    "loadingMore": "Loading…"
+    "loadingMore": "Loading…",
+    "truncated": "仅显示最近的 1,000 条记录 — 请缩小搜索范围以查找更早的记录。"
   },
   "auth": {
     "signInTagline": "登录以管理您的服务、请求和文件。",

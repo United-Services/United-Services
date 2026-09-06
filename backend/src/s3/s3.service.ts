@@ -12,6 +12,7 @@ import {
   AbortMultipartUploadCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 
 export interface MultipartPart {
   partNumber: number;
@@ -24,7 +25,19 @@ export interface MultipartPart {
 // short-lived presigned URL. See docs/BUSINESS_RULES.md rule 9.
 @Injectable()
 export class S3Service {
-  private readonly client = new S3Client({ region: process.env.AWS_REGION });
+  // The SDK's default requestTimeout is 0 (disabled), so a blackholed S3
+  // socket would otherwise hang the calling request — and the pg pool
+  // connection it holds — indefinitely. Presigning (createUploadUrl /
+  // createDownloadUrl) is a local HMAC and never touches the network;
+  // these bounds apply to the real round trips: HeadObject size checks,
+  // Copy/Delete on promotion, and the multipart control calls.
+  private readonly client = new S3Client({
+    region: process.env.AWS_REGION,
+    requestHandler: new NodeHttpHandler({
+      connectionTimeout: 5_000,
+      requestTimeout: 30_000,
+    }),
+  });
   private readonly bucket = process.env.S3_BUCKET_NAME as string;
 
   async createUploadUrl(

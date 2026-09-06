@@ -725,6 +725,7 @@ export default function AdminClientsSection({ setError, isSuperAdmin }: Props) {
         </table>
         <LoadMoreButton
           hasMore={clientsList.hasMore}
+          truncated={clientsList.truncated}
           loading={clientsList.loadingMore}
           onClick={loadMoreClients}
         />

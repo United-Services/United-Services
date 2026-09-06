@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+import { FailOpenThrottlerStorage } from './common/throttler/fail-open-throttler-storage';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
 import { AuthModule } from './auth/auth.module';
@@ -12,6 +13,7 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { MfaEnrolledGuard } from './common/guards/mfa-enrolled.guard';
 import { MfaSessionVerifiedGuard } from './common/guards/mfa-session-verified.guard';
 import { CsrfHeaderGuard } from './common/guards/csrf-header.guard';
+import { MaintenanceGuard } from './common/guards/maintenance.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { HealthController } from './health/health.controller';
 import { MeController } from './me/me.controller';
@@ -50,7 +52,11 @@ import { FailoverModule } from './failover/failover.module';
       inject: [RedisService],
       useFactory: (redis: RedisService) => ({
         throttlers: [{ ttl: 60_000, limit: 100 }],
-        storage: new ThrottlerStorageRedisService(redis),
+        // Wrapped so a Redis outage degrades to "briefly un-throttled"
+        // rather than "500 on every route" — see FailOpenThrottlerStorage.
+        storage: new FailOpenThrottlerStorage(
+          new ThrottlerStorageRedisService(redis),
+        ),
       }),
     }),
     PrismaModule,
@@ -74,6 +80,9 @@ import { FailoverModule } from './failover/failover.module';
   controllers: [HealthController, MeController, UploadsController],
   providers: [
     // Order matters — see each guard class for its individual rejection reasons.
+    // MaintenanceGuard first: during a planned database cutover it must
+    // reject writes BEFORE anything below touches the database.
+    { provide: APP_GUARD, useClass: MaintenanceGuard },
     { provide: APP_GUARD, useClass: CsrfHeaderGuard },
     { provide: APP_GUARD, useClass: ClerkAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },

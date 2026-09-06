@@ -14,6 +14,23 @@ export type FailoverMode = 'primary' | 'local';
 const FAILURE_THRESHOLD = 3;
 const RECOVERY_THRESHOLD = 3;
 const CHECK_INTERVAL_MS = 5_000;
+// Shorter than CHECK_INTERVAL_MS so a hung check is always resolved —
+// as a failure — before the next tick would want to run.
+const PING_TIMEOUT_MS = 3_000;
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  message: string,
+): Promise<T> {
+  let timer: NodeJS.Timeout;
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
 
 // A thrown value isn't guaranteed to be an Error (a library can reject
 // with a plain string, or something odd) — this must never itself throw
@@ -68,7 +85,12 @@ export class FailoverService
     // max: 1 — this connection only ever runs `SELECT 1`, never
     // application queries, so it doesn't need a real pool.
     this.pingClient = new PrismaClient({
-      adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL, max: 1 }),
+      adapter: new PrismaPg({
+        connectionString: process.env.DATABASE_URL,
+        max: 1,
+        // Bounds the CONNECT; the query itself is raced in checkPostgres.
+        connectionTimeoutMillis: PING_TIMEOUT_MS,
+      }),
     });
     this.postgresTimer = setInterval(
       () => void this.checkPostgres(),
@@ -87,7 +109,19 @@ export class FailoverService
     if (this.postgresCheckInFlight) return;
     this.postgresCheckInFlight = true;
     try {
-      await this.pingClient!.$queryRaw`SELECT 1`;
+      // Raced against a timeout, not awaited bare. On a silent network
+      // partition — packets dropped, not refused, the most common shape
+      // of a cloud-database outage — a bare SELECT 1 never resolves.
+      // Because the reentrancy flag above only clears in `finally`,
+      // every subsequent 5s tick then returned early, the failure
+      // counter never moved, and the mode never flipped: the entire
+      // failover mechanism was inert against the outage it exists for.
+      // A hang now counts as a failed check.
+      await withTimeout(
+        this.pingClient!.$queryRaw`SELECT 1`,
+        PING_TIMEOUT_MS,
+        'Postgres health check timed out',
+      );
       this.postgresFailureCount = 0;
       if (this.postgresMode === 'local') {
         this.postgresSuccessCount++;
@@ -126,7 +160,12 @@ export class FailoverService
     // a connection that's already in a broken state after a failure.
     const client = new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
       maxRetriesPerRequest: 1,
-      connectTimeout: 3_000,
+      connectTimeout: PING_TIMEOUT_MS,
+      // connectTimeout bounds only the handshake. Without this, a Redis
+      // that accepted the connection and then stalled left ping() —
+      // and this check's reentrancy flag — hanging, same latch as the
+      // Postgres side.
+      commandTimeout: PING_TIMEOUT_MS,
       lazyConnect: true,
       retryStrategy: () => null,
     });

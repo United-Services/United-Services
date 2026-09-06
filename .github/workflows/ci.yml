@@ -5,6 +5,26 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Safety net for a real blind spot: auto-merge.yml merges PRs using
+  # secrets.GITHUB_TOKEN, and GitHub deliberately does not start new
+  # workflow runs from pushes made with that token (its recursion
+  # guard). So the `push: [main]` trigger above never fires for an
+  # auto-merged PR, and main is only ever validated as the PR's
+  # merge preview — never as the commit that actually shipped.
+  #
+  # That is not theoretical: between 2026-09-03 and 2026-09-04, twelve
+  # commits landed on main with zero CI runs, and main stopped
+  # compiling (two PRs each green on their own preview, broken once
+  # combined) without anything reporting it.
+  #
+  # These two triggers bound how long such a break can go unnoticed to
+  # one day, and let anyone re-validate main on demand. The complete
+  # fix is to give auto-merge.yml a PAT or GitHub App token so its
+  # merge pushes trigger workflows normally — that needs a secret to
+  # be provisioned, so it is deliberately not done here.
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch: {}
 
 # Least-privilege default for every job below — none of them push
 # commits, comment on PRs, or touch releases; they only read the repo
@@ -40,6 +60,31 @@ jobs:
       - run: semgrep ci
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+  # Dependency-vulnerability gate. Lives HERE, as a job in the "CI"
+  # workflow, for the same reason the semgrep job above does: the
+  # standalone snyk-security.yml keeps running (Snyk Code / IaC /
+  # Container, SARIF to the Security tab) but every step in it is
+  # continue-on-error, and it is a separate workflow that
+  # auto-merge.yml's `workflow_run: workflows: ["CI"]` gate cannot see —
+  # so nothing in it could ever block a merge. This job has no
+  # continue-on-error: a high-severity finding fails the "CI"
+  # conclusion and the PR does not auto-merge.
+  snyk-gate:
+    name: Snyk (blocking)
+    runs-on: ubuntu-latest
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: snyk/actions/setup@806182742461562b67788a64410098c9d9b96adb
+      # --all-projects picks up backend/package-lock.json,
+      # frontend/package-lock.json and support-agent's requirements.txt
+      # in one pass. --fail-on=upgradable keeps this from blocking on a
+      # vulnerability with no fix available yet, which would otherwise
+      # freeze every PR until upstream ships one; those still surface in
+      # the advisory snyk-security.yml run.
+      - run: snyk test --all-projects --severity-threshold=high --fail-on=upgradable
 
   secret-scan:
     name: Secret scan (gitleaks)
@@ -210,6 +255,15 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
+      # `next lint` was removed in Next 16, so the old `lint` script had
+      # been failing locally ("Invalid project directory ... /lint") and
+      # was never run here at all — the frontend had no lint gate. The
+      # script now invokes ESLint's own CLI directly against the existing
+      # eslint.config.mjs; --max-warnings is deliberately unset so the
+      # existing warning backlog doesn't block, but any rule at `error`
+      # level (e.g. react-hooks/error-boundaries) fails the job.
+      - name: Lint
+        run: npm run lint
       - name: Unit tests
         run: npm test
       # NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must be a syntactically valid test

@@ -73,6 +73,14 @@ class Settings(BaseSettings):
     app_url: str = "http://localhost:8000"
     app_name: str = "United Services Support Agent"
 
+    # Domains the agent is allowed to name as a contact point (emails,
+    # links) in its replies, on top of whatever appeared in the documents
+    # it actually retrieved this turn. Anything else in a response is
+    # treated as a probable prompt injection and the turn is refused —
+    # see app/agent/output_filter.py for the live exploit this stops.
+    # Comma-separated; subdomains of each entry are included.
+    allowed_contact_domains: str = "use-eg.com"
+
     qdrant_url: str = "http://localhost:6333"
     # Required in every real environment (docker-compose.yml sets
     # QDRANT__SERVICE__API_KEY on the qdrant service itself) — Qdrant was

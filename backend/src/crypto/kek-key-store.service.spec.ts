@@ -4,6 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import sodium from 'libsodium-wrappers';
 import { KekKeyStore } from './kek-key-store.service';
+import { KekSsmBackup } from './kek-ssm-backup.service';
 import type { PrismaService } from '../prisma/prisma.service';
 
 describe('KekKeyStore', () => {
@@ -15,14 +16,54 @@ describe('KekKeyStore', () => {
         findFirst: jest.fn(),
       },
     } as unknown as PrismaService;
-    return { store: new KekKeyStore(prisma), prisma };
+    // KEK_SSM_BACKUP_ENABLED is unset under test, so this is a no-op
+    // backup: getKey() resolves null, putKey() returns immediately.
+    return { store: new KekKeyStore(prisma, new KekSsmBackup()), prisma };
   }
 
-  it('throws a clear error asking for a restart when a keyId was never loaded', () => {
-    const { store } = makeStore();
-    expect(() => store.getPrivateKey('kek-never-loaded')).toThrow(
+  it('does not fail boot when a registry row has no key file — degrades that one key and logs', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'kek-test-'));
+    const original = process.env.KEK_KEYS_DIR;
+    process.env.KEK_KEYS_DIR = dir;
+    try {
+      const { store, prisma } = makeStore();
+      (prisma.kekRegistry.findMany as jest.Mock).mockResolvedValue([
+        { keyId: 'kek-missing-file', status: 'retiring' },
+      ]);
+
+      // Used to throw ENOENT out of onModuleInit and take the whole API
+      // down with it; now the key is simply unavailable.
+      await expect(store.onModuleInit()).resolves.toBeUndefined();
+      expect(store.hasPrivateKey('kek-missing-file')).toBe(false);
+    } finally {
+      if (original) process.env.KEK_KEYS_DIR = original;
+      else delete process.env.KEK_KEYS_DIR;
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('getActivePublicKey refuses (fails closed) an active key whose private half is not loaded here', async () => {
+    const { store, prisma } = makeStore();
+    (prisma.kekRegistry.findFirst as jest.Mock).mockResolvedValue({
+      keyId: 'kek-2',
+      publicKey: 'AAAA',
+      status: 'active',
+    });
+    (prisma.kekRegistry.findMany as jest.Mock).mockResolvedValue([]);
+
+    await expect(store.getActivePublicKey()).rejects.toThrow(
+      /refusing to encrypt/,
+    );
+  });
+
+  it('throws a clear error when a keyId is not loaded and a reload does not find it either', async () => {
+    const { store, prisma } = makeStore();
+    (prisma.kekRegistry.findMany as jest.Mock).mockResolvedValue([]);
+    await expect(store.getPrivateKey('kek-never-loaded')).rejects.toThrow(
       InternalServerErrorException,
     );
+    // The miss path re-read the registry rather than demanding a restart.
+    expect(prisma.kekRegistry.findMany).toHaveBeenCalled();
   });
 
   it('throws when KEK_KEYS_DIR is not configured at all', async () => {
@@ -78,7 +119,9 @@ describe('KekKeyStore', () => {
 
       await store.onModuleInit();
 
-      expect(store.getPrivateKey('kek-1')).toEqual(keyPair.privateKey);
+      await expect(store.getPrivateKey('kek-1')).resolves.toEqual(
+        keyPair.privateKey,
+      );
     } finally {
       if (original) process.env.KEK_KEYS_DIR = original;
       else delete process.env.KEK_KEYS_DIR;

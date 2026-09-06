@@ -15,6 +15,10 @@ import {
   FAILOVER_RECONCILE_DLQ_NAME,
   FAILOVER_RECONCILE_QUEUE,
   FAILOVER_RECONCILE_QUEUE_NAME,
+  KEK_ROTATION_DLQ,
+  KEK_ROTATION_DLQ_NAME,
+  KEK_ROTATION_QUEUE,
+  KEK_ROTATION_QUEUE_NAME,
   TICKET_ARCHIVE_DLQ,
   TICKET_ARCHIVE_DLQ_NAME,
   TICKET_ARCHIVE_QUEUE,
@@ -117,6 +121,22 @@ function createBullConnection(failover: FailoverService) {
       inject: [FailoverService],
     },
     {
+      provide: KEK_ROTATION_QUEUE,
+      useFactory: (failover: FailoverService) =>
+        new Queue(KEK_ROTATION_QUEUE_NAME, {
+          connection: createBullConnection(failover),
+        }),
+      inject: [FailoverService],
+    },
+    {
+      provide: KEK_ROTATION_DLQ,
+      useFactory: (failover: FailoverService) =>
+        new Queue(KEK_ROTATION_DLQ_NAME, {
+          connection: createBullConnection(failover),
+        }),
+      inject: [FailoverService],
+    },
+    {
       provide: TICKET_ARCHIVE_QUEUE,
       useFactory: (failover: FailoverService) =>
         new Queue(TICKET_ARCHIVE_QUEUE_NAME, {
@@ -142,6 +162,8 @@ function createBullConnection(failover: FailoverService) {
     DB_MIRROR_SYNC_DLQ,
     FAILOVER_RECONCILE_QUEUE,
     FAILOVER_RECONCILE_DLQ,
+    KEK_ROTATION_QUEUE,
+    KEK_ROTATION_DLQ,
     TICKET_ARCHIVE_QUEUE,
     TICKET_ARCHIVE_DLQ,
   ],

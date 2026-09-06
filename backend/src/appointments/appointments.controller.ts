@@ -200,7 +200,7 @@ export class AppointmentsController {
           ),
         )
       : appointments;
-    return paginate(filtered, skip, take);
+    return paginate(filtered, skip, take, appointments.length);
   }
 
   // "done" (client showed up) / "cancelled" (admin called it off) — see

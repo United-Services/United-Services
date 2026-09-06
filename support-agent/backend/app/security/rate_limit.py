@@ -13,12 +13,16 @@ limit for free), so it's not a real identity boundary to throttle
 against. IP is what actually costs an attacker something to rotate.
 """
 
+import logging
 import time
 
+import redis
 from fastapi import HTTPException, Request
 
 from app.config import settings
 from app.memory.redis_memory import get_redis_client
+
+logger = logging.getLogger("support_agent.rate_limit")
 
 # Fixed window, not sliding — simple, and precise enough for "stop one
 # client from burning the whole account's free daily quota," which
@@ -43,13 +47,26 @@ def enforce_rate_limit(request: Request) -> None:
     window = int(time.time() // WINDOW_SECONDS)
     key = f"support-agent:ratelimit:{ip}:{window}"
 
-    redis_client = get_redis_client()
-    count = redis_client.incr(key)
-    if count == 1:
-        # Only set expiry on the first request in this window — an INCR
-        # on every request would keep pushing the expiry back and the
-        # window would never actually close.
-        redis_client.expire(key, WINDOW_SECONDS)
+    try:
+        redis_client = get_redis_client()
+        count = redis_client.incr(key)
+        if count == 1:
+            # Only set expiry on the first request in this window — an INCR
+            # on every request would keep pushing the expiry back and the
+            # window would never actually close.
+            redis_client.expire(key, WINDOW_SECONDS)
+    except redis.RedisError:
+        # Fail OPEN. Rate limiting is a protection mechanism, not a
+        # correctness one: a Redis blip used to surface here as an
+        # unhandled ConnectionError → a raw 500 on every /chat/stream
+        # request for as long as Redis was unreachable (and, because the
+        # exception escaped DynamicCORSMiddleware's post-call_next path,
+        # a 500 with no CORS headers — which the browser reports as a
+        # CORS error, not an outage). Letting one window through
+        # un-throttled is strictly better than that. Logged at error so
+        # the gap is visible in Betterstack rather than silent.
+        logger.error("Redis unavailable — rate limiting is failing open for this request")
+        return
 
     if count > MAX_REQUESTS_PER_WINDOW:
         raise HTTPException(

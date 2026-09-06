@@ -548,7 +548,7 @@ export default function Home({ onNavigate, initialServices }: Props) {
                   </p>
                 </div>
                 <div style={{ background: "#fff", borderRadius: 22, padding: 28, display: "flex", flexDirection: "column", gap: 16 }}>
-                  <div style={{ fontSize: 13.5, color: MUTED }}>{t("proof.countriesLabel")}</div>
+                  <div style={{ fontSize: 15, color: MUTED }}>{t("proof.countriesLabel")}</div>
                   <div style={{ fontFamily: HEAD, fontWeight: 700, fontSize: 60, letterSpacing: "-0.02em", marginTop: "auto" }}>
                     {STATS[2].value}
                     <span style={{ color: MUTED, fontWeight: 500, fontSize: 20 }}> countries</span>
@@ -558,7 +558,7 @@ export default function Home({ onNavigate, initialServices }: Props) {
                   <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600 }}>
                     <span>◎</span> 02 — {t("methodology.engineer.title")}
                   </div>
-                  <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.65, color: MUTED }}>
+                  <p style={{ margin: 0, fontSize: 15, lineHeight: 1.65, color: MUTED }}>
                     {t("methodology.engineer.desc")}
                   </p>
                   <div
@@ -597,7 +597,7 @@ export default function Home({ onNavigate, initialServices }: Props) {
                     style={{ objectFit: "cover" }}
                   />
                 </div>
-                <div style={{ fontFamily: "ui-monospace,monospace", fontSize: 11.5, color: MUTED }}>
+                <div style={{ fontFamily: "ui-monospace,monospace", fontSize: 12.5, letterSpacing: "0.06em", color: MUTED }}>
                   FIG. 01 — MULTI-LAYER PIPELINE PROTECTION SYSTEM
                 </div>
               </div>

@@ -166,6 +166,7 @@ export default function AdminRequestsSection({ setError }: Props) {
         </table>
         <LoadMoreButton
           hasMore={requestsList.hasMore}
+          truncated={requestsList.truncated}
           loading={requestsList.loadingMore}
           onClick={loadMoreRequests}
         />

@@ -22,7 +22,12 @@ import { DecideFileAccessRequestDto } from './dto/decide-file-access-request.dto
 import { fuzzyMatch, searchableText } from '../common/utils/fuzzy-match';
 import { SEARCH_SCAN_LIMIT } from '../common/constants/search-scan-limit';
 import { DEFAULT_PAGE_SIZE, paginate } from '../common/utils/paginate';
-import { FileAccessStatus, Role, type User } from '../generated/prisma';
+import {
+  FileAccessStatus,
+  Prisma,
+  Role,
+  type User,
+} from '../generated/prisma';
 
 const DOWNLOAD_URL_TTL_SECONDS = 300;
 
@@ -56,9 +61,28 @@ export class FileAccessController {
         'You already have a pending or approved request for this file',
       );
 
-    return this.prisma.fileAccessRequest.create({
-      data: { clientId: client.id, serviceFileId: dto.serviceFileId },
-    });
+    // The findFirst above is only the friendly fast path. Two requests
+    // racing past it (a double-click, a retried slow request) both
+    // reached this insert and left two open requests for one file; an
+    // admin then approved both. The partial unique index
+    // FileAccessRequest_client_file_open_key (pending/approved only) is
+    // the real guard — decide() in this file already used the
+    // constraint-backed pattern; create() had never been given it.
+    try {
+      return await this.prisma.fileAccessRequest.create({
+        data: { clientId: client.id, serviceFileId: dto.serviceFileId },
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          'You already have a pending or approved request for this file',
+        );
+      }
+      throw err;
+    }
   }
 
   @Roles(Role.client)
@@ -118,7 +142,7 @@ export class FileAccessController {
           ),
         )
       : requests;
-    return paginate(filtered, skip, take);
+    return paginate(filtered, skip, take, requests.length);
   }
 
   @Roles(...ADMIN_ROLES)

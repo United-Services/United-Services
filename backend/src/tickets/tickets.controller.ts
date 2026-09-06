@@ -33,7 +33,12 @@ import {
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { PresignTicketScreenshotDto } from './dto/presign-ticket-screenshot.dto';
 import { UpdateTicketStatusDto } from './dto/update-ticket-status.dto';
-import { Role, TicketStatus, type User } from '../generated/prisma';
+import {
+  Role,
+  TicketStatus,
+  TicketType,
+  type User,
+} from '../generated/prisma';
 
 const ALLOWED_SCREENSHOT_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -144,16 +149,45 @@ export class TicketsController {
     @Query('take', new DefaultValuePipe(DEFAULT_PAGE_SIZE), ParseIntPipe)
     take: number,
   ) {
+    // Scan NEWEST first. This used to scan `type asc, createdAt asc` —
+    // oldest first — so once the table passed SEARCH_SCAN_LIMIT rows the
+    // newest tickets were the ones outside the window: a newly filed
+    // ticket never appeared in the admin queue at all, and tickets is a
+    // public-write table that grows on its own. The scan now takes the
+    // newest window; the triage ordering the queue needs (type priority,
+    // then oldest-first within a type — see the comment above) is
+    // applied in-app to the filtered set, which is where the fuzzy match
+    // already forced the paging to live.
+    // The enum's declaration order (schema.prisma) — what the SQL
+    // `ORDER BY type` used to give for free.
+    const TYPE_PRIORITY: Record<TicketType, number> = {
+      [TicketType.technical]: 0,
+      [TicketType.disabled_account]: 1,
+      [TicketType.non_technical]: 2,
+    };
     const rows = await this.prisma.ticket.findMany({
-      orderBy: [{ type: 'asc' }, { createdAt: 'asc' }],
+      orderBy: { createdAt: 'desc' },
       take: SEARCH_SCAN_LIMIT,
     });
-    const filtered = q
-      ? rows.filter((t) =>
-          fuzzyMatch(searchableText(t.name, t.email, t.company, t.details), q),
-        )
-      : rows;
-    const { items: page, hasMore } = paginate(filtered, skip, take);
+    const filtered = (
+      q
+        ? rows.filter((t) =>
+            fuzzyMatch(
+              searchableText(t.name, t.email, t.company, t.details),
+              q,
+            ),
+          )
+        : rows
+    ).sort(
+      (a, b) =>
+        TYPE_PRIORITY[a.type] - TYPE_PRIORITY[b.type] ||
+        a.createdAt.getTime() - b.createdAt.getTime(),
+    );
+    const {
+      items: page,
+      hasMore,
+      truncated,
+    } = paginate(filtered, skip, take, rows.length);
 
     const items = await Promise.all(
       page.map(async (t) => ({
@@ -167,7 +201,7 @@ export class TicketsController {
       })),
     );
 
-    return { items, hasMore };
+    return { items, hasMore, truncated };
   }
 
   // Freely switchable between unresolved and contacted in either

@@ -307,6 +307,11 @@ model Appointment {
 
   @@index([clientId, createdAt])
   @@index([status])
+  // The admin bookings list orders by createdAt alone; the composite
+  // above can't serve an unfiltered sort. Measured at 50k rows: 12.5 ms
+  // seq scan + top-N sort → 0.3 ms index scan backward. The other admin
+  // list tables got this in 20260827124237; Appointment was missed.
+  @@index([createdAt])
 }
 
 enum AppointmentStatus {

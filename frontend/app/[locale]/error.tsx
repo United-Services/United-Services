@@ -42,12 +42,16 @@ export default function LocaleError({
           width: 56,
           height: 56,
           borderRadius: 16,
-          background: palette.accentLight,
+          // Lime glyph on pale-lime measured ~1.04:1 — the "!" was
+          // invisible on the one screen a user sees when something
+          // breaks. This is the exact accent-as-text-on-light pairing
+          // theme.tsx forbids. Ink on lime is 16.7:1.
+          background: palette.accent,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           fontSize: 24,
-          color: palette.accent,
+          color: "#0E0E10",
           fontWeight: 800,
         }}
       >

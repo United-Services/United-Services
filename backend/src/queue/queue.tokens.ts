@@ -50,6 +50,17 @@ export const FAILOVER_RECONCILE_DLQ_NAME = 'failover-reconcile-dlq';
 
 export type FailoverReconcileJobData = Record<string, never>;
 
+export const KEK_ROTATION_QUEUE = 'KEK_ROTATION_QUEUE';
+export const KEK_ROTATION_DLQ = 'KEK_ROTATION_DLQ';
+
+export const KEK_ROTATION_QUEUE_NAME = 'kek-rotation';
+export const KEK_ROTATION_DLQ_NAME = 'kek-rotation-dlq';
+
+// One daily repeating job (see KekRotationWorker). Empty for the same
+// reason as the other sweeps: whether a rotation is due, and which keys
+// are retiring, is read fresh from KekRegistry on each run.
+export type KekRotationJobData = Record<string, never>;
+
 export const TICKET_ARCHIVE_QUEUE = 'TICKET_ARCHIVE_QUEUE';
 export const TICKET_ARCHIVE_DLQ = 'TICKET_ARCHIVE_DLQ';
 

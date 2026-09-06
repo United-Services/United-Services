@@ -57,7 +57,7 @@ export class TotpCryptoService {
   async decryptSecret(record: EncryptedTotpSecret): Promise<string> {
     await sodium.ready;
 
-    const privateKey = this.kekStore.getPrivateKey(record.totpKekKeyId);
+    const privateKey = await this.kekStore.getPrivateKey(record.totpKekKeyId);
     const publicKey = await this.kekStore.getPublicKey(record.totpKekKeyId);
 
     const dek = sodium.crypto_box_seal_open(

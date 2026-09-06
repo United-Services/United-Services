@@ -1,10 +1,12 @@
 "use client"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
+import ErrorBanner from "../components/ErrorBanner"
 import { useReveal } from "../hooks/useReveal"
 import { axios } from "../lib/api"
+import { getErrorMessage } from "../lib/errors"
 import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY } from "../lib/publicTheme"
 import dynamic from "next/dynamic"
 // See views/About.tsx for why this is dynamic — same heavy, WebGL-only,
@@ -45,6 +47,26 @@ export default function Careers({ onNavigate, initialPositions }: Props) {
   const [positions, setPositions] = useState<OpenPosition[]>(initialPositions ?? [])
   const [loading, setLoading] = useState(initialPositions === undefined)
   const [filter, setFilter] = useState<string>(ALL)
+  const tCommon = useTranslations("common")
+  const [loadError, setLoadError] = useState<string | null>(null)
+  // Resolved to plain strings here rather than calling tCommon inside
+  // the callback: a translator function's identity is not guaranteed
+  // stable across renders, and putting it in useCallback's deps would
+  // re-create load() every render — and the effect below would refetch
+  // in a loop.
+  const loadFailedMsg = tCommon("errors.loadFailed")
+  const load = useCallback(() => {
+    setLoading(true)
+    setLoadError(null)
+    axios
+      .get("/positions", { params: locale !== "en" ? { locale } : undefined })
+      .then(({ data }) => setPositions(data))
+      // Without this, a 502 was an unhandled rejection: `loading` still
+      // flipped false, positions stayed [], and the page rendered
+      // "no open positions" — a candidate concludes you aren't hiring.
+      .catch((err) => setLoadError(getErrorMessage(err, loadFailedMsg)))
+      .finally(() => setLoading(false))
+  }, [locale, loadFailedMsg])
   // Skips exactly one fetch: the mount-time run when the server already
   // supplied this same locale's data. Any subsequent locale change still
   // fetches client-side as before.
@@ -59,12 +81,8 @@ export default function Careers({ onNavigate, initialPositions }: Props) {
     // state immediately, not just on first mount — this isn't the
     // derived-state anti-pattern the rule is meant to catch, it's
     // resetting the UI for a genuinely new request.
-    setLoading(true)
-    axios
-      .get("/positions", { params: locale !== "en" ? { locale } : undefined })
-      .then(({ data }) => setPositions(data))
-      .finally(() => setLoading(false))
-  }, [locale])
+    load()
+  }, [load])
 
   const departments = [
     ALL,
@@ -111,6 +129,13 @@ export default function Careers({ onNavigate, initialPositions }: Props) {
 
       <section style={{ padding: "72px 28px" }}>
         <div style={{ maxWidth: 1260, margin: "0 auto" }}>
+          <ErrorBanner
+            message={loadError}
+            onDismiss={() => setLoadError(null)}
+            dismissLabel={tCommon("errors.dismiss")}
+            onRetry={load}
+            retryLabel={tCommon("errors.retry")}
+          />
           {!loading && positions.length > 0 && (
             <div
               style={{
@@ -165,7 +190,9 @@ export default function Careers({ onNavigate, initialPositions }: Props) {
                   <Skeleton height={36} width={100} radius={9999} />
                 </div>
               ))}
-            {!loading && positions.length === 0 && (
+            {/* Never show "no openings" for a FAILED load — that's the
+                message that tells a candidate the company isn't hiring. */}
+            {!loading && !loadError && positions.length === 0 && (
               <p
                 style={{
                   fontSize: 14,

@@ -1,45 +1,65 @@
 import { paginate } from './paginate';
+import { SEARCH_SCAN_LIMIT } from '../constants/search-scan-limit';
 
 // Shared by every in-app-fuzzy-matched admin list endpoint (rfq, file-access,
-// candidates, admin-users, appointments controllers) — one bug here is a
-// bug in all of them at once, so it's worth covering directly rather than
-// relying on each controller's own tests to happen to exercise it.
+// candidates, admin-users, appointments, tickets, audit-log) — one bug here
+// is a bug in all of them at once, so it's worth covering directly rather
+// than relying on each controller's own tests to happen to exercise it.
 describe('paginate', () => {
   const items = ['a', 'b', 'c', 'd', 'e'];
+  // Every call below passes the size of the (bounded) scan the filtered
+  // set came from; here that is simply the input's own length, well under
+  // SEARCH_SCAN_LIMIT, so `truncated` is false unless a case says otherwise.
+  const scanned = items.length;
 
   it('returns the requested slice with hasMore=true when more remain', () => {
-    const result = paginate(items, 0, 2);
-    expect(result).toEqual({ items: ['a', 'b'], hasMore: true });
+    const result = paginate(items, 0, 2, scanned);
+    expect(result).toEqual({ items: ['a', 'b'], hasMore: true, truncated: false });
   });
 
   it('returns the last page with hasMore=false when the slice reaches the end exactly', () => {
-    const result = paginate(items, 3, 2);
-    expect(result).toEqual({ items: ['d', 'e'], hasMore: false });
+    const result = paginate(items, 3, 2, scanned);
+    expect(result).toEqual({ items: ['d', 'e'], hasMore: false, truncated: false });
   });
 
   it('skip beyond the total length returns an empty page, not an error', () => {
-    const result = paginate(items, 100, 20);
-    expect(result).toEqual({ items: [], hasMore: false });
+    const result = paginate(items, 100, 20, scanned);
+    expect(result).toEqual({ items: [], hasMore: false, truncated: false });
   });
 
   it('skip exactly at the total length returns an empty page', () => {
-    const result = paginate(items, items.length, 10);
-    expect(result).toEqual({ items: [], hasMore: false });
+    const result = paginate(items, items.length, 10, scanned);
+    expect(result).toEqual({ items: [], hasMore: false, truncated: false });
   });
 
   it('take=0 returns an empty page but still reports hasMore correctly', () => {
-    const result = paginate(items, 0, 0);
-    expect(result).toEqual({ items: [], hasMore: true });
+    const result = paginate(items, 0, 0, scanned);
+    expect(result).toEqual({ items: [], hasMore: true, truncated: false });
   });
 
   it('an empty input array always returns an empty page with hasMore=false', () => {
-    const result = paginate([], 0, 20);
-    expect(result).toEqual({ items: [], hasMore: false });
+    const result = paginate([], 0, 20, 0);
+    expect(result).toEqual({ items: [], hasMore: false, truncated: false });
   });
 
   it('take larger than the remaining items returns everything left, hasMore=false', () => {
-    const result = paginate(items, 4, 50);
-    expect(result).toEqual({ items: ['e'], hasMore: false });
+    const result = paginate(items, 4, 50, scanned);
+    expect(result).toEqual({ items: ['e'], hasMore: false, truncated: false });
+  });
+
+  // The defect this flag exists for: `hasMore` is derived from the
+  // already-filtered array, so once the pre-filter scan hit its cap the
+  // end of the WINDOW was indistinguishable from the end of the DATA —
+  // past 1,000 rows a search for an older record returned nothing and
+  // reported "no more" with full confidence.
+  it('reports truncated=true when the scan that produced the input hit SEARCH_SCAN_LIMIT, even on the last page', () => {
+    const result = paginate(items, 4, 50, SEARCH_SCAN_LIMIT);
+    expect(result).toEqual({ items: ['e'], hasMore: false, truncated: true });
+  });
+
+  it('reports truncated=false when the scan came back under the limit — the end really is the end', () => {
+    const result = paginate(items, 4, 50, SEARCH_SCAN_LIMIT - 1);
+    expect(result.truncated).toBe(false);
   });
 
   // Documents actual behavior rather than asserting an opinion on
@@ -56,8 +76,8 @@ describe('paginate', () => {
     // 1), so the slice is empty, even though items clearly exist and
     // hasMore correctly still reports true (more usable data exists, the
     // caller just asked for a nonsensical window into it).
-    const result = paginate(items, -1, 2);
-    expect(result).toEqual({ items: [], hasMore: true });
+    const result = paginate(items, -1, 2, scanned);
+    expect(result).toEqual({ items: [], hasMore: true, truncated: false });
   });
 
   it('a negative take also uses Array.slice end-index semantics, not "zero items"', () => {
@@ -65,7 +85,7 @@ describe('paginate', () => {
     // JS — nothing about paginate() special-cases a negative take to
     // mean "return nothing," so a caller sending take=-1 gets all but
     // one item back, silently, instead of a 400 or an empty page.
-    const result = paginate(items, 0, -1);
-    expect(result).toEqual({ items: ['a', 'b', 'c', 'd'], hasMore: true });
+    const result = paginate(items, 0, -1, scanned);
+    expect(result).toEqual({ items: ['a', 'b', 'c', 'd'], hasMore: true, truncated: false });
   });
 });

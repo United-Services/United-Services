@@ -75,7 +75,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
   // delay or affect the response already being sent to the client.
   private pageOnCall(request: Request, status: number, exception: Error) {
     void this.incidentAlertService.trigger({
-      route: request.route?.path ?? request.url,
+      // IncidentAlertService dedups on `${method}:${route}` with a 15-min
+      // cooldown. `request.route` is only set once Express has matched a
+      // handler — an error thrown earlier (body-parser's
+      // PayloadTooLargeError, for one) leaves it undefined. Falling back
+      // to the raw `request.url` here made the cooldown key attacker-
+      // controlled: every distinct query string was a fresh bucket, so
+      // one unauthenticated client could page on-call ~1200×/minute
+      // (nginx's 20 r/s) by varying `?n=` on a request that 500s.
+      // Unmatched requests collapse to one fixed bucket instead — that
+      // an unmatched route reached this filter at all is the signal;
+      // its exact path isn't needed to dedup it.
+      route: request.route?.path ?? '(unmatched-route)',
       method: request.method,
       statusCode: status,
       errorMessage: exception.message,

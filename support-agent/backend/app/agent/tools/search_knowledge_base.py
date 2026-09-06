@@ -1,3 +1,4 @@
+import secrets
 from functools import lru_cache
 from urllib.parse import urlparse
 
@@ -106,9 +107,34 @@ def search_knowledge_base(query: str) -> str:
     # poisoned chunk with no credential; this hardens the consumption
     # side too, since the underlying scrape source (a public marketing
     # site today) is not a hard security boundary on its own.
+    #
+    # Two hardenings on top of the wrapping itself, both from the
+    # pre-production audit, where a poisoned document broke through:
+    #
+    #   1. The payload text is escaped. Verified live: a document that
+    #      contained a literal "</untrusted_document>" closed the block
+    #      early, and because it re-opened one afterwards the assembled
+    #      context had perfectly balanced tags — the escape was
+    #      structurally invisible. Angle brackets in retrieved text are
+    #      now entities, so no payload can produce a tag.
+    #   2. The tag name carries a per-call random suffix. A delimiter
+    #      that is the same fixed string on every call can be guessed
+    #      and forged from outside; one nobody can predict cannot.
+    #      SYSTEM_PROMPT (agent.py) describes the pattern, not the
+    #      literal.
     parts = []
+    nonce = secrets.token_hex(8)
+    tag = f"untrusted_document_{nonce}"
     for hit in hits:
         payload = hit.payload or {}
-        source = f"{payload.get('title', 'untitled')} — {payload.get('source_url', '')}"
-        parts.append(f'<untrusted_document source="{source}">\n{payload.get("text", "")}\n</untrusted_document>')
+        source = _escape(f"{payload.get('title', 'untitled')} — {payload.get('source_url', '')}")
+        text = _escape(str(payload.get("text", "")))
+        parts.append(f'<{tag} source="{source}">\n{text}\n</{tag}>')
     return "\n\n".join(parts)
+
+
+def _escape(value: str) -> str:
+    # Only what can form or break a tag/attribute — not html.escape's
+    # full set, so ordinary prose ("R&D", "10% & rising") reaches the
+    # model unmangled.
+    return value.replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")

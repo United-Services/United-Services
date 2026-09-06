@@ -28,7 +28,9 @@ export default function LocaleNotFound() {
       <div
         style={{
           fontSize: 13,
-          color: palette.accent,
+          // Lime on white was 1.15:1 — the eyebrow didn't exist visually.
+          // #4A5A1C keeps the olive/lime family at 7.59:1.
+          color: "#4A5A1C",
           fontWeight: 700,
           letterSpacing: "0.15em",
         }}

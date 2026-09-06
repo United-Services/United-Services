@@ -1,0 +1,9 @@
+---
+# Prisma migrations are generated DDL, not hand-written code: they're
+# never edited after being applied, and their SQL is Postgres dialect.
+# Codacy's SQL analysis defaults to SQL Server (T-SQL) conventions
+# ("Expected SET ANSI_NULLS ON", "SET QUOTED_IDENTIFIER ON", etc.),
+# which don't exist in Postgres and fire on every single migration
+# file regardless of its actual content.
+exclude_paths:
+  - "backend/prisma/migrations/**"

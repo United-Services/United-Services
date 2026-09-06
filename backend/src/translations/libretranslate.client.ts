@@ -1,5 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+// Per-call ceiling on the outbound fetch. Without it undici's 300s
+// default applied, and translateOne() runs sequentially over every
+// string in a batch — so one LibreTranslate instance that accepted the
+// TCP connection and never answered pinned a translation worker for
+// five minutes per string. Three such jobs (worker concurrency: 3) and
+// the queue stops entirely. 10s is generous for a single Argos
+// translation on modest hardware; a call that takes longer is far more
+// likely hung than slow.
+const REQUEST_TIMEOUT_MS = 10_000;
+
 // Splits `text` into chunks no longer than `maxLen`, breaking on paragraph
 // boundaries first, then sentence boundaries, so a very long field never
 // gets cut mid-word/mid-sentence for the translator. LibreTranslate/Argos
@@ -95,6 +105,7 @@ export class LibreTranslateClient {
           target: targetLocale,
           format: 'text',
         }),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
       if (!res.ok) return null;
       const data = (await res.json()) as { translatedText: unknown };
@@ -132,6 +143,7 @@ export class LibreTranslateClient {
         target: targetLocale,
         format: 'text',
       }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (!res.ok) {
       throw new Error(

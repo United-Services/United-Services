@@ -69,7 +69,7 @@ export class CandidatesController {
           ),
         )
       : applications;
-    return paginate(filtered, skip, take);
+    return paginate(filtered, skip, take, applications.length);
   }
 
   @Get(':id/documents')

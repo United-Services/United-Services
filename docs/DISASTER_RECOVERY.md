@@ -60,15 +60,29 @@ Upstash becomes unreachable — see `backend/src/failover/`.
 ## Backups
 
 ### Database (Supabase Postgres)
-- **Schedule**: Supabase takes automated daily backups on paid plans
-  (point-in-time recovery on the Pro tier and above). Confirm the project's
-  plan tier includes PITR before relying on sub-24h RPO — the free tier
-  only has periodic snapshots, not continuous WAL archiving.
-- **Retention**: 7 days on Pro, up to 35 days on higher tiers (Supabase
-  dashboard → Database → Backups shows the exact window for this project).
-- **Verification**: quarterly, restore the latest backup into a scratch
-  Supabase project and run `prisma migrate status` against it to confirm
-  the schema and a spot-check of row counts match production.
+- **Our own backups — `backend/scripts/backup-db.sh`** (the backup of
+  record; independent of the hosting provider). `pg_dump -Fc` over
+  `DIRECT_URL`, encrypted with `age` to a public key whose private
+  identity is kept off the host, uploaded to `BACKUP_S3_BUCKET`. Run
+  from a host cron every 6 hours:
+  `0 */6 * * *  cd /opt/united-services && ./backend/scripts/backup-db.sh`.
+  (`pg_dump` is not in the backend image; this runs on the host.)
+  The earlier `backup-db.ts` JSON snapshot is superseded: it was never
+  scheduled, wrote inside the container, was unencrypted, and had no
+  restore path — its output is not `pg_restore`-consumable.
+- **Restore**:
+  `age -d -i <identity> use-<stamp>.dump.age > use.dump` then
+  `pg_restore -j 4 --clean --if-exists -d "$DIRECT_URL" use.dump`.
+  Measured on a 609 MB / 2.9M-row copy: dump 4.5 s, restore 12.1 s.
+  KEK private keys are **not** in this dump — see "KEK private keys".
+- **Supabase's own**: automated daily backups on paid plans (PITR on Pro
+  and above). Confirm the project's tier includes PITR before relying on
+  sub-24h RPO from that side — the free tier only has periodic snapshots.
+  Retention 7 days on Pro, up to 35 on higher tiers.
+- **Verification**: quarterly, restore the latest `backup-db.sh` dump
+  into a scratch database and run `prisma migrate status` plus a row-
+  count spot-check (`User`, `Service`, `CandidateApplication`) against
+  production.
 
 ### S3 (`united-services` bucket)
 - **Current state**: versioning has been enabled on this bucket (per the
@@ -88,9 +102,10 @@ Upstash becomes unreachable — see `backend/src/failover/`.
 
 | Component | RPO (max data loss) | RTO (max time to restore) |
 |---|---|---|
-| Database | 24h (daily backup) — sub-1h achievable once PITR is confirmed enabled | 2h |
+| Database | 6h (`backup-db.sh` cron) — sub-1h once Supabase PITR is confirmed | 1h (restore measured in seconds at current volume; the rest is the deploy chain) |
 | S3 objects | 0 (versioning enabled — every object version is retained) | 1h |
-| Application (Next.js + NestJS) | N/A — stateless, redeployed from git | 30m (redeploy from last known-good commit) |
+| KEK private keys | 0 once `KEK_SSM_BACKUP_ENABLED=true` (mirrored to SSM at generation) | minutes — restored automatically on the next key-store reload |
+| Application (Next.js + NestJS) | N/A — code is redeployed from git; the KEK row above is the one piece of state | 30m (redeploy from last known-good commit) |
 
 These are starting targets, not yet load-tested or drilled — revisit after
 the first practice restore.
@@ -127,11 +142,99 @@ itself a risk worth flagging.
    versioning above and should be set up together.
 
 ### Application
-Stateless — redeploy the last known-good commit from `main`. No data
-migration needed unless the incident coincided with a database restore to
-an earlier point, in which case redeploy the commit that matches that
-schema version (check `prisma/migrations/` history against the restore
-point's timestamp).
+Redeploy the last known-good commit from `main`. No data migration needed
+unless the incident coincided with a database restore to an earlier
+point, in which case redeploy the commit that matches that schema version
+(check `prisma/migrations/` history against the restore point's
+timestamp).
+
+The application is **not** stateless — see the next section.
+
+### KEK private keys
+
+Admin TOTP secrets are envelope-encrypted: each secret is sealed under a
+KEK whose **private key exists only as a file** in the `kek-keys` Docker
+volume (`KEK_KEYS_DIR`). The database holds the public halves and the
+ciphertext; a database backup is useless for MFA without the private key
+files. Losing them makes every `TotpCredential` permanently undecryptable
+— every admin loses TOTP, and has to re-enroll after an operator resets
+their MFA.
+
+**Backup.** With `KEK_SSM_BACKUP_ENABLED=true` (required in production),
+every private key is also written to SSM Parameter Store as a
+`SecureString` at `/united-services/<ENVIRONMENT>/kek/<keyId>` the moment
+it is generated — by the rotation worker and by `npm run kek:generate`
+alike (`src/crypto/kek-ssm-backup.service.ts`). This is the same
+namespace and the same AWS credentials `scripts/fetch-secrets.sh` already
+uses.
+
+**Restore.** Automatic. On boot and on any key-store reload, a registry
+row whose key file is missing locally is fetched from SSM and written
+back at `0400` (`KekKeyStore.reload()`). So a fresh volume or a new host
+recovers on its own, and a missing file **no longer prevents the API
+from starting** — that one key is unavailable and logged at `error`
+until restored, but every other route serves.
+
+**Rotation.** Automatic, daily at 03:30 (`KekRotationWorker`): a new key
+is generated once the active one is older than `KEK_ROTATION_MAX_AGE_DAYS`
+(default 90), every credential is force-re-wrapped off the retiring key,
+and the retiring key is retired and its file shredded once nothing
+references it. Each step is audit-logged (`kek.rotated`,
+`mfa.totp_rewrapped`, `kek.retired`) and logged at `warn` for Betterstack.
+
+**Manual override.** `npm run kek:generate` rotates immediately;
+`npm run kek:retire -- --keyId=<id>` retires a specific key. Both refuse
+unsafe states (retiring the active key; retiring a key still referenced).
+
+**If SSM backup was never enabled and the volume is lost:** there is no
+recovery. Reset MFA for every admin (`mfaEnrolled = false`, delete their
+`TotpCredential` and `WebAuthnCredential` rows) and have them re-enroll.
+This is the scenario the backup exists to prevent.
+
+## Planned database cutover (Supabase ↔ local Postgres)
+
+This is distinct from the automatic failover above. A planned move in
+either direction is a deliberate switch of `DATABASE_URL`/`DIRECT_URL`
+and a restart — nothing in `FailoverService` fires, so `FailoverWriteLog`
+captures nothing, and without the maintenance mode below every write
+during the switch either lands on the database being abandoned (lost)
+or fails.
+
+**Target: under five minutes of write-unavailability, zero read
+unavailability, zero lost writes.** At the current data volume the copy
+itself is seconds (measured on a 609 MB / 2.9M-row copy: `pg_dump -Fc`
+4.5 s, `pg_restore -j 4` 12.1 s); the restart chain in
+`docker-entrypoint.sh` (secrets → migrate → KEK probe → geoipupdate)
+dominates. Above roughly 5–10 GB a dump/restore no longer fits the
+window and logical replication is needed instead.
+
+The schema is 100% vanilla Postgres — no RLS, no extensions, nothing in
+Supabase-managed schemas — so `pg_dump`/`pg_restore` moves it cleanly in
+either direction.
+
+1. **Rehearse first** against a scratch copy and record real timings;
+   replace the estimates here with them.
+2. **Enable write-maintenance**: `redis-cli SET maintenance:writes-disabled 1`.
+   `MaintenanceGuard` (first in the guard chain) now answers every
+   mutating request with `503` + `Retry-After: 120` and a message the
+   frontend shows as a banner; reads keep serving from the old database.
+3. Wait ~2 s for in-flight writes to drain.
+4. `pg_dump -Fc "$DIRECT_URL" -f cutover.dump` — over **`DIRECT_URL`**
+   (`:5432`, session mode), never the `:6543` transaction pooler.
+5. Restore into the target: `pg_restore -j 4 --clean --if-exists -d "<target DIRECT_URL>" cutover.dump`.
+   For local → Supabase the target's `public` schema must be empty first
+   and the restore runs as the project's owning role.
+6. Verify: row counts for `User`, `Service`, `CandidateApplication`
+   against the source, and `npx prisma migrate status` against the
+   target.
+7. Swap `DATABASE_URL`/`DIRECT_URL` (SSM, or `.env`) and restart the
+   backend. Watch the entrypoint complete.
+8. `GET /api/v1/health` — it round-trips a real query.
+9. **Disable maintenance**: `redis-cli DEL maintenance:writes-disabled`.
+
+Rollback at any step before 7 is simply step 9 — nothing has moved.
+After 7, swap the URLs back and restart; the old database is untouched
+because no write reached either side while the flag was set.
 
 ## Alerting
 

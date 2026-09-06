@@ -219,6 +219,7 @@ export default function AdminTicketsSection({ setError }: Props) {
       </div>
       <LoadMoreButton
         hasMore={ticketsList.hasMore}
+        truncated={ticketsList.truncated}
         loading={ticketsList.loadingMore}
         onClick={loadMoreTickets}
       />

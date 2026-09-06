@@ -8,10 +8,13 @@ the current session's lifetime.
 """
 
 import json
+import logging
 
 import redis
 
 from app.config import settings
+
+logger = logging.getLogger("support_agent.redis_memory")
 
 # Sliding expiry — every append refreshes it, so an active conversation
 # never expires mid-use, but an abandoned one is reclaimed automatically
@@ -46,7 +49,15 @@ def get_history(session_id: str) -> list[dict]:
     """Returns [{"role": "user"|"assistant", "content": str}, ...] in
     chronological order, oldest first — directly usable as LangGraph
     message tuples."""
-    raw = get_redis_client().get(_key(session_id))
+    try:
+        raw = get_redis_client().get(_key(session_id))
+    except redis.RedisError:
+        # Degrade to a memoryless turn rather than 500 the whole chat:
+        # the agent still answers, it just can't see earlier turns of
+        # this conversation until Redis is back. Logged so the gap is
+        # visible rather than silent.
+        logger.error("Redis unavailable — serving this turn without conversation history")
+        return []
     if not raw:
         return []
     return json.loads(raw)
@@ -60,4 +71,11 @@ def append_turn(session_id: str, role: str, content: str) -> None:
     # conversation's immediate context.
     if len(history) > MAX_HISTORY_MESSAGES:
         history = history[-MAX_HISTORY_MESSAGES:]
-    get_redis_client().set(_key(session_id), json.dumps(history), ex=SESSION_TTL_SECONDS)
+    try:
+        get_redis_client().set(_key(session_id), json.dumps(history), ex=SESSION_TTL_SECONDS)
+    except redis.RedisError:
+        # Losing one turn of short-term memory is preferable to failing
+        # a response the user has already received (this runs after the
+        # answer streamed). The durable transcript in Postgres
+        # (transcript_store) is unaffected.
+        logger.error("Redis unavailable — this turn was not added to conversation memory")

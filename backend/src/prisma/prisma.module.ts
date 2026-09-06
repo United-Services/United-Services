@@ -2,7 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaService } from './prisma.service';
 import { FailoverService } from '../failover/failover.service';
-import { PrismaClient } from '../generated/prisma';
+import { Prisma, PrismaClient } from '../generated/prisma';
 
 // Write operations logged for later replay against primary once it
 // recovers — see FailoverReconciliationWorker. Batch ops (createMany
@@ -26,9 +26,36 @@ const WRITE_OPERATIONS = new Set([
 const EXCLUDED_MODELS = new Set(['FailoverWriteLog', 'FailoverConflict']);
 
 function poolSize(): number {
-  return process.env.DATABASE_POOL_SIZE
+  const parsed = process.env.DATABASE_POOL_SIZE
     ? parseInt(process.env.DATABASE_POOL_SIZE, 10)
     : 10;
+  // parseInt('abc') is NaN, which pg.Pool would accept as `max` and
+  // then behave unpredictably — fall back rather than arm a broken pool.
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 10;
+}
+
+// Shared by both the primary and the local-standby pool. Every one of
+// these was previously left at its default, and every default is
+// "wait forever":
+//   connectionTimeoutMillis  pg default 0  — a request that can't get a
+//                            pool connection queues indefinitely instead
+//                            of failing fast; under saturation the API
+//                            becomes a black hole rather than shedding
+//                            load (measured: p90 333ms → p99 5.9s knee).
+//   idleTimeoutMillis        pg default 10s — raised so the pool doesn't
+//                            churn connections against a remote pooler.
+//   statement_timeout /      Postgres session GUCs (node-postgres
+//   idle_in_transaction_     forwards them as startup parameters). One
+//   session_timeout          runaway query, or a transaction left open by
+//                            a crashed request, can otherwise pin a
+//                            connection for the life of the process.
+function poolTimeouts() {
+  return {
+    connectionTimeoutMillis: 5_000,
+    idleTimeoutMillis: 30_000,
+    statement_timeout: 15_000,
+    idle_in_transaction_session_timeout: 15_000,
+  };
 }
 
 // Every write that reaches this client only does so because
@@ -45,10 +72,7 @@ function withWriteLog(client: PrismaClient): PrismaClient {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
           const result = await query(args);
-          if (
-            EXCLUDED_MODELS.has(model) ||
-            !WRITE_OPERATIONS.has(operation)
-          ) {
+          if (EXCLUDED_MODELS.has(model) || !WRITE_OPERATIONS.has(operation)) {
             return result;
           }
           const primaryKey =
@@ -65,7 +89,14 @@ function withWriteLog(client: PrismaClient): PrismaClient {
                 tableName,
                 operation,
                 primaryKey,
-                payload: args as object,
+                // Prisma types `args` as the union of every model's
+                // operation args; the value is a plain JSON-shaped
+                // object at runtime and Prisma serializes it to JSONB
+                // unchanged, so the cast preserves current behavior
+                // rather than round-tripping through JSON.stringify
+                // (which would turn Dates into strings and change what
+                // FailoverReconciliationWorker replays).
+                payload: args as Prisma.InputJsonValue,
               },
             })
             .catch(() => {
@@ -98,6 +129,7 @@ function withWriteLog(client: PrismaClient): PrismaClient {
           adapter: new PrismaPg({
             connectionString: process.env.DATABASE_URL,
             max: poolSize(),
+            ...poolTimeouts(),
           }),
         });
         // No hardcoded fallback: that string
@@ -117,6 +149,7 @@ function withWriteLog(client: PrismaClient): PrismaClient {
           adapter: new PrismaPg({
             connectionString: process.env.LOCAL_DATABASE_URL,
             max: poolSize(),
+            ...poolTimeouts(),
           }),
         });
         const local = withWriteLog(localBase);
@@ -145,7 +178,7 @@ function withWriteLog(client: PrismaClient): PrismaClient {
               return PrismaClient.prototype;
             },
           },
-        ) as unknown as PrismaService;
+        );
       },
       inject: [FailoverService],
     },

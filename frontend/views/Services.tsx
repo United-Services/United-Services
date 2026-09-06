@@ -1,10 +1,12 @@
 "use client" /* Page header */ /* Cross-section diagram */ /* Services list */ /* Collapsed header */ /* Expanded content */
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
+import ErrorBanner from "../components/ErrorBanner"
 import { useReveal } from "../hooks/useReveal"
 import { axios } from "../lib/api"
+import { getErrorMessage } from "../lib/errors"
 import { LAYER_KEYS, LAYER_STYLE } from "../lib/pipelineLayers"
 import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY } from "../lib/publicTheme"
 import dynamic from "next/dynamic"
@@ -39,6 +41,23 @@ export default function Services({ onNavigate, initialServices }: Props) {
   const [services, setServices] = useState<Service[]>(initialServices ?? [])
   const [loading, setLoading] = useState(initialServices === undefined)
   const skipNextFetch = useRef(initialServices !== undefined)
+  const tCommon = useTranslations("common")
+  const [loadError, setLoadError] = useState<string | null>(null)
+  // See Careers.tsx for why these are resolved to strings up front.
+  const loadFailedMsg = tCommon("errors.loadFailed")
+  const load = useCallback(() => {
+    setLoading(true)
+    setLoadError(null)
+    axios
+      .get("/services", {
+        params: locale !== "en" ? { locale } : undefined,
+      })
+      .then(({ data }) => setServices(data))
+      // A failed fetch used to leave the whole service catalogue
+      // silently blank — same unhandled-rejection shape as Careers.
+      .catch((err) => setLoadError(getErrorMessage(err, loadFailedMsg)))
+      .finally(() => setLoading(false))
+  }, [locale, loadFailedMsg])
 
   useEffect(() => {
     if (skipNextFetch.current) {
@@ -48,14 +67,8 @@ export default function Services({ onNavigate, initialServices }: Props) {
     // Re-fetch on locale change too, same reasoning as Careers.tsx's
     // identical effect — a switched-language visitor should see
     // translated content without needing a full page reload.
-    setLoading(true)
-    axios
-      .get("/services", {
-        params: locale !== "en" ? { locale } : undefined,
-      })
-      .then(({ data }) => setServices(data))
-      .finally(() => setLoading(false))
-  }, [locale])
+    load()
+  }, [load])
 
   return (
     <div style={{ fontFamily: BODY, background: PAPER, color: TEXT }}>
@@ -196,13 +209,13 @@ export default function Services({ onNavigate, initialServices }: Props) {
                     width: LAYER_STYLE[key].width,
                     display: "flex",
                     alignItems: "center",
-                    paddingLeft: 12,
+                    paddingInlineStart: 12,
                   }}
                 >
                   <span
                     style={{
-                      fontSize: 10,
-                      color: "#fff",
+                      fontSize: 12,
+                      color: LAYER_STYLE[key].label,
                       fontWeight: 700,
                       letterSpacing: "0.06em",
                       whiteSpace: "nowrap",
@@ -228,6 +241,13 @@ export default function Services({ onNavigate, initialServices }: Props) {
             gap: 2,
           }}
         >
+          <ErrorBanner
+            message={loadError}
+            onDismiss={() => setLoadError(null)}
+            dismissLabel={tCommon("errors.dismiss")}
+            onRetry={load}
+            retryLabel={tCommon("errors.retry")}
+          />
           {loading &&
             Array.from({ length: 5 }).map((_, i) => (
               <div

@@ -198,7 +198,8 @@ export default function PublicFooter({ onNavigate }: Props) {
               >
                 info@use-eg.com
               </a>
-              <div style={{ marginTop: 16, fontSize: 12, color: "#6f6f6b" }}>
+              {/* #8A8A85, not #6f6f6b: that was 3.82:1 on INK at 12px, on 9 pages. Now 5.53:1. */}
+              <div style={{ marginTop: 16, fontSize: 12.5, color: "#8A8A85" }}>
                 {t("alsoOperatingIn")}
               </div>
               <div style={{ fontSize: 12, color: "#A9A9A9" }}>

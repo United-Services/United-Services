@@ -9,6 +9,11 @@ import { useRequestGuard } from "./useRequestGuard"
 export interface Page<T> {
   items: T[]
   hasMore: boolean
+  // Set when the backend's 1,000-row pre-filter scan was exhausted —
+  // "no more" then means "no more within the newest 1,000", not the end
+  // of the data. Optional so a response from an older backend build
+  // still type-checks.
+  truncated?: boolean
 }
 
 type FetchPage<T> = (skip: number, take: number) => Promise<Page<T>>
@@ -26,6 +31,7 @@ type FetchPage<T> = (skip: number, take: number) => Promise<Page<T>>
 export function usePaginatedList<T>(onError: (err: unknown) => void, pageSize = 20) {
   const [items, setItems] = useState<T[]>([])
   const [hasMore, setHasMore] = useState(false)
+  const [truncated, setTruncated] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   // Only ever flips true -> false, on the very first reload() to settle —
   // a skeleton placeholder for the initial fetch, not something that
@@ -43,6 +49,7 @@ export function usePaginatedList<T>(onError: (err: unknown) => void, pageSize = 
       if (guard.stale(reqId)) return
       setItems(page.items)
       setHasMore(page.hasMore)
+      setTruncated(page.truncated ?? false)
     } catch (err) {
       if (guard.stale(reqId)) return
       onError(err)
@@ -60,6 +67,7 @@ export function usePaginatedList<T>(onError: (err: unknown) => void, pageSize = 
       const page = await fetchPage(items.length, pageSize)
       setItems((prev) => [...prev, ...page.items])
       setHasMore(page.hasMore)
+      setTruncated(page.truncated ?? false)
     } catch (err) {
       onError(err)
     } finally {
@@ -67,5 +75,5 @@ export function usePaginatedList<T>(onError: (err: unknown) => void, pageSize = 
     }
   }
 
-  return { items, setItems, hasMore, loadingMore, initialLoading, reload, loadMore }
+  return { items, setItems, hasMore, truncated, loadingMore, initialLoading, reload, loadMore }
 }

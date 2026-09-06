@@ -151,6 +151,7 @@ export default function AdminAuditSection({ setError }: Props) {
         </table>
         <LoadMoreButton
           hasMore={auditLogList.hasMore}
+          truncated={auditLogList.truncated}
           loading={auditLogList.loadingMore}
           onClick={loadMoreAuditLog}
         />

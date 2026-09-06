@@ -203,3 +203,79 @@ describe('MfaSessionVerifiedGuard — enrolled admins must still verify each new
     await prisma.user.delete({ where: { id: client.id } });
   });
 });
+
+// The bypass MfaBootstrapOnlyGuard exists to close: MfaController is
+// @MfaExempt() at class level (it has to be — see that guard's comment),
+// which also exempted enrollment for an ALREADY-enrolled admin. A stolen
+// admin session cookie, with no second factor, could POST /mfa/totp/enroll
+// — an unconditional upsert that overwrote the confirmed secret — confirm
+// with the attacker's own authenticator, and end up fully MFA-verified.
+describe('MfaBootstrapOnlyGuard — adding or replacing a factor needs a verified session once enrolled (e2e)', () => {
+  let app: INestApplication<App>;
+  let prisma: PrismaService;
+
+  beforeAll(async () => {
+    ({ app, prisma } = await createTestApp());
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('rejects POST /mfa/totp/enroll from an enrolled admin whose session is unverified, and never writes a credential', async () => {
+    const admin = await createUser(prisma, {
+      role: Role.admin,
+      mfaEnrolled: true,
+    });
+
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/mfa/totp/enroll')
+      .set(bearerFor(admin.clerkId))
+      .set('X-Requested-With', 'XMLHttpRequest');
+
+    expect(res.status).toBe(403);
+    // The upsert must not have run at all — a 403 that still replaced
+    // the secret would be the same bypass with a different status code.
+    expect(
+      await prisma.totpCredential.count({ where: { userId: admin.id } }),
+    ).toBe(0);
+
+    await prisma.user.delete({ where: { id: admin.id } });
+  });
+
+  it('still lets an UNenrolled admin start enrollment with no MFA session — there is nothing to challenge yet', async () => {
+    const admin = await createUser(prisma, {
+      role: Role.admin,
+      mfaEnrolled: false,
+    });
+
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/mfa/totp/enroll')
+      .set(bearerFor(admin.clerkId))
+      .set('X-Requested-With', 'XMLHttpRequest');
+
+    expect(res.status).toBe(201);
+    expect(res.body.otpauthUrl).toEqual(expect.stringContaining('otpauth://'));
+
+    await prisma.totpCredential.deleteMany({ where: { userId: admin.id } });
+    await prisma.user.delete({ where: { id: admin.id } });
+  });
+
+  it('allows an enrolled admin to replace their authenticator once the session IS verified (the legitimate AdminSecuritySection flow)', async () => {
+    const admin = await createUser(prisma, {
+      role: Role.admin,
+      mfaEnrolled: true,
+    });
+    await app.get(MfaService).markSessionVerified(sessionIdFor(admin.clerkId));
+
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/mfa/totp/enroll')
+      .set(bearerFor(admin.clerkId))
+      .set('X-Requested-With', 'XMLHttpRequest');
+
+    expect(res.status).toBe(201);
+
+    await prisma.totpCredential.deleteMany({ where: { userId: admin.id } });
+    await prisma.user.delete({ where: { id: admin.id } });
+  });
+});

@@ -65,3 +65,28 @@ def test_real_request_from_allowed_origin_gets_cors_header(monkeypatch):
 
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == "http://localhost:8080"
+
+
+def test_unhandled_error_still_gets_cors_header(monkeypatch):
+    """Verified live with Redis down: an exception escaping call_next
+    propagated straight past the header-setting code, so every 500 left
+    with NO Access-Control-Allow-Origin — and the browser reported a
+    CORS error, not the outage it actually was. A FastAPI
+    @app.exception_handler(Exception) would not fix it (Starlette runs
+    those in its outermost ServerErrorMiddleware, so their response
+    never comes back through this middleware); the 500 has to be built
+    inside dispatch."""
+    monkeypatch.setattr(cors_module, "is_origin_allowed", lambda origin: True)
+    app = FastAPI()
+    app.add_middleware(DynamicCORSMiddleware)
+
+    @app.post("/chat/stream")
+    def chat_stream():
+        raise RuntimeError("redis is down")
+
+    client = TestClient(app, raise_server_exceptions=False)
+    response = client.post("/chat/stream", headers={"origin": "http://localhost:8080"})
+
+    assert response.status_code == 500
+    assert response.headers["access-control-allow-origin"] == "http://localhost:8080"
+    assert response.json() == {"detail": "Internal server error"}
