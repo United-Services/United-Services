@@ -8,7 +8,7 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "format": "oxfmt",
     "test": "vitest run",
     "test:e2e": "playwright test"
