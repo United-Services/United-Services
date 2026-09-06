@@ -40,6 +40,12 @@ export class KekKeyStore implements OnModuleInit {
   private readonly privateKeys = new Map<string, Uint8Array>();
   private lastReloadAt = 0;
   private reloading: Promise<void> | null = null;
+  // keyIds that were looked up, reloaded for, and STILL not found since
+  // the last reload — a repeat miss for one of these inside the window
+  // is what the rate limit suppresses. A miss for any other keyId always
+  // reloads, whatever the clock says: the first miss for a key another
+  // replica just generated must be served, not deferred.
+  private readonly missedSinceReload = new Set<string>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -75,6 +81,7 @@ export class KekKeyStore implements OnModuleInit {
 
   private async doReload(): Promise<void> {
     this.lastReloadAt = Date.now();
+    this.missedSinceReload.clear();
     const rows = await this.prisma.kekRegistry.findMany({
       where: { status: { in: ['active', 'retiring'] } },
     });
@@ -118,9 +125,17 @@ export class KekKeyStore implements OnModuleInit {
     return fromBackup;
   }
 
-  private async reloadIfStale(): Promise<void> {
-    if (Date.now() - this.lastReloadAt < RELOAD_MIN_INTERVAL_MS) return;
+  // Reload in response to a miss for `keyId`. Always reloads for a keyId
+  // not yet known to be missing; only a REPEAT miss for the same keyId
+  // inside RELOAD_MIN_INTERVAL_MS is skipped. (A plain time-based limit
+  // here was a real bug: a first miss within seconds of boot — exactly
+  // what a rotation on another replica produces — was deferred, and
+  // encrypt failed closed for a key that was sitting on disk.)
+  private async reloadForMiss(keyId: string): Promise<void> {
+    const withinWindow = Date.now() - this.lastReloadAt < RELOAD_MIN_INTERVAL_MS;
+    if (withinWindow && this.missedSinceReload.has(keyId)) return;
     await this.reload();
+    if (!this.privateKeys.has(keyId)) this.missedSinceReload.add(keyId);
   }
 
   async getPrivateKey(keyId: string): Promise<Uint8Array> {
@@ -129,7 +144,7 @@ export class KekKeyStore implements OnModuleInit {
       // Most likely a key generated after this process booted (rotation
       // on another replica, or the CLI) — pick it up rather than demand
       // a restart.
-      await this.reloadIfStale();
+      await this.reloadForMiss(keyId);
       key = this.privateKeys.get(keyId);
     }
     if (!key) {
@@ -167,7 +182,7 @@ export class KekKeyStore implements OnModuleInit {
     // reload once, and only if the private half is genuinely absent
     // refuse the operation.
     if (!this.privateKeys.has(row.keyId)) {
-      await this.reloadIfStale();
+      await this.reloadForMiss(row.keyId);
       if (!this.privateKeys.has(row.keyId)) {
         throw new InternalServerErrorException(
           `Active KEK "${row.keyId}" has no private key loaded in this process — refusing to encrypt under a key that could not be decrypted here`,
