@@ -2,7 +2,6 @@
  
 /* Sidebar */ /* Main */ /* ── SERVICES ── */ /* ── RFQ ── */ /* ── APPOINTMENTS ── */ /* ── PROFILE ── */
 import { useEffect, useState } from "react"
-import Image from "next/image"
 import { io } from "socket.io-client"
 import { useAuth } from "@clerk/nextjs"
 import { useLocale, useTranslations } from "next-intl"
@@ -318,11 +317,9 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
               gap: 8,
             }}
           >
-            <Image
-              src="/images/logo-footer.webp"
+            <img
+              src="/images/logo.svg"
               alt="United Services Egypt"
-              width={89}
-              height={64}
               style={{ height: 28, width: "auto", objectFit: "contain" }}
             />
             <div className="sidebar-label">

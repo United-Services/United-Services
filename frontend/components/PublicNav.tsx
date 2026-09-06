@@ -5,7 +5,7 @@ import { useUser } from "@clerk/nextjs"
 import LanguageSwitcher from "./LanguageSwitcher"
 import { usePrefetchOnHover } from "../lib/navigate"
 import { PAPER, TEXT, MUTED, LIME, BODY } from "../lib/publicTheme"
-const navLogo = "/images/logo-nav-future-energy.webp"
+const navLogo = "/images/logo.svg"
 
 interface Props {
   current: string
