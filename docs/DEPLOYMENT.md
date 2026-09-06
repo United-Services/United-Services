@@ -379,7 +379,101 @@ alternative to a paid Betterstack On-Call escalation policy):
 3. Run `npx prisma migrate deploy` against production before or as
    part of the backend deploy step whenever `backend/prisma/migrations/`
    has new migrations — never `migrate dev` against production.
+
+   **Lock-safe migrations on a populated database.** Prisma wraps each
+   migration in a transaction and applies it at deploy time, so a
+   migration that takes a long-held lock is deploy-time downtime. Two
+   patterns are unsafe once tables have real data, and both appear in
+   older migrations here (measured on a 500k-row copy: an inline FK
+   held `ShareRowExclusiveLock` on **both** `AuditLog` and `User` —
+   blocking every signup and webhook sync — and a plain `CREATE INDEX`
+   blocked all writes to its table for the build):
+
+   - **Foreign keys: two migrations, never one.** `ADD CONSTRAINT ...
+     NOT VALID` (instant, catalog-only), then `VALIDATE CONSTRAINT` in
+     the next migration (`ShareUpdateExclusiveLock` — writes keep
+     flowing).
+   - **Indexes: `CONCURRENTLY`, applied out of band.** `CREATE INDEX
+     CONCURRENTLY` cannot run inside a transaction, so it cannot go in a
+     Prisma migration. Run it by hand over `DIRECT_URL` (session mode —
+     required; the `:6543` transaction pooler will not work), then
+     commit a migration containing the same statement with `IF NOT
+     EXISTS` so history matches reality. `20260828132000_kek_registry_
+     status_index`, `20260906121000_appointment_created_at_index` and
+     `20260906122000_file_access_request_one_open_per_file` follow this.
+   - **Never `DROP INDEX` without `CONCURRENTLY`** on a live table for
+     the same reason (`AccessExclusiveLock`).
 4. Smoke-check `GET /api/v1/health` and the homepage after deploy.
+
+## HTTPS (use-eg.com)
+
+`nginx/nginx.conf` serves plain HTTP on `:80` from a `default_server`
+and glob-includes `nginx/tls.d/*.conf`. With that directory empty —
+every fresh checkout, and the server until a certificate exists — the
+config is exactly the HTTP-only one it always was. The reviewed TLS
+server block is committed as **`nginx/tls.d/use-eg.com.conf.ready`**:
+not matched by the glob, so inert, and not swept up by `.gitignore`
+(which ignores `nginx/tls.d/*.conf` and everything in `nginx/certs/`).
+An `ssl_certificate` pointing at a missing file is a hard `[emerg]` that
+stops nginx booting at all, which is why the block is gated on the
+cert's presence rather than committed live.
+
+**Certificate: a Cloudflare Origin CA certificate, not Let's Encrypt.**
+Step 3 above puts this origin behind Cloudflare in orange-cloud proxy
+mode, so the browser-facing certificate is Cloudflare's; this one only
+has to be trusted by Cloudflare. Origin CA certs are free, valid 15
+years, need no renewal automation, and are issued from the dashboard
+(SSL/TLS → Origin Server → Create Certificate) for
+`use-eg.com, *.use-eg.com`. Set the zone's SSL/TLS mode to **Full
+(strict)** — anything less leaves the Cloudflare→origin leg
+unauthenticated. OCSP stapling stays off (Origin CA certs carry no
+responder URL).
+
+**Enabling, on the server:**
+
+1. Put the cert and key at `nginx/certs/use-eg.com.pem` and
+   `nginx/certs/use-eg.com.key` (`chmod 644` / `600`).
+2. `cp nginx/tls.d/use-eg.com.conf.ready nginx/tls.d/use-eg.com.conf`
+3. `docker compose exec nginx nginx -t`, then
+   `docker compose up -d nginx` and `docker compose logs --tail=50 nginx`
+   to confirm it came up rather than crash-looped.
+4. DNS: `use-eg.com` **and** `www.use-eg.com` A records at the origin,
+   both orange-clouded. `www` redirects to the apex so Clerk, the
+   `AllowedOrigin` rows and the session cookie only ever see one host.
+5. Firewall `:80`/`:443` to Cloudflare's ranges. Then enable
+   **Authenticated Origin Pulls** (download the origin-pull CA to
+   `nginx/certs/cloudflare-origin-pull-ca.pem`, uncomment the two
+   `ssl_client_certificate`/`ssl_verify_client` lines in the block) —
+   that is what stops anyone who finds the origin IP from bypassing
+   Cloudflare's WAF with a spoofed `Host`.
+6. Update at the same time: `WEBAUTHN_RP_ID=use-eg.com`,
+   `WEBAUTHN_RP_ORIGIN=https://use-eg.com`, the `AllowedOrigin` row for
+   `https://use-eg.com`, Clerk's allowed origins.
+
+**Validate:**
+
+```bash
+openssl x509 -in nginx/certs/use-eg.com.pem -noout -subject -dates -ext subjectAltName
+# cert and key must be a pair (identical hashes):
+openssl x509 -noout -modulus -in nginx/certs/use-eg.com.pem | openssl md5
+openssl rsa  -noout -modulus -in nginx/certs/use-eg.com.key | openssl md5
+# straight at the origin (-k expected: Origin CA is not publicly trusted):
+echo | openssl s_client -connect <origin-ip>:443 -servername use-eg.com 2>/dev/null | grep -E "Protocol|Cipher|Verify"
+curl -I https://use-eg.com                       # 200/307 + strict-transport-security
+curl -I http://use-eg.com                        # 301 → https://use-eg.com/
+curl -I https://www.use-eg.com                   # 301 → https://use-eg.com/
+curl -sI https://use-eg.com/_next/static/x.js | grep -iE "x-frame|nosniff|strict-transport"
+curl -s  https://use-eg.com/api/v1/health
+```
+
+**Rollback**, one command:
+`mv nginx/tls.d/use-eg.com.conf{,.off} && docker compose restart nginx`
+— back to the HTTP-only config with no editing.
+
+HSTS is emitted by nginx only when the request arrived over TLS (a
+`map` on `$scheme`), without `preload`. Add `; preload` and submit to
+hstspreload.org only after several uneventful weeks on HTTPS — preload
+is effectively irreversible for every current and future subdomain.
 
 ## Rollback
 

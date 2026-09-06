@@ -77,3 +77,11 @@ support-agent/ingestion/output/
 
 # Local dev-only compose overrides (host port publishing, etc.)
 docker-compose.override.yml
+
+# TLS material and the LIVE TLS server block — never committed. The
+# reviewed block is nginx/tls.d/use-eg.com.conf.ready; on the server,
+# once nginx/certs/ holds the Cloudflare Origin CA cert + key, rename it
+# to .conf and restart nginx. See docs/DEPLOYMENT.md "HTTPS".
+nginx/certs/*
+!nginx/certs/.gitkeep
+nginx/tls.d/*.conf
