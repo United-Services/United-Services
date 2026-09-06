@@ -61,6 +61,31 @@ jobs:
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
 
+  # Dependency-vulnerability gate. Lives HERE, as a job in the "CI"
+  # workflow, for the same reason the semgrep job above does: the
+  # standalone snyk-security.yml keeps running (Snyk Code / IaC /
+  # Container, SARIF to the Security tab) but every step in it is
+  # continue-on-error, and it is a separate workflow that
+  # auto-merge.yml's `workflow_run: workflows: ["CI"]` gate cannot see —
+  # so nothing in it could ever block a merge. This job has no
+  # continue-on-error: a high-severity finding fails the "CI"
+  # conclusion and the PR does not auto-merge.
+  snyk-gate:
+    name: Snyk (blocking)
+    runs-on: ubuntu-latest
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: snyk/actions/setup@806182742461562b67788a64410098c9d9b96adb
+      # --all-projects picks up backend/package-lock.json,
+      # frontend/package-lock.json and support-agent's requirements.txt
+      # in one pass. --fail-on=upgradable keeps this from blocking on a
+      # vulnerability with no fix available yet, which would otherwise
+      # freeze every PR until upstream ships one; those still surface in
+      # the advisory snyk-security.yml run.
+      - run: snyk test --all-projects --severity-threshold=high --fail-on=upgradable
+
   secret-scan:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
