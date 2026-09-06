@@ -84,6 +84,16 @@ PLATFORM_KEYS=(
   NGINX_PORT
   NEXT_PUBLIC_API_URL
   APP_ENV
+  # docker-compose.yml's local standby postgres/redis services — fetched
+  # back down into the REPO-ROOT .env (not backend/.env) by
+  # scripts/fetch-secrets.sh, since docker-compose itself needs them at
+  # `docker compose up` time, before the backend container's own
+  # in-container SSM fetch ever runs. BACKEND_-prefixed so these can
+  # never be confused with support-agent's own identically-named
+  # POSTGRES_PASSWORD/REDIS_PASSWORD, even though the two already live
+  # under separate SSM paths.
+  BACKEND_POSTGRES_PASSWORD
+  BACKEND_REDIS_PASSWORD
 )
 
 # support-agent's own container only ever needs these — read from the
