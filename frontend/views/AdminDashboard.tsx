@@ -141,7 +141,7 @@ export default function AdminDashboard({ role, onLogout, onNavigate }: Props) {
             }}
           >
             <img
-              src="/images/logo.svg"
+              src="/images/logo-icon-light.svg"
               alt="United Services Egypt"
               style={{ height: 26, width: "auto", objectFit: "contain" }}
             />

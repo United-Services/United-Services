@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { axios } from "../lib/api"
 import { INK, LIME, HEAD, BODY } from "../lib/publicTheme"
-const footerLogo = "/images/logo.svg"
+const footerLogo = "/images/logo-icon-light.svg"
 
 interface Props {
   onNavigate: (page: string) => void
