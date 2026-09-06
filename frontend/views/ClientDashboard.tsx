@@ -318,7 +318,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
             }}
           >
             <img
-              src="/images/logo.svg"
+              src="/images/logo-icon-light.svg"
               alt="United Services Egypt"
               style={{ height: 28, width: "auto", objectFit: "contain" }}
             />
