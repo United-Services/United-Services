@@ -119,6 +119,9 @@
     "testEnvironment": "node",
     "transformIgnorePatterns": [
       "node_modules/(?!.*(@noble|@otplib|@scure))"
+    ],
+    "setupFiles": [
+      "<rootDir>/jest.setup.ts"
     ]
   }
 }
