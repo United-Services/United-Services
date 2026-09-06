@@ -178,3 +178,60 @@ def test_sync_once_respects_fk_order_for_ticket_upsert(two_local_engines):
             text("SELECT COUNT(*) FROM tickets WHERE session_id = :id"), {"id": session_id}
         ).scalar_one()
     assert count == 1
+
+
+def test_sync_once_never_deletes_a_row_created_after_the_sync_began(two_local_engines, monkeypatch):
+    # The failover-era write. A ticket filed into the standby while
+    # Supabase was down has no primary counterpart; the old delete-
+    # reconciliation removed it on the next sync after recovery — the
+    # README's "Known limitation" reproduced exactly that on a real
+    # failover test, and the customer's escalation vanished. Rows created
+    # at or after the sync's start are now left alone. Simulated with a
+    # created_at in the future and a primary that returns nothing.
+    from datetime import datetime, timedelta, timezone
+
+    import app.failover.mirror_sync as mirror_sync_module
+
+    primary_engine, local_engine = two_local_engines
+    session_id = f"mirror-sync-test-{uuid.uuid4()}"
+    Session = sessionmaker(bind=local_engine)
+    with Session() as db:
+        db.add(
+            ConversationSession(
+                id=session_id, created_at=datetime.now(timezone.utc) + timedelta(minutes=1)
+            )
+        )
+        db.commit()
+
+    monkeypatch.setattr(mirror_sync_module, "_fetch_batches", lambda *a, **kw: iter(()))
+    sync_once(_FixedModeManager(primary_engine, local_engine))
+
+    with local_engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT 1 FROM conversation_sessions WHERE id = :id"), {"id": session_id}
+        ).first()
+    assert row is not None
+
+
+def test_sync_once_resyncs_the_tickets_sequence_past_mirrored_ids(two_local_engines):
+    # tickets.id is a serial. Upserting explicit ids from primary never
+    # advances tickets_id_seq on local, so the first locally-filed ticket
+    # after a failover collided with a mirrored id — and every one after
+    # it, until the sequence caught up. The sync now sets the sequence
+    # past MAX(id); a plain insert afterwards must not collide.
+    primary_engine, local_engine = two_local_engines
+    session_id = f"mirror-sync-test-{uuid.uuid4()}"
+    Session = sessionmaker(bind=primary_engine)
+    with Session() as db:
+        db.add(ConversationSession(id=session_id))
+        db.flush()
+        db.add(Ticket(id=900_000, session_id=session_id, subject="s", description="d", priority="low"))
+        db.commit()
+
+    sync_once(_FixedModeManager(primary_engine, local_engine))
+
+    with Session() as db:
+        db.add(Ticket(session_id=session_id, subject="after", description="d", priority="low"))
+        db.commit()  # would raise IntegrityError on a stale sequence
+        new_id = db.query(Ticket).filter_by(subject="after").one().id
+    assert new_id > 900_000
