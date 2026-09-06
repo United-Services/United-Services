@@ -77,7 +77,7 @@ jobs:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: snyk/actions/setup@806182742461562b67788a64410098c9d9b96adb
+      - uses: snyk/actions/setup@12140f4059e244892ae643824a95459a102120dd
       # --all-projects picks up backend/package-lock.json,
       # frontend/package-lock.json and support-agent's requirements.txt
       # in one pass. --fail-on=upgradable keeps this from blocking on a
