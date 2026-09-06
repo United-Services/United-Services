@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import { axios } from "../lib/api"
 import { INK, LIME, HEAD, BODY } from "../lib/publicTheme"
-const footerLogo = "/images/logo-icon-light.svg"
+import Logo from "./Logo"
 
 interface Props {
   onNavigate: (page: string) => void
@@ -58,12 +58,7 @@ export default function PublicFooter({ onNavigate }: Props) {
           {}
           <div>
             <div style={{ marginBottom: 20 }}>
-              <img
-                src={footerLogo}
-                alt="United Services Egypt"
-                loading="lazy"
-                style={{ height: 48, width: "auto", objectFit: "contain" }}
-              />
+              <Logo variant="light" size={48} />
             </div>
             <p
               style={{
