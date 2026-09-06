@@ -6,6 +6,7 @@ from app.config import settings
 from app.failover.manager import get_failover_manager, init_failover_manager
 from app.failover.mirror_sync import start_mirror_sync_loop
 from app.logging_setup import install_betterstack_logging
+from app.memory.redis_memory import get_redis_client
 from app.routers.chat import router as chat_router
 from app.security.cors import DynamicCORSMiddleware, start_cors_refresh_loop
 
@@ -37,4 +38,22 @@ app.include_router(chat_router)
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "database_mode": get_failover_manager().mode}
+    # Previously reported "ok" on database_mode alone — verified live
+    # that with Redis down every /chat/stream request 500'd while this
+    # still returned 200 {"status":"ok"}, so uptime monitoring stayed
+    # green through a total chat outage. Redis is a hard dependency of
+    # the chat path (rate limiting + conversation memory), so it is
+    # probed here. Still HTTP 200 when degraded: a 503 would make an
+    # orchestrator restart this container, which does nothing for a
+    # Redis outage; the `status` field is what monitoring should alert
+    # on.
+    redis_ok = True
+    try:
+        get_redis_client().ping()
+    except Exception:
+        redis_ok = False
+    return {
+        "status": "ok" if redis_ok else "degraded",
+        "database_mode": get_failover_manager().mode,
+        "redis": "ok" if redis_ok else "unavailable",
+    }

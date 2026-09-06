@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+import { FailOpenThrottlerStorage } from './common/throttler/fail-open-throttler-storage';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
 import { AuthModule } from './auth/auth.module';
@@ -50,7 +51,11 @@ import { FailoverModule } from './failover/failover.module';
       inject: [RedisService],
       useFactory: (redis: RedisService) => ({
         throttlers: [{ ttl: 60_000, limit: 100 }],
-        storage: new ThrottlerStorageRedisService(redis),
+        // Wrapped so a Redis outage degrades to "briefly un-throttled"
+        // rather than "500 on every route" — see FailOpenThrottlerStorage.
+        storage: new FailOpenThrottlerStorage(
+          new ThrottlerStorageRedisService(redis),
+        ),
       }),
     }),
     PrismaModule,

@@ -23,6 +23,7 @@ import time
 from sqlalchemy import select
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.responses import JSONResponse
 from starlette.responses import Response
 
 from app.db.models import AllowedOrigin
@@ -109,7 +110,21 @@ class DynamicCORSMiddleware(BaseHTTPMiddleware):
                 },
             )
 
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception:
+            # An exception escaping call_next used to propagate straight
+            # past the header-setting code below, so every unhandled 500
+            # left this middleware with NO Access-Control-Allow-Origin —
+            # and the browser reported it as a CORS error, not as the
+            # outage it actually was (verified live with Redis down:
+            # `500 ... ← no ACAO` vs `401 ... access-control-allow-origin`).
+            # A FastAPI @app.exception_handler(Exception) would NOT fix
+            # this: Starlette runs those in its outermost
+            # ServerErrorMiddleware, so their response also never comes
+            # back through here. The 500 has to be built inside dispatch.
+            logger.exception("unhandled error on %s %s", request.method, request.url.path)
+            response = JSONResponse(status_code=500, content={"detail": "Internal server error"})
         if allowed:
             response.headers["Access-Control-Allow-Origin"] = origin  # type: ignore[assignment]
             response.headers["Vary"] = "Origin"
