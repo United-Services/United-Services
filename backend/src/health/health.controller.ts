@@ -1,4 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Public } from '../common/decorators/public.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { FailoverService } from '../failover/failover.service';
@@ -10,7 +11,13 @@ export class HealthController {
     private readonly failover: FailoverService,
   ) {}
 
+  // Exempt from the global 100/min/IP throttle: an orchestrator or
+  // uptime monitor polling this once a second from one fixed IP would
+  // otherwise start receiving 429s after 100 seconds, read that as
+  // "unhealthy", and restart a perfectly healthy process in a loop.
+  // Measured: 110 sequential requests → 100×200 then 10×429.
   @Public()
+  @SkipThrottle()
   @Get()
   async check() {
     // Goes through PrismaService's failover-routing proxy — during a
