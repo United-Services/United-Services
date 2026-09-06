@@ -55,9 +55,20 @@ const nextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=(), payment=()",
           },
+          // No `preload` — deliberately. This header was being sent with
+          // `preload` on a site that had never served HTTPS. The moment
+          // :443 goes live and anyone submits to hstspreload.org,
+          // use-eg.com AND every current and future subdomain are
+          // hard-wired HTTPS-only in browser binaries, and removal takes
+          // months: a later staging.use-eg.com or a vendor-hosted
+          // status.use-eg.com that can't do TLS on day one is unreachable
+          // for every visitor, with no server-side fix. Add `; preload`
+          // and submit only after several uneventful weeks on HTTPS.
+          // nginx strips this copy on the TLS block anyway
+          // (proxy_hide_header) so exactly one value reaches browsers.
           {
             key: "Strict-Transport-Security",
-            value: "max-age=31536000; includeSubDomains; preload",
+            value: "max-age=31536000; includeSubDomains",
           },
           // Content-Security-Policy is NOT set here anymore. It now needs a
           // fresh nonce on every request (script-src trusts the nonce

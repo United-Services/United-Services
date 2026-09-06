@@ -26,6 +26,22 @@ const intlMiddleware = createIntlMiddleware(routing)
 // style={{}} prop across the app (dynamic values, can't be nonce'd the same
 // way as <script> tags) rewritten to CSS classes first; out of scope here,
 // tracked as a separate follow-up.
+// The origin (scheme + host + port, no path) the chat widget will fetch
+// from — see the connect-src comment in buildCsp for why this must be
+// allowed in every environment. Returns "" when there is no configured
+// target in production, which filter(Boolean) then drops.
+function supportAgentOrigin(): string {
+  const raw =
+    process.env.NEXT_PUBLIC_SUPPORT_AGENT_API_URL ??
+    (process.env.NODE_ENV !== "production" ? "http://localhost:8000" : "")
+  if (!raw) return ""
+  try {
+    return new URL(raw).origin
+  } catch {
+    return ""
+  }
+}
+
 function buildCsp(nonce: string) {
   const isDev = process.env.NODE_ENV !== "production"
   return [
@@ -66,7 +82,19 @@ function buildCsp(nonce: string) {
     [
       "connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.com https://clerk.use-eg.com https://clerk-telemetry.com https://*.s3.us-east-1.amazonaws.com",
       isDev ? "http://localhost:3002" : "",
-      isDev ? (process.env.NEXT_PUBLIC_SUPPORT_AGENT_API_URL ?? "http://localhost:8000") : "",
+      // The support-agent origin is allowed in EVERY environment, not
+      // only dev. It used to be dev-gated on the assumption that
+      // production proxied it same-origin through nginx — but nginx has
+      // no support-agent route, and lib/useChatStream.ts fetches
+      // `${NEXT_PUBLIC_SUPPORT_AGENT_API_URL}/chat/stream` cross-origin
+      // unconditionally. On the real domain the browser blocked that
+      // fetch before it left the page: the chat widget failed 100% of
+      // the time in production while working on every dev machine.
+      // Derived from the same env var the widget itself uses, so the
+      // two can't disagree; defaults to the dev port only outside
+      // production. Empty (→ dropped) if the var is unset in production,
+      // which is the correct outcome: no widget target, nothing to allow.
+      supportAgentOrigin(),
     ]
       .filter(Boolean)
       .join(" "),
