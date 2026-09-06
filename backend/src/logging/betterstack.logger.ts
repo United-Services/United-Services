@@ -1,45 +1,131 @@
 import { ConsoleLogger } from '@nestjs/common';
 
+interface LogEntry {
+  dt: string;
+  level: string;
+  message: string;
+  context?: string;
+  service: 'backend';
+}
+
+// Upper bound on lines held in memory awaiting shipment. Beyond this the
+// OLDEST are dropped (and counted) — a bounded loss of old log lines is
+// the correct failure mode; the alternative was unbounded growth.
+const MAX_BUFFER = 5_000;
+// Lines per POST, and the longest a line waits before a flush.
+const MAX_BATCH = 100;
+const FLUSH_INTERVAL_MS = 1_000;
+// Concurrent POSTs. Before batching existed this was effectively
+// unbounded: one fire-and-forget fetch per log line, one log line per
+// HTTP request (RequestLoggingMiddleware), so ~500 req/s meant ~500
+// outbound POSTs/s against one origin. undici's per-origin pool is 128
+// connections with an unbounded queue, so a slow or 429ing Betterstack
+// accumulated pending requests and their retained bodies without limit
+// — which matches the 1.25 GB RSS peak measured under load. A logging
+// vendor had become a hard availability dependency.
+const MAX_IN_FLIGHT = 4;
+const REQUEST_TIMEOUT_MS = 5_000;
+
 // Ships every log line to Betterstack ONLY — never the console, in any
 // environment or configuration. This intentionally means a log vanishes
 // with nowhere to go if BETTERSTACK_INGEST_URL/BETTERSTACK_SOURCE_TOKEN
 // aren't set; that's the accepted tradeoff for guaranteeing nothing ever
-// prints to stdout/stderr. Fire-and-forget — a logging failure must
-// never take down a request. Still extends ConsoleLogger (for Nest's
-// LoggerService interface/formatting helpers) but deliberately never
-// calls any of its super.log/error/warn methods, which is what would
-// actually write to the console.
+// prints to stdout/stderr. A logging failure must never take down a
+// request. Still extends ConsoleLogger (for Nest's LoggerService
+// interface/formatting helpers) but deliberately never calls any of its
+// super.log/error/warn methods, which is what would actually write to
+// the console.
+//
+// Lines are buffered and shipped in batches (a JSON array per POST —
+// Betterstack's HTTP source accepts an array of events), with a bound
+// on buffer size and on concurrent in-flight requests. flush() drains
+// the buffer and resolves once every send has settled; main.ts awaits
+// it on the exit paths so the last lines before a crash still ship.
 export class BetterstackLogger extends ConsoleLogger {
   private readonly ingestUrl = process.env.BETTERSTACK_INGEST_URL;
   private readonly token = process.env.BETTERSTACK_SOURCE_TOKEN;
 
+  private buffer: LogEntry[] = [];
+  private dropped = 0;
+  private timer: NodeJS.Timeout | null = null;
+  private inFlight = 0;
+  private readonly pending = new Set<Promise<void>>();
+
   private ship(level: string, message: unknown, context?: string) {
     if (!this.ingestUrl || !this.token) return;
-    fetch(this.ingestUrl, {
+    this.buffer.push({
+      dt: new Date().toISOString().replace('T', ' ').replace('Z', ' UTC'),
+      level,
+      message:
+        typeof message === 'string'
+          ? message
+          : BetterstackLogger.stringifyMessage(message),
+      context,
+      service: 'backend',
+    });
+    if (this.buffer.length > MAX_BUFFER) {
+      this.buffer.shift();
+      this.dropped += 1;
+    }
+    if (this.buffer.length >= MAX_BATCH) {
+      void this.flush();
+    } else if (!this.timer) {
+      // unref: a pending flush must never be what keeps the process
+      // alive (tests, or a shutdown that has otherwise completed).
+      this.timer = setTimeout(() => void this.flush(), FLUSH_INTERVAL_MS);
+      this.timer.unref();
+    }
+  }
+
+  // Drains everything buffered, respecting MAX_IN_FLIGHT, and resolves
+  // when every send started by this call has settled. Never rejects.
+  async flush(): Promise<void> {
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    while (this.buffer.length > 0) {
+      if (this.inFlight >= MAX_IN_FLIGHT) {
+        // Wait for a slot rather than spawn more sends.
+        await Promise.race(this.pending);
+        continue;
+      }
+      const batch = this.buffer.splice(0, MAX_BATCH);
+      if (this.dropped > 0) {
+        batch.unshift({
+          dt: batch[0].dt,
+          level: 'warn',
+          message: `BetterstackLogger dropped ${this.dropped} log line(s): buffer exceeded ${MAX_BUFFER} while shipping was slow`,
+          context: 'BetterstackLogger',
+          service: 'backend',
+        });
+        this.dropped = 0;
+      }
+      const send = this.post(batch).finally(() => {
+        this.inFlight -= 1;
+        this.pending.delete(send);
+      });
+      this.inFlight += 1;
+      this.pending.add(send);
+    }
+    await Promise.allSettled([...this.pending]);
+  }
+
+  private post(batch: LogEntry[]): Promise<void> {
+    return fetch(this.ingestUrl!, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.token}`,
       },
-      body: JSON.stringify({
-        dt: new Date().toISOString().replace('T', ' ').replace('Z', ' UTC'),
-        level,
-        message:
-          typeof message === 'string'
-            ? message
-            : BetterstackLogger.stringifyMessage(message),
-        context,
-        service: 'backend',
-      }),
-      // Without this, undici's defaults apply: 300s headers/body timeouts.
-      // A slow or hung Betterstack would hold every one of these
-      // fire-and-forget requests open for five minutes — and this runs
-      // once per request (RequestLoggingMiddleware), so under load that
-      // is hundreds of pinned sockets and their retained bodies.
-      signal: AbortSignal.timeout(5_000),
-    }).catch(() => {
-      // Never let log shipping itself throw or block the request lifecycle.
-    });
+      body: JSON.stringify(batch),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    })
+      .then(() => undefined)
+      .catch(() => {
+        // Never let log shipping itself throw or block the request
+        // lifecycle. The batch is lost; that is the accepted outcome.
+      });
   }
 
   // `JSON.stringify(someError)` produces "{}" — Error's own message/

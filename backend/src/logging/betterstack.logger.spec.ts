@@ -39,9 +39,10 @@ describe('BetterstackLogger', () => {
 
     it.each(['log', 'error', 'warn', 'debug', 'verbose', 'fatal'] as const)(
       '%s() ships to Betterstack and never touches the console',
-      (method) => {
+      async (method) => {
         const logger = new BetterstackLogger();
         logger[method]('a message');
+        await logger.flush();
 
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(fetchMock).toHaveBeenCalledWith(
@@ -57,11 +58,12 @@ describe('BetterstackLogger', () => {
       },
     );
 
-    it('error() folds the stack into the shipped message when provided', () => {
+    it('error() folds the stack into the shipped message when provided', async () => {
       const logger = new BetterstackLogger();
       logger.error('boom', 'at foo.ts:1:1');
 
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      await logger.flush();
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body)[0];
       expect(body.message).toBe('boom\nat foo.ts:1:1');
       expect(body.level).toBe('error');
       expectNoConsoleOutput();
@@ -72,31 +74,33 @@ describe('BetterstackLogger', () => {
     // `logger.error(err)` (an Error as the sole argument) or
     // `logger.log(err)` used to silently ship as an empty,
     // undiagnosable "{}" instead of the actual error.
-    it('log() ships a full name/message/stack when given a bare Error as the message', () => {
+    it('log() ships a full name/message/stack when given a bare Error as the message', async () => {
       const logger = new BetterstackLogger();
       const err = new Error('database connection refused');
       logger.log(err);
 
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      await logger.flush();
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body)[0];
       const shipped = JSON.parse(body.message);
       expect(shipped.name).toBe('Error');
       expect(shipped.message).toBe('database connection refused');
       expect(shipped.stack).toEqual(expect.stringContaining('Error: database connection refused'));
     });
 
-    it('error() with a bare Error as the message (no stack/context args) still ships the real message, not {}', () => {
+    it('error() with a bare Error as the message (no stack/context args) still ships the real message, not {}', async () => {
       const logger = new BetterstackLogger();
       const err = new TypeError('cannot read property of undefined');
       logger.error(err);
 
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      await logger.flush();
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body)[0];
       expect(body.message).not.toBe('{}');
       const shipped = JSON.parse(body.message);
       expect(shipped.name).toBe('TypeError');
       expect(shipped.message).toBe('cannot read property of undefined');
     });
 
-    it('error() given an Error object as the `stack` argument extracts its real stack, not just its toString()', () => {
+    it('error() given an Error object as the `stack` argument extracts its real stack, not just its toString()', async () => {
       const logger = new BetterstackLogger();
       const err = new Error('ntfy unreachable');
       // Mirrors IncidentAlertService's `logger.error('msg', err as Error)`
@@ -104,38 +108,42 @@ describe('BetterstackLogger', () => {
       // enforces that at a call site.
       logger.error('Failed to trigger incident alert', err as unknown as string);
 
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      await logger.flush();
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body)[0];
       expect(body.message).toContain('Failed to trigger incident alert');
       expect(body.message).toContain('Error: ntfy unreachable');
     });
 
-    it('serializes an array containing an Error (e.g. console.error("context", err)-shaped input) without losing the error detail', () => {
+    it('serializes an array containing an Error (e.g. console.error("context", err)-shaped input) without losing the error detail', async () => {
       const logger = new BetterstackLogger();
       logger.log(['request failed', new Error('timeout')]);
 
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      await logger.flush();
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body)[0];
       const shipped = JSON.parse(body.message);
       expect(shipped[0]).toBe('request failed');
       expect(shipped[1].message).toBe('timeout');
     });
 
-    it('follows a chained `cause` Error so the root cause is never silently dropped', () => {
+    it('follows a chained `cause` Error so the root cause is never silently dropped', async () => {
       const logger = new BetterstackLogger();
       const root = new Error('ECONNREFUSED');
       const wrapped = new Error('failed to connect', { cause: root });
       logger.log(wrapped);
 
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      await logger.flush();
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body)[0];
       const shipped = JSON.parse(body.message);
       expect(shipped.message).toBe('failed to connect');
       expect(shipped.cause.message).toBe('ECONNREFUSED');
     });
 
-    it('still ships a genuinely plain object unchanged (no message/stack property) — the expansion only kicks in for error-shaped objects', () => {
+    it('still ships a genuinely plain object unchanged (no message/stack property) — the expansion only kicks in for error-shaped objects', async () => {
       const logger = new BetterstackLogger();
       logger.log({ some: 'plain', data: 1 });
 
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      await logger.flush();
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body)[0];
       expect(JSON.parse(body.message)).toEqual({ some: 'plain', data: 1 });
     });
 
@@ -147,7 +155,7 @@ describe('BetterstackLogger', () => {
     // of this fix, since that version only special-cased `instanceof
     // Error`. Detecting by property access instead catches this shape
     // too.
-    it('expands a non-Error object that merely *looks* like an error (has a message property) instead of shipping {}', () => {
+    it('expands a non-Error object that merely *looks* like an error (has a message property) instead of shipping {}', async () => {
       const logger = new BetterstackLogger();
       class ClerkStyleError {
         constructor(
@@ -157,14 +165,15 @@ describe('BetterstackLogger', () => {
       }
       logger.error(new ClerkStyleError('session not found', 401));
 
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      await logger.flush();
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body)[0];
       expect(body.message).not.toBe('{}');
       const shipped = JSON.parse(body.message);
       expect(shipped.message).toBe('session not found');
       expect(shipped.status).toBe(401);
     });
 
-    it('recovers a non-enumerable message getter that JSON.stringify alone would silently drop', () => {
+    it('recovers a non-enumerable message getter that JSON.stringify alone would silently drop', async () => {
       const logger = new BetterstackLogger();
       const weirdError: Record<string, unknown> = {};
       Object.defineProperty(weirdError, 'message', {
@@ -178,7 +187,8 @@ describe('BetterstackLogger', () => {
       expect(JSON.stringify(weirdError)).toBe('{}');
 
       logger.log(weirdError);
-      const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+      await logger.flush();
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body)[0];
       expect(JSON.parse(body.message).message).toBe(
         'hidden from JSON.stringify',
       );
@@ -189,6 +199,7 @@ describe('BetterstackLogger', () => {
       const logger = new BetterstackLogger();
 
       expect(() => logger.error('boom')).not.toThrow();
+      await expect(logger.flush()).resolves.toBeUndefined();
       // let the fire-and-forget rejection settle without an unhandled
       // rejection surfacing in the test run
       await new Promise((r) => setTimeout(r, 0));
@@ -204,7 +215,7 @@ describe('BetterstackLogger', () => {
 
     it.each(['log', 'error', 'warn', 'debug', 'verbose', 'fatal'] as const)(
       '%s() silently drops the log — never falls back to console, even unconfigured',
-      (method) => {
+      async (method) => {
         const logger = new BetterstackLogger();
         expect(() => logger[method]('a message')).not.toThrow();
 
