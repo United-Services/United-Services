@@ -30,7 +30,7 @@ jobs:
     name: njsscan code scanning
     steps:
     - name: Checkout the code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
     # continue-on-error at the STEP level, not `|| true` inside `args`.
     # The shell-level `|| true` that used to live in the args string
     # meant the scan could never fail this step regardless of findings —
