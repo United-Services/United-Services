@@ -179,7 +179,9 @@ export default function Vision({ onNavigate }: Props) {
                       fontFamily: HEAD,
                       fontSize: 36,
                       fontWeight: 700,
-                      color: "#E6E5E0",
+                      // Was #E6E5E0 on white — 1.26:1. At 36px bold these
+                      // read as content, not decoration; 5.1:1 now.
+                      color: "#6E6E69",
                       lineHeight: 1,
                       marginBottom: 16,
                     }}

@@ -11,7 +11,13 @@ import type React from "react"
 export const INK = "#0E0E10"
 export const PAPER = "#F3F2EE"
 export const TEXT = "#121212"
-export const MUTED = "#8C8C88"
+// #6E6E69, not the original #8C8C88: that measured 3.01:1 on PAPER and
+// 3.38:1 on white — below the 4.5:1 WCAG AA floor for body text — at 30+
+// call sites across 12 of the 13 public pages. This value is the same
+// warm-neutral hue at 4.57:1 on PAPER / 5.12:1 on white. One token, so
+// every secondary paragraph, stat label, figure caption and inactive nav
+// item clears the floor together.
+export const MUTED = "#6E6E69"
 export const LIME = "#D8FF3E"
 export const HEAD = "var(--font-space-grotesk), sans-serif"
 export const BODY = "var(--font-inter), sans-serif"
