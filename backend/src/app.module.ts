@@ -13,6 +13,7 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { MfaEnrolledGuard } from './common/guards/mfa-enrolled.guard';
 import { MfaSessionVerifiedGuard } from './common/guards/mfa-session-verified.guard';
 import { CsrfHeaderGuard } from './common/guards/csrf-header.guard';
+import { MaintenanceGuard } from './common/guards/maintenance.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { HealthController } from './health/health.controller';
 import { MeController } from './me/me.controller';
@@ -79,6 +80,9 @@ import { FailoverModule } from './failover/failover.module';
   controllers: [HealthController, MeController, UploadsController],
   providers: [
     // Order matters — see each guard class for its individual rejection reasons.
+    // MaintenanceGuard first: during a planned database cutover it must
+    // reject writes BEFORE anything below touches the database.
+    { provide: APP_GUARD, useClass: MaintenanceGuard },
     { provide: APP_GUARD, useClass: CsrfHeaderGuard },
     { provide: APP_GUARD, useClass: ClerkAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
