@@ -12,6 +12,23 @@ import Link from "next/link"
 // hence no log-out button here. Hardcoded English for the same reason
 // the locale version is: a 404 must never depend on the routing/i18n
 // context that may be the very thing that failed.
+//
+// DEV-ONLY Next.js 16.3.3 bug, not a bug here: the first time `next dev`
+// needs to compile THIS file (any real 404, or sometimes just on a cold
+// `.next`), it hits a bug in Next's own verifyRootLayout()
+// (node_modules/next/dist/lib/verify-root-layout.js) — it tries to
+// auto-generate a temporary root layout for this route, but the
+// directory-placement logic pops this file's only path segment and then
+// loops over the now-empty array, so it silently fails to create
+// anything and throws "not-found.tsx doesn't have a root layout." Once
+// that happens the whole dev server 500s on every request, including
+// unrelated ones, until restarted. `next build` never hits this — it's
+// confirmed clean on every production build. Do NOT "fix" this by
+// adding a real app/layout.tsx: app/[locale]/layout.tsx already renders
+// its own <html> for locale routes (this is next-intl's own recommended
+// pattern for exactly this split), so a root layout.tsx would nest a
+// second <html> inside it. If it happens: `rm -rf .next` and restart
+// the dev server — the actual production build is unaffected.
 export default function RootNotFound() {
   return (
     <html lang="en">
