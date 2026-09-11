@@ -224,7 +224,9 @@
   "servicesPage": {
     "eyebrow": "USE · SHEET 02 · SYS-INDEX",
     "title": "Systems Index",
-    "subtitle": "Six integrated corrosion-control and pipeline-integrity systems, each engineered to international standards at our 6,000 m² Cairo facility.",
+    "subtitle": "Corrosion-control and pipeline-integrity systems, engineered to international standards in Cairo.",
+    "flagship": "USE Liner® · Flagship Technology",
+    "additional": "Additional Services",
     "diagram": {
       "eyebrow": "USE · CROSS-SECTION DETAIL · REV.03",
       "title": "Layered Pipeline Protection",
