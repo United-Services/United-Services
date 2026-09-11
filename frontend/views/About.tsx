@@ -106,28 +106,8 @@ export default function About({ onNavigate }: Props) {
             >
               {t("story.title")}
             </h2>
-            <p
-              style={{
-                fontSize: 15,
-                color: MUTED,
-                lineHeight: 1.8,
-                marginBottom: 16,
-              }}
-            >
-              {t("story.p1")}
-            </p>
-            <p
-              style={{
-                fontSize: 15,
-                color: MUTED,
-                lineHeight: 1.8,
-                marginBottom: 16,
-              }}
-            >
-              {t("story.p2")}
-            </p>
             <p style={{ fontSize: 15, color: MUTED, lineHeight: 1.8 }}>
-              {t("story.p3")}
+              {t("story.p1")}
             </p>
           </div>
         </div>
