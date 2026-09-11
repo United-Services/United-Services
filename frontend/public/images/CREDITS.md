@@ -11,13 +11,6 @@ licenses — downloaded once and self-hosted here, nothing hotlinked.
 - **Photographer**: Erik Christensen
 - **License**: CC BY-SA 3.0
 
-## dc-welder-portrait.jpg
-
-- **Subject**: welder at work, workshop setting.
-- **Source**: https://commons.wikimedia.org/wiki/File:Welder_956.jpg
-- **Photographer**: A7med3ssam9
-- **License**: CC BY-SA 4.0
-
 ## dc-proj-thumb-1.jpg
 
 - **Subject**: North Sea oil platform.
@@ -52,3 +45,19 @@ licenses — downloaded once and self-hosted here, nothing hotlinked.
 
 - **Subject**: Vopak storage terminal, Eemshaven.
 - **Source**: https://commons.wikimedia.org/wiki/File:20120815_Vopak_Terminal_Eemshaven_Gn_NL.jpg
+
+## Client-supplied photos (not stock)
+
+The following are real United Services Egypt photography, extracted from
+the client's own brochures/company profile (`refrences/` — not in this
+repo) rather than sourced from a stock library. No attribution needed;
+listed here only so future edits know these are authentic, not generic.
+
+- **gre-liner-bore-macro.jpg**, **gre-liner-lab-testing.jpg**,
+  **gre-liner-yard-racks.jpg** — GRE liner cross-section, lab hardness
+  testing, and pipe-yard stock photos from the GRE company profile.
+- **use-gre-hdpe-yard.jpg** — USE's GRE/HDPE lining yard, New Maadi,
+  Cairo (visible USE signage). Used on the About and Home pages. Replaced
+  `bp-plant.jpg` (generic Wikimedia BP plant photo) and
+  `dc-welder-portrait.jpg` (generic Wikimedia welder portrait), which had
+  been miscaptioned in code as USE's own facility/technician — removed.
