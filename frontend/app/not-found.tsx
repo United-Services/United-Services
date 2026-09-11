@@ -6,12 +6,14 @@ import Link from "next/link"
 // "404 | This page could not be found." — no logo, no link home, no
 // language. Measured on both /en/nope and /ar/nope.
 //
-// Two constraints the locale version doesn't have: there is no
-// app/layout.tsx, so this must render its own <html>/<body>; and it
-// sits outside ClerkProvider, so it cannot use useClerk()/useAuth() —
-// hence no log-out button here. Hardcoded English for the same reason
-// the locale version is: a 404 must never depend on the routing/i18n
-// context that may be the very thing that failed.
+// Two constraints the locale version doesn't have: app/layout.tsx
+// (sibling file) is a pure passthrough with no <html>/<body> of its own
+// — see that file's comment for why — so this still has to render its
+// own complete <html>/<body>; and it sits outside ClerkProvider, so it
+// cannot use useClerk()/useAuth() — hence no log-out button here.
+// Hardcoded English for the same reason the locale version is: a 404
+// must never depend on the routing/i18n context that may be the very
+// thing that failed.
 export default function RootNotFound() {
   return (
     <html lang="en">
