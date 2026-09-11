@@ -85,3 +85,5 @@ docker-compose.override.yml
 nginx/certs/*
 !nginx/certs/.gitkeep
 nginx/tls.d/*.conf
+
+refrences/

@@ -1,4 +1,4 @@
-"use client" /* Hero */ /* Trusted Partners */ /* About Us */ /* Mission */ /* Our Projects */ /* Our Services (carousel) */ /* Our Clients */ /* Footer CTA */
+"use client" /* Hero */ /* Trusted Partners */ /* GRE Liner Spotlight */ /* About Us */ /* Mission */ /* Our Projects */ /* Additional Services (carousel) */ /* Our Clients */ /* Footer CTA */
 import { useEffect, useRef, useState } from "react"
 import { useLocale, useTranslations } from "next-intl"
 import Image from "next/image"
@@ -20,6 +20,12 @@ import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY, PublicTag } from "../lib/pub
 // sat here before.
 const layerFigImg = "/images/LD-03.png"
 const facilityImg = "/images/dc-welder-portrait.jpg"
+// Real USE Liner product/facility photography (client-supplied brochure +
+// company profile), not stock — used only in the GRE spotlight section
+// below since that's the one place authenticity matters most.
+const greBoreMacro = "/images/gre-liner-bore-macro.jpg"
+const greLabTesting = "/images/gre-liner-lab-testing.jpg"
+const greYardRacks = "/images/gre-liner-yard-racks.jpg"
 const projThumb1 = "/images/dc-proj-thumb-1.jpg"
 const projThumb2 = "/images/dc-proj-thumb-2.jpg"
 const SVC_PHOTOS = [
@@ -68,6 +74,21 @@ const LOGO_CLIENTS = [
   { name: "QP", img: qpLogo },
   { name: "West", img: westLogo },
   { name: "Petrosilah", img: petrosilahLogo },
+]
+
+// USE Liner® GRE spotlight — figures straight from the 2026 product
+// brochure (USE_LINER_GRE_Brochure_2026.pdf), not marketing copy.
+const GRE_STATS = [
+  { value: "300°F", label: "Temperature Rating" },
+  { value: "150", label: "Hazen-Williams" },
+  { value: "72%", label: "Glass Content" },
+  { value: "20+ yrs", label: "Service Life" },
+] as const
+
+const GRE_SNAPSHOTS = [
+  { img: greBoreMacro, caption: "Holiday-Free Bore" },
+  { img: greLabTesting, caption: "Batch-Tested In-House" },
+  { img: greYardRacks, caption: "6,000 m² Cairo Yard" },
 ]
 
 const CERT_KEYS = ["apiQ1", "iso9001", "iso14001", "iso45001", "egpc"] as const
@@ -137,8 +158,12 @@ export default function Home({ onNavigate, initialServices }: Props) {
     { value: "15+", label: t("proof.clientsLabel") },
   ]
 
-  const svcCount = services.length
-  const activeSvc = svcCount > 0 ? services[svcIndex % svcCount] : null
+  // GRE Tubular Lining gets its own dedicated spotlight section above —
+  // leaving it in this carousel too would repeat the same service right
+  // after its full-page treatment, so the carousel covers only the rest.
+  const otherServices = services.filter((s) => s.slug !== "gre-tubular-lining")
+  const svcCount = otherServices.length
+  const activeSvc = svcCount > 0 ? otherServices[svcIndex % svcCount] : null
   const step = (d: number) => setSvcIndex((i) => (svcCount > 0 ? (i + d + svcCount) % svcCount : 0))
 
   const onClientsScroll = () => {
@@ -300,6 +325,127 @@ export default function Home({ onNavigate, initialServices }: Props) {
                     filter: "grayscale(100%)",
                   }}
                 />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* GRE Liner spotlight — the client's flagship product gets its own
+            full section, ahead of the generic multi-service carousel
+            below. Minimal copy by design (headline + one line + numbers),
+            mirroring the client's own brochure/animation reference
+            material rather than the paragraph-heavy treatment competitor
+            sites (maxtube.com, prolinertech.com) use. */}
+        <section style={{ position: "relative", background: INK, padding: "120px 40px", overflow: "hidden" }}>
+          <div style={{ position: "absolute", inset: 0 }}>
+            <img
+              src={greBoreMacro}
+              alt=""
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.5 }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background:
+                  "linear-gradient(100deg, rgba(8,8,10,0.97) 0%, rgba(8,8,10,0.88) 38%, rgba(8,8,10,0.55) 75%, rgba(8,8,10,0.4) 100%)",
+              }}
+            />
+          </div>
+          <div className="reveal" style={{ position: "relative", maxWidth: 1280, margin: "0 auto" }}>
+            <PublicTag>USE Liner® · Flagship Technology</PublicTag>
+            <h2
+              style={{
+                margin: "26px 0 0",
+                fontFamily: HEAD,
+                fontWeight: 700,
+                fontSize: "clamp(38px, 6vw, 76px)",
+                lineHeight: 1.02,
+                letterSpacing: "-0.02em",
+                color: "#fff",
+                maxWidth: 780,
+              }}
+            >
+              Turns old tubulars into gold.
+            </h2>
+            <p style={{ margin: "22px 0 0", fontSize: 17, lineHeight: 1.6, color: "rgba(255,255,255,0.82)", maxWidth: 560 }}>
+              Glass Reinforced Epoxy lining — 30,000+ wells since 2005, at a fraction of CRA alloy cost.
+            </p>
+            <div
+              className="responsive-card-grid"
+              style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 20, marginTop: 56, maxWidth: 900 }}
+            >
+              {GRE_STATS.map((s) => (
+                <div key={s.label} style={{ borderTop: "1px solid rgba(255,255,255,0.25)", paddingTop: 16 }}>
+                  <div style={{ fontFamily: HEAD, fontWeight: 700, fontSize: 30, color: LIME }}>{s.value}</div>
+                  <div
+                    style={{
+                      fontSize: 12.5,
+                      marginTop: 4,
+                      color: "rgba(255,255,255,0.65)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    {s.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => onNavigate("services")}
+              style={{
+                marginTop: 48,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "16px 30px",
+                borderRadius: 9999,
+                background: LIME,
+                color: TEXT,
+                fontFamily: HEAD,
+                fontSize: 14.5,
+                fontWeight: 600,
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              Explore USE Liner® <span aria-hidden="true">{arrow}</span>
+            </button>
+
+            <div
+              className="responsive-card-grid"
+              style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20, marginTop: 88 }}
+            >
+              {GRE_SNAPSHOTS.map((snap) => (
+                <div key={snap.caption} style={{ borderRadius: 18, overflow: "hidden", position: "relative" }}>
+                  <img
+                    src={snap.img}
+                    alt=""
+                    loading="lazy"
+                    style={{ width: "100%", height: 200, objectFit: "cover", display: "block" }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: "linear-gradient(to top, rgba(8,8,10,0.75) 0%, rgba(8,8,10,0) 55%)",
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 18,
+                      bottom: 16,
+                      color: "#fff",
+                      fontFamily: HEAD,
+                      fontWeight: 600,
+                      fontSize: 15,
+                    }}
+                  >
+                    {snap.caption}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
@@ -787,7 +933,7 @@ export default function Home({ onNavigate, initialServices }: Props) {
             padding: "56px 48px",
           }}
         >
-          {services.map((s, i) => (
+          {otherServices.map((s, i) => (
             <div
               key={s.id}
               style={{
@@ -814,7 +960,7 @@ export default function Home({ onNavigate, initialServices }: Props) {
             }}
           />
           <div style={{ position: "relative" }}>
-            <PublicTag>Our Services</PublicTag>
+            <PublicTag>Additional Services</PublicTag>
           </div>
           <div style={{ position: "relative", display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 48, alignItems: "center", padding: "64px 0" }}>
             <div style={{ fontFamily: HEAD, fontWeight: 700, fontSize: "clamp(36px, 4.5vw, 58px)", color: "#fff" }}>
