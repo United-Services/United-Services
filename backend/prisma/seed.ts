@@ -16,9 +16,9 @@ const SERVICES = [
   {
     slug: 'gre-tubular-lining',
     name: 'GRE Tubular Lining',
-    shortDescription: 'API 15CLT · Internal Corrosion Barrier',
+    shortDescription: 'USE Liner® · Holiday-Free · Sour Service Corrosion Barrier',
     longDescription:
-      'Glass Reinforced Epoxy (GRE) tubular lining provides a chemically inert internal barrier for steel pipelines carrying crude oil, produced water, and corrosive hydrocarbons. Applied in our 6,000 m² factory under API 15CLT and ISO 15996 quality regimes, USE GRE liners deliver service life exceeding 20 years in H₂S and CO₂ environments.',
+      "USE Liner® glass-reinforced epoxy (GRE) tubing and casing linings guard against corrosion damage and OD wear in corrosive injection, acid gas, salt-water disposal, and production wells. Holiday-free tested and matching the tensile strength of the host steel, USE Liner® is proven technology backed by decades of service in sour and aggressive environments. Our field crew supervises every installation — seating the compression ring, inspecting the connection, and drift-testing each joint before it is tripped into the well.",
     iconKey: 'gre-lining',
     order: 1,
   },
