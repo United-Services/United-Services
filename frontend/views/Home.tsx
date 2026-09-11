@@ -19,7 +19,10 @@ import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY, PublicTag } from "../lib/pub
 // LD-01's dark interior-tunnel shot (moody, but no visible layering) that
 // sat here before.
 const layerFigImg = "/images/LD-03.png"
-const facilityImg = "/images/dc-welder-portrait.jpg"
+// Real photo of USE's own GRE/HDPE lining yard (New Maadi, Cairo), sourced
+// from the client's company profile — replaces a generic stock welder
+// portrait that was captioned as a USE technician.
+const facilityImg = "/images/use-gre-hdpe-yard.jpg"
 // Real USE Liner product/facility photography (client-supplied brochure +
 // company profile), not stock — used only in the GRE spotlight section
 // below since that's the one place authenticity matters most.
@@ -630,7 +633,7 @@ export default function Home({ onNavigate, initialServices }: Props) {
               >
                 <Image
                   src={facilityImg}
-                  alt="United Services Egypt technician welding in the Cairo facility"
+                  alt="United Services Egypt's GRE/HDPE lining yard in New Maadi, Cairo"
                   fill
                   sizes="(max-width: 900px) 100vw, 50vw"
                   style={{ objectFit: "cover" }}
