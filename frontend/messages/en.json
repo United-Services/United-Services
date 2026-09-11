@@ -150,9 +150,7 @@
     "story": {
       "eyebrow": "Founded 2005 · Cairo, Egypt",
       "title": "Built on the premise that corrosion is an engineering problem — not an inevitability.",
-      "p1": "United Services Egypt was established in 2005 by a group of petroleum engineers who had spent their careers watching preventable corrosion failures drain resources from major oil & gas operators across the MENA region.",
-      "p2": "Their conviction: that international-standard corrosion-control solutions — GRE lining, FBE coating, RTP systems — were available globally but applied inconsistently in Egypt and the broader region, largely due to a lack of local engineering expertise and certified manufacturing capacity.",
-      "p3": "USE was built to close that gap. Today, from our 6,000 m² integrated manufacturing and application facility in Cairo, we serve EGPC, ADNOC, BP, Shell, and more than fifteen other major operators across Egypt, Iraq, Saudi Arabia, and the UAE."
+      "p1": "Founded in 2005 by petroleum engineers who saw preventable corrosion failures drain major operators' budgets, USE closed the gap between global corrosion-control standards and inconsistent regional practice. Today we serve EGPC, ADNOC, BP, Shell, and 15+ other majors from our Cairo facility."
     },
     "certs": {
       "eyebrow": "QUALITY CREDENTIALS",
@@ -181,7 +179,7 @@
     "facility": {
       "eyebrow": "OUR FACILITY",
       "title": "6,000 m² integrated manufacturing and application facility.",
-      "body": "The USE facility in Cairo houses factory lining and coating lines, pipe preparation and blast-cleaning equipment, quality control laboratory, and a field operations staging area — all on a single site.",
+      "body": "One integrated site: factory lining and coating lines, pipe preparation, a quality control lab, and field operations staging.",
       "stat1Value": "6,000 m²",
       "stat1Label": "Facility footprint",
       "stat2Value": "Factory + Field",
@@ -197,10 +195,10 @@
     "title": "Vision & Mission",
     "visionLabel": "OUR VISION",
     "visionTitle": "To be the MENA region's most trusted corrosion engineering partner.",
-    "visionBody": "We envision a region where energy infrastructure operates at its engineered design life — where no pipeline fails prematurely because the right corrosion-control system was unavailable, unaffordable, or poorly applied.",
+    "visionBody": "Energy infrastructure running at its engineered design life — no pipeline failing because the right corrosion-control system was unavailable or poorly applied.",
     "missionLabel": "OUR MISSION",
     "missionTitle": "Deliver certified corrosion-control solutions with zero compromise on quality.",
-    "missionBody": "Our mission is to protect the infrastructure that powers the region — by applying rigorous engineering, qualified materials, and certified workmanship to every project, regardless of scale or location.",
+    "missionBody": "Protecting the region's infrastructure through rigorous engineering, qualified materials, and certified workmanship — on every project, at any scale.",
     "pillarsLabel": "STRATEGIC PILLARS",
     "pillars": {
       "technical": {
@@ -328,7 +326,7 @@
   "careers": {
     "eyebrow": "USE · SHEET 05 · CAREERS",
     "title": "Join the team that protects the region's infrastructure.",
-    "subtitle": "USE looks for engineers and technicians who take quality seriously. We offer international-standard training, API/ISO-certified work environments, and projects that matter.",
+    "subtitle": "Engineers and technicians who take quality seriously — international-standard training, certified work environments, projects that matter.",
     "filterAll": "All",
     "typePermanent": "Permanent",
     "typeContract": "Contract",

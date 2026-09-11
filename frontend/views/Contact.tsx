@@ -3,6 +3,7 @@ import { useTranslations } from "next-intl"
 import PublicNav from "../components/PublicNav"
 import PublicFooter from "../components/PublicFooter"
 import { PAPER, TEXT, MUTED, LIME, HEAD, BODY } from "../lib/publicTheme"
+import { IconPin, IconMail, IconPhone, IconGlobe } from "../components/NavIcons"
 import dynamic from "next/dynamic"
 // See views/About.tsx for why this is dynamic — same heavy, WebGL-only,
 // purely decorative dependency.
@@ -17,24 +18,24 @@ export default function Contact({ onNavigate }: Props) {
 
   const contactCards = [
     {
-      icon: "📍",
+      icon: <IconPin size={18} />,
       label: t("info.headquarters"),
       value: t("info.headquartersValue"),
     },
     {
-      icon: "✉️",
+      icon: <IconMail size={18} />,
       label: t("info.email"),
       value: "info@use-eg.com",
       href: "mailto:info@use-eg.com",
     },
     {
-      icon: "📞",
+      icon: <IconPhone size={18} />,
       label: t("info.tel"),
       value: "(+2) 0227033656",
       href: "tel:+20227033656",
     },
     {
-      icon: "🌍",
+      icon: <IconGlobe size={18} />,
       label: t("info.operations"),
       value: t("info.operationsValue"),
     },
@@ -143,7 +144,7 @@ export default function Contact({ onNavigate }: Props) {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: 18,
+                    color: TEXT,
                     flexShrink: 0,
                   }}
                 >
