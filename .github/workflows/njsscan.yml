@@ -30,7 +30,7 @@ jobs:
     name: njsscan code scanning
     steps:
     - name: Checkout the code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
     # continue-on-error at the STEP level, not `|| true` inside `args`.
     # The shell-level `|| true` that used to live in the args string
     # meant the scan could never fail this step regardless of findings —
@@ -42,7 +42,7 @@ jobs:
     - name: nodejsscan scan
       id: njsscan
       continue-on-error: true
-      uses: ajinabraham/njsscan-action@7237412fdd36af517e2745077cedbf9d6900d711
+      uses: ajinabraham/njsscan-action@231750a435d85095d33be7d192d52ec650625146
       with:
         args: '. --sarif --output results.sarif'
     - name: Upload njsscan report

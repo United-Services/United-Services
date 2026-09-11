@@ -75,7 +75,7 @@ jobs:
             curl -sf http://localhost:3002/api/v1/health && break
             sleep 1
           done
-      - uses: grafana/setup-k6-action@c00053c996b4061198c9c24a00474b748abdf8b7 # v1
+      - uses: grafana/setup-k6-action@db07bd9765aac508ef18982e52ab937fe633a065 # v1
       - name: Baseline (public endpoints)
         run: k6 run loadtest/public-endpoints.js
       - name: Rate limiter enforcement (global)
