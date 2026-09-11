@@ -25,6 +25,19 @@ const nextConfig = {
   // no benefit), and nginx doesn't strip it either. Off entirely rather
   // than stripped downstream.
   poweredByHeader: false,
+  // Dev-server only (no-op for `next build`/`next start`). Next's default
+  // on-demand-entries GC disposes a compiled page after ~25s of no
+  // requests and silently recompiles it from scratch on the next hit —
+  // and recompiling the root app/not-found entry hits a real bug in this
+  // Next.js version (verifyRootLayout(), see app/not-found.tsx's comment)
+  // that poisons the whole dev server until `.next` is cleared and
+  // restarted. This doesn't fix that bug, but it makes the GC that keeps
+  // re-triggering it during ordinary idle periods (leave a tab open,
+  // step away, come back) far less likely to fire.
+  onDemandEntries: {
+    maxInactiveAge: 60 * 60 * 1000,
+    pagesBufferLength: 25,
+  },
   // Defense in depth: nginx/nginx.conf sets the same headers at the edge in
   // production, but this app can also be hit directly (local dev, health
   // checks, or if it's ever run without the nginx layer in front of it), so
