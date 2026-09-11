@@ -8,7 +8,7 @@ import { useReveal } from "../hooks/useReveal"
 import { axios } from "../lib/api"
 import { getErrorMessage } from "../lib/errors"
 import { LAYER_KEYS, LAYER_STYLE } from "../lib/pipelineLayers"
-import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY } from "../lib/publicTheme"
+import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY, PublicTag } from "../lib/publicTheme"
 import dynamic from "next/dynamic"
 // See views/About.tsx for why this is dynamic — same heavy, WebGL-only,
 // purely decorative dependency.
@@ -39,6 +39,12 @@ export default function Services({ onNavigate, initialServices }: Props) {
   const locale = useLocale()
   const [active, setActive] = useState<number | null>(null)
   const [services, setServices] = useState<Service[]>(initialServices ?? [])
+  // GRE gets a dedicated, non-collapsible featured section above the
+  // accordion (client direction: GRE is the flagship service, everything
+  // else is secondary) — the same "Additional Services" split already
+  // shipped on the homepage (views/Home.tsx).
+  const greService = services.find((s) => s.slug === "gre-tubular-lining")
+  const otherServices = services.filter((s) => s.slug !== "gre-tubular-lining")
   const [loading, setLoading] = useState(initialServices === undefined)
   const skipNextFetch = useRef(initialServices !== undefined)
   const tCommon = useTranslations("common")
@@ -230,6 +236,120 @@ export default function Services({ onNavigate, initialServices }: Props) {
         </div>
       </section>
 
+      {/* GRE Liner — flagship service, non-collapsible, above the
+          "Additional Services" accordion. Deliberately light on copy:
+          name + one line + spec chips, no long paragraph, matching the
+          homepage spotlight's minimal-text treatment. */}
+      {greService && (
+        <section style={{ background: INK, padding: "80px 28px" }}>
+          <div
+            className="responsive-card-grid reveal"
+            style={{
+              maxWidth: 1260,
+              margin: "0 auto",
+              display: "grid",
+              gridTemplateColumns: "1.1fr 1fr",
+              gap: 48,
+              alignItems: "center",
+            }}
+          >
+            <div>
+              <PublicTag>{t("flagship")}</PublicTag>
+              <h2
+                style={{
+                  margin: "22px 0 0",
+                  fontFamily: HEAD,
+                  fontWeight: 700,
+                  fontSize: "clamp(28px, 3.4vw, 44px)",
+                  lineHeight: 1.08,
+                  letterSpacing: "-0.01em",
+                  color: "#fff",
+                }}
+              >
+                {greService.name}
+              </h2>
+              <p
+                style={{
+                  margin: "14px 0 0",
+                  fontSize: 15,
+                  lineHeight: 1.6,
+                  color: "rgba(255,255,255,0.8)",
+                  maxWidth: 480,
+                }}
+              >
+                {greService.shortDescription}
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 24 }}>
+                {greService.specs.map((sp) => (
+                  <span
+                    key={sp}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "#fff",
+                      background: "rgba(255,255,255,0.08)",
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      borderRadius: 6,
+                      padding: "5px 11px",
+                    }}
+                  >
+                    {sp}
+                  </span>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 32 }}>
+                <button
+                  onClick={() => onNavigate("client-login")}
+                  style={{
+                    background: LIME,
+                    color: TEXT,
+                    border: "none",
+                    borderRadius: 9999,
+                    padding: "12px 28px",
+                    fontWeight: 600,
+                    fontSize: 14,
+                    cursor: "pointer",
+                    fontFamily: BODY,
+                  }}
+                >
+                  {t("requestSpecFile")}
+                </button>
+                <button
+                  onClick={() => onNavigate("contact")}
+                  style={{
+                    background: "transparent",
+                    color: "#fff",
+                    border: "1.5px solid rgba(255,255,255,0.35)",
+                    borderRadius: 9999,
+                    padding: "12px 28px",
+                    fontWeight: 500,
+                    fontSize: 14,
+                    cursor: "pointer",
+                    fontFamily: HEAD,
+                  }}
+                >
+                  {tNav("requestConsultation")}
+                </button>
+              </div>
+            </div>
+            {greService.imageUrl && (
+              // eslint-disable-next-line @next/next/no-img-element -- admin-uploaded S3 presigned URL
+              <img
+                src={greService.imageUrl}
+                alt={greService.name}
+                loading="lazy"
+                style={{
+                  width: "100%",
+                  aspectRatio: "4/3",
+                  objectFit: "cover",
+                  borderRadius: 20,
+                }}
+              />
+            )}
+          </div>
+        </section>
+      )}
+
       {}
       <section style={{ padding: "80px 28px" }}>
         <div
@@ -241,6 +361,9 @@ export default function Services({ onNavigate, initialServices }: Props) {
             gap: 2,
           }}
         >
+          <div style={{ marginBottom: 26 }}>
+            <PublicTag>{t("additional")}</PublicTag>
+          </div>
           <ErrorBanner
             message={loadError}
             onDismiss={() => setLoadError(null)}
@@ -269,7 +392,7 @@ export default function Services({ onNavigate, initialServices }: Props) {
                 </div>
               </div>
             ))}
-          {services.map((svc, i) => (
+          {otherServices.map((svc, i) => (
             <div
               key={svc.id}
               className="reveal"

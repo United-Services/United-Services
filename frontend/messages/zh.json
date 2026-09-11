@@ -224,7 +224,9 @@
   "servicesPage": {
     "eyebrow": "USE · SHEET 02 · SYS-INDEX",
     "title": "系统索引",
-    "subtitle": "六套集成的防腐与管道完整性系统，均按照国际标准在我们占地6,000平方米的开罗工厂制造。",
+    "subtitle": "防腐与管道完整性系统，按国际标准在开罗制造。",
+    "flagship": "USE Liner® · 旗舰技术",
+    "additional": "其他服务",
     "diagram": {
       "eyebrow": "USE · CROSS-SECTION DETAIL · REV.03",
       "title": "分层管道保护",
