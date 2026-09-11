@@ -161,7 +161,17 @@ export default function Home({ onNavigate, initialServices }: Props) {
   // GRE Tubular Lining gets its own dedicated spotlight section above —
   // leaving it in this carousel too would repeat the same service right
   // after its full-page treatment, so the carousel covers only the rest.
-  const otherServices = services.filter((s) => s.slug !== "gre-tubular-lining")
+  // Explicit allowlist (mirrors Services.tsx): external-wrapping and
+  // hdpe-lining stay in the database (real client files/service requests
+  // attached) but are no longer surfaced publicly.
+  const PUBLIC_ADDITIONAL_SERVICE_SLUGS = [
+    "industrial-coating",
+    "rtp-systems",
+    "rtv-insulator-coating",
+  ]
+  const otherServices = services.filter((s) =>
+    PUBLIC_ADDITIONAL_SERVICE_SLUGS.includes(s.slug),
+  )
   const svcCount = otherServices.length
   const activeSvc = svcCount > 0 ? otherServices[svcIndex % svcCount] : null
   const step = (d: number) => setSvcIndex((i) => (svcCount > 0 ? (i + d + svcCount) % svcCount : 0))

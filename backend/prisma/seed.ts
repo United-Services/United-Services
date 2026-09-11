@@ -33,13 +33,19 @@ const SERVICES = [
   },
   {
     slug: 'industrial-coating',
-    name: 'Industrial Coating',
-    shortDescription: 'FBE / NACE · Fusion-Bonded & Liquid Epoxy',
+    name: 'Internal & External Coating',
+    shortDescription: 'HB Liquid Phenolic Novolac Epoxy · Corrosion Protection',
     longDescription:
-      'Fusion Bonded Epoxy (FBE) and liquid epoxy coating systems for internal and external pipeline protection, applied using induction-heated pipe rotation equipment and meeting NACE SP0188 and CSA Z245.20 standards.',
+      "USE's internal and external pipe coating systems protect inner casing, tubing, ESP equipment, control lines, elbows, tees, and outer conductors against corrosion in new and brown wells. Applied at our facility using HB Liquid Phenolic Novolac Epoxy, fully holiday-tested to NACE SP0188.",
     iconKey: 'industrial-coating',
     order: 3,
   },
+  // hdpe-lining is intentionally NOT part of the public "Additional
+  // Services" catalog (see frontend PUBLIC_ADDITIONAL_SERVICE_SLUGS) —
+  // client direction narrowed the public catalog to GRE (flagship) +
+  // internal/external coating + RTP + RTV. Left seeded (not deleted):
+  // the live row has a real client file + service request attached, and
+  // Service->ServiceFile is an onDelete: Cascade relation.
   {
     slug: 'hdpe-lining',
     name: 'HDPE Lining',
@@ -54,7 +60,7 @@ const SERVICES = [
     name: 'RTP Systems',
     shortDescription: 'DN40–200 · 0.6–32 MPa · Reinforced Thermoplastic',
     longDescription:
-      'Reinforced Thermoplastic Pipe (RTP) systems for oil, gas, and water service in corrosive environments where steel pipelines are uneconomical, sizes DN40 to DN200 at pressures from 0.6 to 32 MPa.',
+      'Non-bonded flexible composite pipe developed to replace medium-pressure steel in corrosive onshore oil and gas service — an inner lining layer, a high-strength fiber reinforcement layer, and a UV- and abrasion-resistant outer layer, each independently engineered.',
     iconKey: 'rtp-systems',
     order: 5,
   },
@@ -63,7 +69,7 @@ const SERVICES = [
     name: 'RTV Insulator Coating',
     shortDescription: 'IEC 62073 · High-Voltage Insulator Protection',
     longDescription:
-      'Room Temperature Vulcanising (RTV) silicone coating for high-voltage ceramic and glass insulators in polluted environments, meeting IEC 62073 and IEC 60815.',
+      'One-part, hydrophobic, UV-resistant Room Temperature Vulcanising (RTV) coating that prevents conductive-layer formation on ceramic and glass insulators in polluted environments — for AC and DC systems up to 1200 kV. Eliminates flashovers and scheduled insulator washing.',
     iconKey: 'rtv-insulator',
     order: 6,
   },
