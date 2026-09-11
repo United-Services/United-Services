@@ -441,14 +441,21 @@ export default function ClientSignup({ onNavigate, onSignup }: Props) {
                           overflow: "hidden",
                         }}
                       >
+                        {/* .step-bar-fill (globals.css) is the real
+                            scaleX(0)->scaleX(1) keyframe animation for the
+                            "just completed" case; the inline transform here
+                            is only the static base state for steps that are
+                            already done on render (no className, so no
+                            animation replay). */}
                         <div
                           className={done ? "step-bar-fill" : undefined}
                           style={{
                             height: "100%",
-                            width: done ? "100%" : "0%",
+                            width: "100%",
                             background: "#16A34A",
                             borderRadius: 9999,
-                            transition: "width 0.3s",
+                            transform: `scaleX(${done ? 1 : 0})`,
+                            transformOrigin: "left",
                           }}
                         />
                       </div>
