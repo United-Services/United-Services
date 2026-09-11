@@ -43,8 +43,19 @@ export default function Services({ onNavigate, initialServices }: Props) {
   // accordion (client direction: GRE is the flagship service, everything
   // else is secondary) — the same "Additional Services" split already
   // shipped on the homepage (views/Home.tsx).
+  // Public "Additional Services" catalog is an explicit allowlist, not
+  // "everything except GRE" — external-wrapping and hdpe-lining rows stay
+  // in the database (real client files/service requests are attached to
+  // them) but are intentionally no longer surfaced publicly.
+  const PUBLIC_ADDITIONAL_SERVICE_SLUGS = [
+    "industrial-coating",
+    "rtp-systems",
+    "rtv-insulator-coating",
+  ]
   const greService = services.find((s) => s.slug === "gre-tubular-lining")
-  const otherServices = services.filter((s) => s.slug !== "gre-tubular-lining")
+  const otherServices = services.filter((s) =>
+    PUBLIC_ADDITIONAL_SERVICE_SLUGS.includes(s.slug),
+  )
   const [loading, setLoading] = useState(initialServices === undefined)
   const skipNextFetch = useRef(initialServices !== undefined)
   const tCommon = useTranslations("common")
