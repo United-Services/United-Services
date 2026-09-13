@@ -67,6 +67,25 @@ export function authHeader(token: string | null) {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
+// Same reasoning as baseURL above, for the one browser-side socket.io
+// connection (ClientDashboard.tsx's live slot-availability updates):
+// production wants "" (relative — nginx proxies /socket.io/ same-origin,
+// and the namespace path alone resolves against the page's own origin),
+// but plain `npm run dev` has no nginx in front, so the socket must
+// target the backend's origin directly or every connection attempt
+// 404s against the frontend dev server instead of ever reaching the
+// gateway. Only the origin is needed here (not NEXT_PUBLIC_API_URL's
+// "/api/v1" path) since Socket.IO's default path (/socket.io) and this
+// app's namespaces live at the backend's root, not under /api/v1.
+export function socketOrigin(): string {
+  if (process.env.NODE_ENV === "production") return ""
+  try {
+    return new URL(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3002/api/v1").origin
+  } catch {
+    return "http://localhost:3002"
+  }
+}
+
 // Drives GlobalLoadingBar — every request through this instance increments
 // the counter, every settle (success or failure) decrements it, so no
 // caller has to opt in individually and a slow/hung page never *looks*
