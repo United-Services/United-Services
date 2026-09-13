@@ -7,6 +7,15 @@ import { check, sleep } from 'k6';
 // — every real client shares this exact shape of exposure — and the test
 // asserts the API starts responding 429 once the budget is exhausted.
 //
+// Deliberately targets /services, not /health: HealthController is
+// @SkipThrottle() (correct — health checks/load-balancer probes must
+// never be rate-limited), so a version of this test that hit /health
+// could never see a 429 regardless of whether the global limiter was
+// actually working. Confirmed live: running this against /health saw
+// 0/788 requests rejected over 70s — not proof the limiter was broken,
+// just proof this test was checking the one endpoint deliberately
+// exempted from it.
+//
 //   k6 run loadtest/rate-limit-enforcement.js
 //   k6 run -e BASE_URL=https://api.use-eg.com/api/v1 loadtest/rate-limit-enforcement.js
 
@@ -28,7 +37,7 @@ export const options = {
 };
 
 export default function () {
-  const res = http.get(`${BASE_URL}/health`);
+  const res = http.get(`${BASE_URL}/services`);
   check(
     res,
     { got_429_after_budget_exhausted: (r) => r.status === 429 },
