@@ -40,12 +40,487 @@ export interface Service {
   imageUrl: string | null
 }
 
+// GRE Liner — flagship service, non-collapsible, above the "Additional
+// Services" accordion. Deliberately light on copy: name + one line + spec
+// chips, no long paragraph, matching the homepage spotlight's minimal-text
+// treatment. Split out of Services() purely to keep that component's own
+// line count under Codacy's per-function limit.
+function UseLinerSpotlight({
+  greService,
+  onNavigate,
+  t,
+  tNav,
+}: {
+  greService: Service
+  onNavigate: (page: string) => void
+  t: ReturnType<typeof useTranslations>
+  tNav: ReturnType<typeof useTranslations>
+}) {
+  return (
+    <section style={{ background: INK, padding: "80px 28px" }}>
+      <div
+        className="responsive-card-grid reveal"
+        style={{
+          maxWidth: 1260,
+          margin: "0 auto",
+          display: "grid",
+          gridTemplateColumns: "1.1fr 1fr",
+          gap: 48,
+          alignItems: "center",
+        }}
+      >
+        <div>
+          <PublicTag>{t("flagship")}</PublicTag>
+          <h2
+            style={{
+              margin: "22px 0 0",
+              fontFamily: HEAD,
+              fontWeight: 700,
+              fontSize: "clamp(28px, 3.4vw, 44px)",
+              lineHeight: 1.08,
+              letterSpacing: "-0.01em",
+              color: "#fff",
+            }}
+          >
+            {greService.name}
+          </h2>
+          <p
+            style={{
+              margin: "14px 0 0",
+              fontSize: 15,
+              lineHeight: 1.6,
+              color: "rgba(255,255,255,0.8)",
+              maxWidth: 480,
+            }}
+          >
+            {greService.shortDescription}
+          </p>
+          {greService.longDescription && (
+            <p
+              style={{
+                margin: "14px 0 0",
+                fontSize: 14,
+                lineHeight: 1.75,
+                color: "rgba(255,255,255,0.65)",
+                maxWidth: 520,
+              }}
+            >
+              {greService.longDescription}
+            </p>
+          )}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 24 }}>
+            {greService.specs.map((sp) => (
+              <span
+                key={sp}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "#fff",
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  borderRadius: 6,
+                  padding: "5px 11px",
+                }}
+              >
+                {sp}
+              </span>
+            ))}
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "14px 24px",
+              marginTop: 28,
+              paddingTop: 24,
+              borderTop: "1px solid rgba(255,255,255,0.14)",
+              maxWidth: 520,
+            }}
+          >
+            {GRE_TECH_SPECS.map((row) => (
+              <div key={row.label}>
+                <div
+                  style={{
+                    fontSize: 10.5,
+                    fontWeight: 600,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    color: "rgba(255,255,255,0.45)",
+                  }}
+                >
+                  {row.label}
+                </div>
+                <div
+                  style={{
+                    fontSize: 13.5,
+                    fontWeight: 500,
+                    color: "#fff",
+                    marginTop: 3,
+                  }}
+                >
+                  {row.value}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 32 }}>
+            <button
+              onClick={() => onNavigate("client-login")}
+              style={{
+                background: LIME,
+                color: TEXT,
+                border: "none",
+                borderRadius: 9999,
+                padding: "12px 28px",
+                fontWeight: 600,
+                fontSize: 14,
+                cursor: "pointer",
+                fontFamily: BODY,
+              }}
+            >
+              {t("requestSpecFile")}
+            </button>
+            <button
+              onClick={() => onNavigate("contact")}
+              style={{
+                background: "transparent",
+                color: "#fff",
+                border: "1.5px solid rgba(255,255,255,0.35)",
+                borderRadius: 9999,
+                padding: "12px 28px",
+                fontWeight: 500,
+                fontSize: 14,
+                cursor: "pointer",
+                fontFamily: HEAD,
+              }}
+            >
+              {tNav("requestConsultation")}
+            </button>
+          </div>
+        </div>
+        {greService.imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element -- admin-uploaded S3 presigned URL
+          <img
+            src={greService.imageUrl}
+            alt={greService.name}
+            loading="lazy"
+            style={{
+              width: "100%",
+              aspectRatio: "4/3",
+              objectFit: "cover",
+              borderRadius: 20,
+            }}
+          />
+        )}
+      </div>
+    </section>
+  )
+}
+
+// One collapsible row in the "Additional Services" accordion — separated
+// from AdditionalServicesAccordion below purely to keep both functions'
+// line counts under Codacy's per-function limit, not because either is
+// reused elsewhere.
+function AccordionRow({
+  svc,
+  index,
+  isActive,
+  onToggle,
+  onNavigate,
+  t,
+  tNav,
+}: {
+  svc: Service
+  index: number
+  isActive: boolean
+  onToggle: () => void
+  onNavigate: (page: string) => void
+  t: ReturnType<typeof useTranslations>
+  tNav: ReturnType<typeof useTranslations>
+}) {
+  return (
+    <div
+      className="reveal"
+      style={{
+        border: "1px solid #E6E5E0",
+        borderRadius: 20,
+        overflow: "hidden",
+        transitionDelay: `${index * 0.06}s`,
+      }}
+    >
+      {}
+      <button
+        onClick={onToggle}
+        style={{
+          width: "100%",
+          background: isActive ? "rgba(216,255,62,0.18)" : "#fff",
+          border: "none",
+          cursor: "pointer",
+          padding: "28px 32px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 24,
+          fontFamily: BODY,
+          transition: "background 0.2s",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <div
+            style={{
+              fontFamily: "ui-monospace,monospace",
+              fontSize: 11,
+              color: isActive ? TEXT : MUTED,
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              flexShrink: 0,
+            }}
+          >
+            SVC-0{index + 1}
+          </div>
+          <div style={{ textAlign: "start" }}>
+            <div
+              style={{
+                fontFamily: HEAD,
+                fontSize: 18,
+                fontWeight: 600,
+                color: TEXT,
+              }}
+            >
+              {svc.name}
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                color: MUTED,
+                marginTop: 2,
+              }}
+            >
+              {svc.shortDescription}
+            </div>
+          </div>
+        </div>
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            background: isActive ? LIME : PAPER,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            transition: "background 0.2s",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 18,
+              color: TEXT,
+              lineHeight: 1,
+              transform: isActive ? "rotate(45deg)" : "none",
+              display: "inline-block",
+              transition: "transform 0.2s",
+            }}
+          >
+            +
+          </span>
+        </div>
+      </button>
+
+      {}
+      {isActive && (
+        <div
+          style={{
+            background: PAPER,
+            borderTop: "1px solid #E6E5E0",
+            padding: "36px 32px",
+          }}
+        >
+          <div
+            className="responsive-card-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 48,
+              alignItems: "start",
+            }}
+          >
+            <div>
+              {svc.imageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element -- admin-uploaded S3 presigned URL, not a static build-time asset next/image can optimize
+                <img
+                  src={svc.imageUrl}
+                  alt={svc.name}
+                  loading="lazy"
+                  style={{
+                    width: "100%",
+                    aspectRatio: "16/9",
+                    objectFit: "cover",
+                    borderRadius: 14,
+                    marginBottom: 24,
+                  }}
+                />
+              )}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {svc.specs.map((sp) => (
+                  <span
+                    key={sp}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: TEXT,
+                      background: "#fff",
+                      borderRadius: 6,
+                      padding: "4px 10px",
+                      border: "1px solid #E6E5E0",
+                    }}
+                  >
+                    {sp}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p
+                style={{
+                  fontSize: 15,
+                  color: MUTED,
+                  lineHeight: 1.8,
+                  marginBottom: 32,
+                }}
+              >
+                {svc.longDescription}
+              </p>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => onNavigate("client-login")}
+                  style={{
+                    background: LIME,
+                    color: TEXT,
+                    border: "none",
+                    borderRadius: 9999,
+                    padding: "11px 28px",
+                    fontWeight: 600,
+                    fontSize: 14,
+                    cursor: "pointer",
+                    fontFamily: BODY,
+                  }}
+                >
+                  {t("requestSpecFile")}
+                </button>
+                <button
+                  onClick={() => onNavigate("contact")}
+                  style={{
+                    background: TEXT,
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 9999,
+                    padding: "11px 28px",
+                    fontWeight: 500,
+                    fontSize: 14,
+                    cursor: "pointer",
+                    fontFamily: HEAD,
+                  }}
+                >
+                  {tNav("requestConsultation")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AdditionalServicesAccordion({
+  otherServices,
+  loading,
+  loadError,
+  setLoadError,
+  load,
+  onNavigate,
+  t,
+  tNav,
+  tCommon,
+}: {
+  otherServices: Service[]
+  loading: boolean
+  loadError: string | null
+  setLoadError: (msg: string | null) => void
+  load: () => void
+  onNavigate: (page: string) => void
+  t: ReturnType<typeof useTranslations>
+  tNav: ReturnType<typeof useTranslations>
+  tCommon: ReturnType<typeof useTranslations>
+}) {
+  const [active, setActive] = useState<number | null>(null)
+
+  return (
+    <section style={{ padding: "80px 28px" }}>
+      <div
+        style={{
+          maxWidth: 1260,
+          margin: "0 auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+        }}
+      >
+        <div style={{ marginBottom: 26 }}>
+          <PublicTag>{t("additional")}</PublicTag>
+        </div>
+        <ErrorBanner
+          message={loadError}
+          onDismiss={() => setLoadError(null)}
+          dismissLabel={tCommon("errors.dismiss")}
+          onRetry={load}
+          retryLabel={tCommon("errors.retry")}
+        />
+        {loading &&
+          Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              style={{
+                border: "1px solid #E6E5E0",
+                borderRadius: 20,
+                padding: 28,
+                marginBottom: 2,
+                display: "flex",
+                alignItems: "center",
+                gap: 20,
+              }}
+            >
+              <Skeleton height={48} width={48} radius={12} />
+              <div style={{ flex: 1 }}>
+                <Skeleton height={16} width="30%" style={{ marginBottom: 10 }} />
+                <Skeleton height={12} width="55%" />
+              </div>
+            </div>
+          ))}
+        {otherServices.map((svc, i) => (
+          <AccordionRow
+            key={svc.id}
+            svc={svc}
+            index={i}
+            isActive={active === i}
+            onToggle={() => setActive(active === i ? null : i)}
+            onNavigate={onNavigate}
+            t={t}
+            tNav={tNav}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
 export default function Services({ onNavigate, initialServices }: Props) {
   useReveal()
   const t = useTranslations("servicesPage")
   const tNav = useTranslations("nav")
   const locale = useLocale()
-  const [active, setActive] = useState<number | null>(null)
   const [services, setServices] = useState<Service[]>(initialServices ?? [])
   // GRE gets a dedicated, non-collapsible featured section above the
   // accordion (client direction: GRE is the flagship service, everything
@@ -83,7 +558,7 @@ export default function Services({ onNavigate, initialServices }: Props) {
       // silently blank — same unhandled-rejection shape as Careers.
       .catch((err) => setLoadError(getErrorMessage(err, loadFailedMsg)))
       .finally(() => setLoading(false))
-  }, [locale, loadFailedMsg])
+  }, [locale, loadFailedMsg, setLoadError])
 
   useEffect(() => {
     if (skipNextFetch.current) {
@@ -191,415 +666,21 @@ export default function Services({ onNavigate, initialServices }: Props) {
         </div>
       </section>
 
-      {/* GRE Liner — flagship service, non-collapsible, above the
-          "Additional Services" accordion. Deliberately light on copy:
-          name + one line + spec chips, no long paragraph, matching the
-          homepage spotlight's minimal-text treatment. */}
       {greService && (
-        <section style={{ background: INK, padding: "80px 28px" }}>
-          <div
-            className="responsive-card-grid reveal"
-            style={{
-              maxWidth: 1260,
-              margin: "0 auto",
-              display: "grid",
-              gridTemplateColumns: "1.1fr 1fr",
-              gap: 48,
-              alignItems: "center",
-            }}
-          >
-            <div>
-              <PublicTag>{t("flagship")}</PublicTag>
-              <h2
-                style={{
-                  margin: "22px 0 0",
-                  fontFamily: HEAD,
-                  fontWeight: 700,
-                  fontSize: "clamp(28px, 3.4vw, 44px)",
-                  lineHeight: 1.08,
-                  letterSpacing: "-0.01em",
-                  color: "#fff",
-                }}
-              >
-                {greService.name}
-              </h2>
-              <p
-                style={{
-                  margin: "14px 0 0",
-                  fontSize: 15,
-                  lineHeight: 1.6,
-                  color: "rgba(255,255,255,0.8)",
-                  maxWidth: 480,
-                }}
-              >
-                {greService.shortDescription}
-              </p>
-              {greService.longDescription && (
-                <p
-                  style={{
-                    margin: "14px 0 0",
-                    fontSize: 14,
-                    lineHeight: 1.75,
-                    color: "rgba(255,255,255,0.65)",
-                    maxWidth: 520,
-                  }}
-                >
-                  {greService.longDescription}
-                </p>
-              )}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 24 }}>
-                {greService.specs.map((sp) => (
-                  <span
-                    key={sp}
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: "#fff",
-                      background: "rgba(255,255,255,0.08)",
-                      border: "1px solid rgba(255,255,255,0.2)",
-                      borderRadius: 6,
-                      padding: "5px 11px",
-                    }}
-                  >
-                    {sp}
-                  </span>
-                ))}
-              </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "14px 24px",
-                  marginTop: 28,
-                  paddingTop: 24,
-                  borderTop: "1px solid rgba(255,255,255,0.14)",
-                  maxWidth: 520,
-                }}
-              >
-                {GRE_TECH_SPECS.map((row) => (
-                  <div key={row.label}>
-                    <div
-                      style={{
-                        fontSize: 10.5,
-                        fontWeight: 600,
-                        letterSpacing: "0.06em",
-                        textTransform: "uppercase",
-                        color: "rgba(255,255,255,0.45)",
-                      }}
-                    >
-                      {row.label}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 13.5,
-                        fontWeight: 500,
-                        color: "#fff",
-                        marginTop: 3,
-                      }}
-                    >
-                      {row.value}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 32 }}>
-                <button
-                  onClick={() => onNavigate("client-login")}
-                  style={{
-                    background: LIME,
-                    color: TEXT,
-                    border: "none",
-                    borderRadius: 9999,
-                    padding: "12px 28px",
-                    fontWeight: 600,
-                    fontSize: 14,
-                    cursor: "pointer",
-                    fontFamily: BODY,
-                  }}
-                >
-                  {t("requestSpecFile")}
-                </button>
-                <button
-                  onClick={() => onNavigate("contact")}
-                  style={{
-                    background: "transparent",
-                    color: "#fff",
-                    border: "1.5px solid rgba(255,255,255,0.35)",
-                    borderRadius: 9999,
-                    padding: "12px 28px",
-                    fontWeight: 500,
-                    fontSize: 14,
-                    cursor: "pointer",
-                    fontFamily: HEAD,
-                  }}
-                >
-                  {tNav("requestConsultation")}
-                </button>
-              </div>
-            </div>
-            {greService.imageUrl && (
-              // eslint-disable-next-line @next/next/no-img-element -- admin-uploaded S3 presigned URL
-              <img
-                src={greService.imageUrl}
-                alt={greService.name}
-                loading="lazy"
-                style={{
-                  width: "100%",
-                  aspectRatio: "4/3",
-                  objectFit: "cover",
-                  borderRadius: 20,
-                }}
-              />
-            )}
-          </div>
-        </section>
+        <UseLinerSpotlight greService={greService} onNavigate={onNavigate} t={t} tNav={tNav} />
       )}
 
-      {}
-      <section style={{ padding: "80px 28px" }}>
-        <div
-          style={{
-            maxWidth: 1260,
-            margin: "0 auto",
-            display: "flex",
-            flexDirection: "column",
-            gap: 2,
-          }}
-        >
-          <div style={{ marginBottom: 26 }}>
-            <PublicTag>{t("additional")}</PublicTag>
-          </div>
-          <ErrorBanner
-            message={loadError}
-            onDismiss={() => setLoadError(null)}
-            dismissLabel={tCommon("errors.dismiss")}
-            onRetry={load}
-            retryLabel={tCommon("errors.retry")}
-          />
-          {loading &&
-            Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                style={{
-                  border: "1px solid #E6E5E0",
-                  borderRadius: 20,
-                  padding: 28,
-                  marginBottom: 2,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 20,
-                }}
-              >
-                <Skeleton height={48} width={48} radius={12} />
-                <div style={{ flex: 1 }}>
-                  <Skeleton height={16} width="30%" style={{ marginBottom: 10 }} />
-                  <Skeleton height={12} width="55%" />
-                </div>
-              </div>
-            ))}
-          {otherServices.map((svc, i) => (
-            <div
-              key={svc.id}
-              className="reveal"
-              style={{
-                border: "1px solid #E6E5E0",
-                borderRadius: 20,
-                overflow: "hidden",
-                transitionDelay: `${i * 0.06}s`,
-              }}
-            >
-              {}
-              <button
-                onClick={() => setActive(active === i ? null : i)}
-                style={{
-                  width: "100%",
-                  background: active === i ? "rgba(216,255,62,0.18)" : "#fff",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: "28px 32px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 24,
-                  fontFamily: BODY,
-                  transition: "background 0.2s",
-                }}
-              >
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: 20 }}
-                >
-                  <div
-                    style={{
-                      fontFamily: "ui-monospace,monospace",
-                      fontSize: 11,
-                      color: active === i ? TEXT : MUTED,
-                      fontWeight: 700,
-                      letterSpacing: "0.1em",
-                      flexShrink: 0,
-                    }}
-                  >
-                    SVC-0{i + 1}
-                  </div>
-                  <div style={{ textAlign: "start" }}>
-                    <div
-                      style={{
-                        fontFamily: HEAD,
-                        fontSize: 18,
-                        fontWeight: 600,
-                        color: TEXT,
-                      }}
-                    >
-                      {svc.name}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: MUTED,
-                        marginTop: 2,
-                      }}
-                    >
-                      {svc.shortDescription}
-                    </div>
-                  </div>
-                </div>
-                <div
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: "50%",
-                    background: active === i ? LIME : PAPER,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                    transition: "background 0.2s",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: 18,
-                      color: TEXT,
-                      lineHeight: 1,
-                      transform: active === i ? "rotate(45deg)" : "none",
-                      display: "inline-block",
-                      transition: "transform 0.2s",
-                    }}
-                  >
-                    +
-                  </span>
-                </div>
-              </button>
-
-              {}
-              {active === i && (
-                <div
-                  style={{
-                    background: PAPER,
-                    borderTop: "1px solid #E6E5E0",
-                    padding: "36px 32px",
-                  }}
-                >
-                  <div
-                    className="responsive-card-grid"
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: 48,
-                      alignItems: "start",
-                    }}
-                  >
-                    <div>
-                      {svc.imageUrl && (
-                        // eslint-disable-next-line @next/next/no-img-element -- admin-uploaded S3 presigned URL, not a static build-time asset next/image can optimize
-                        <img
-                          src={svc.imageUrl}
-                          alt={svc.name}
-                          loading="lazy"
-                          style={{
-                            width: "100%",
-                            aspectRatio: "16/9",
-                            objectFit: "cover",
-                            borderRadius: 14,
-                            marginBottom: 24,
-                          }}
-                        />
-                      )}
-                      <div
-                        style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
-                      >
-                        {svc.specs.map((sp) => (
-                          <span
-                            key={sp}
-                            style={{
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: TEXT,
-                              background: "#fff",
-                              borderRadius: 6,
-                              padding: "4px 10px",
-                              border: "1px solid #E6E5E0",
-                            }}
-                          >
-                            {sp}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <p
-                        style={{
-                          fontSize: 15,
-                          color: MUTED,
-                          lineHeight: 1.8,
-                          marginBottom: 32,
-                        }}
-                      >
-                        {svc.longDescription}
-                      </p>
-                      <div
-                        style={{ display: "flex", gap: 12, flexWrap: "wrap" }}
-                      >
-                        <button
-                          onClick={() => onNavigate("client-login")}
-                          style={{
-                            background: LIME,
-                            color: TEXT,
-                            border: "none",
-                            borderRadius: 9999,
-                            padding: "11px 28px",
-                            fontWeight: 600,
-                            fontSize: 14,
-                            cursor: "pointer",
-                            fontFamily: BODY,
-                          }}
-                        >
-                          {t("requestSpecFile")}
-                        </button>
-                        <button
-                          onClick={() => onNavigate("contact")}
-                          style={{
-                            background: TEXT,
-                            color: "#fff",
-                            border: "none",
-                            borderRadius: 9999,
-                            padding: "11px 28px",
-                            fontWeight: 500,
-                            fontSize: 14,
-                            cursor: "pointer",
-                            fontFamily: HEAD,
-                          }}
-                        >
-                          {tNav("requestConsultation")}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
+      <AdditionalServicesAccordion
+        otherServices={otherServices}
+        loading={loading}
+        loadError={loadError}
+        setLoadError={setLoadError}
+        load={load}
+        onNavigate={onNavigate}
+        t={t}
+        tNav={tNav}
+        tCommon={tCommon}
+      />
 
       <PublicFooter onNavigate={onNavigate} />
     </div>
