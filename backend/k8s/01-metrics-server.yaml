@@ -1,0 +1,133 @@
+# metrics-server — the HPA's CPU/memory percentages (30-backend-hpa.yaml)
+# come from this, not from Prometheus. Docker Desktop's Kubernetes does
+# not ship it by default; a real managed cluster (EKS/GKE/AKS) usually
+# does, in which case skip this file entirely.
+#
+# This is the standard upstream manifest
+# (https://github.com/kubernetes-sigs/metrics-server) with exactly one
+# local-cluster patch added: `--kubelet-insecure-tls`. Docker Desktop's
+# kind-based node serves kubelet metrics over a self-signed certificate
+# metrics-server doesn't trust by default — without this flag, every
+# real cluster's metrics-server config is otherwise identical, so this
+# flag is the one thing to REMOVE again if this file is ever pointed at
+# a real cloud cluster with properly-signed kubelet certs.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: metrics-server
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system:metrics-server
+rules:
+  - apiGroups: [""]
+    resources: ["nodes/metrics"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: system:metrics-server
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:metrics-server
+subjects:
+  - kind: ServiceAccount
+    name: metrics-server
+    namespace: kube-system
+---
+# The two bindings below are part of the standard upstream manifest and
+# were missed when this file was trimmed down — without them,
+# metrics-server panics on startup trying to read the
+# extension-apiserver-authentication ConfigMap it needs for the
+# aggregated-API TLS handshake with the main API server (real error seen
+# live: "configmaps ... is forbidden ... cannot get resource
+# \"configmaps\""). system:auth-delegator lets it delegate auth checks to
+# the API server; the RoleBinding grants read access to that specific
+# ConfigMap.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: metrics-server:system:auth-delegator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - kind: ServiceAccount
+    name: metrics-server
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: metrics-server-auth-reader
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+  - kind: ServiceAccount
+    name: metrics-server
+    namespace: kube-system
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1beta1.metrics.k8s.io
+spec:
+  service:
+    name: metrics-server
+    namespace: kube-system
+  group: metrics.k8s.io
+  version: v1beta1
+  insecureSkipTLSVerify: true
+  groupPriorityMinimum: 100
+  versionPriority: 100
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metrics-server
+  namespace: kube-system
+spec:
+  selector: { k8s-app: metrics-server }
+  ports: [{ port: 443, targetPort: https }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-server
+  namespace: kube-system
+  labels: { k8s-app: metrics-server }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { k8s-app: metrics-server }
+  template:
+    metadata:
+      labels: { k8s-app: metrics-server }
+    spec:
+      serviceAccountName: metrics-server
+      containers:
+        - name: metrics-server
+          image: registry.k8s.io/metrics-server/metrics-server:v0.7.2
+          args:
+            - --cert-dir=/tmp
+            - --secure-port=4443
+            - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+            - --kubelet-use-node-status-port
+            - --metric-resolution=15s
+            # See file header comment — the one local-cluster-only patch.
+            - --kubelet-insecure-tls
+          ports: [{ name: https, containerPort: 4443, protocol: TCP }]
+          readinessProbe:
+            httpGet: { path: /readyz, port: https, scheme: HTTPS }
+            periodSeconds: 10

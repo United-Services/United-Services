@@ -1,0 +1,42 @@
+# Local standby Redis — same role as docker-compose.yml's `redis`
+# service (FailoverService's Redis fallback target). A plain Deployment,
+# not a StatefulSet: this is a cache/queue-storage standby, not a
+# durable primary — losing it and starting fresh is an acceptable
+# failure mode (BullMQ jobs and rate-limit counters, not irreplaceable
+# data), unlike Postgres above.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: use-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: redis }
+  template:
+    metadata:
+      labels: { app: redis }
+    spec:
+      containers:
+        - name: redis
+          image: redis:7
+          args: ["redis-server", "--requirepass", "$(BACKEND_REDIS_PASSWORD)"]
+          env:
+            - name: BACKEND_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: backend-secrets, key: BACKEND_REDIS_PASSWORD }
+          ports: [{ containerPort: 6379 }]
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "redis-cli -a \"$BACKEND_REDIS_PASSWORD\" ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: use-backend
+spec:
+  selector: { app: redis }
+  ports: [{ port: 6379, targetPort: 6379 }]

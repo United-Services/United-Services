@@ -1,0 +1,56 @@
+# Local standby Postgres — the same role docker-compose.yml's `postgres`
+# service plays: a continuously-mirrored failover target
+# (DbMirrorSyncWorker), never the primary. The real primary stays
+# Supabase, reached over the internet the same way it is today; this
+# only exists in-cluster so FailoverService has something to fail over
+# to. A single-replica StatefulSet (not a Deployment) because it owns a
+# PersistentVolumeClaim — a Postgres data directory must never be shared
+# across concurrent pods, which a Deployment's rolling-update strategy
+# doesn't guarantee against.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: use-backend
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels: { app: postgres }
+  template:
+    metadata:
+      labels: { app: postgres }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports: [{ containerPort: 5432 }]
+          env:
+            - name: POSTGRES_USER
+              value: united_services
+            - name: POSTGRES_DB
+              value: united_services
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: backend-secrets, key: BACKEND_POSTGRES_PASSWORD }
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "united_services"] }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources: { requests: { storage: 2Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: use-backend
+spec:
+  selector: { app: postgres }
+  ports: [{ port: 5432, targetPort: 5432 }]

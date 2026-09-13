@@ -1,0 +1,80 @@
+# The actual "replicate on demand when traffic is high, scale back down
+# when it's low" mechanism. This is a standard Kubernetes
+# HorizontalPodAutoscaler — no custom control loop needed, which is
+# exactly the "no orchestrator to act on the 70% alert" gap
+# backend/prometheus/README.md called out. Once this is applied, that
+# gap is closed for the API-replica-count layer specifically (the
+# README's caveats about database sharding still apply unchanged — this
+# scales stateless backend pods, not Postgres).
+#
+# Requires metrics-server running in the cluster (Docker Desktop's
+# Kubernetes does not ship it by default — see k8s/README.md for the
+# one-time install). Without it, `kubectl get hpa` shows
+# TARGETS: <unknown>/70% forever and no scaling ever happens — that's
+# the #1 cause of "my HPA doesn't do anything."
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend
+  namespace: use-backend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend
+  # minReplicas is the "closed when traffic is less" floor — 1, not 0.
+  # Standard HPA cannot scale below 1 (an always-on API needs at least
+  # one pod ready to serve the very next request; scaling to true zero
+  # needs a request-triggered activator, which is what KEDA/Knative add
+  # — a bigger, separate piece, not something to bolt on silently here).
+  # At idle this sits at exactly 1 replica — the same footprint as
+  # today's single-instance deployment, so "on demand" scaling adds
+  # nothing extra to run when traffic is normal.
+  minReplicas: 1
+  # Provisional, same caveat as the 70% threshold itself in
+  # prometheus/README.md: chosen as a safe starting ceiling, not
+  # validated against this app's real traffic yet. Revisit once the
+  # Grafana dashboard has real data on what peak concurrent load
+  # actually looks like.
+  maxReplicas: 5
+  # CPU only, deliberately — memory was tried and removed after a live
+  # test: this is a Node/V8 process, and V8's RSS footprint sits at
+  # ~180-215Mi from GC/heap overhead alone, before serving any traffic,
+  # and doesn't reliably shrink back down after a load spike passes (V8's
+  # GC returns memory to its own heap, not to the OS, on its own
+  # schedule — not in lockstep with current request volume). Using it as
+  # an HPA signal caused the live test to climb to maxReplicas and get
+  # stuck there even at zero traffic, because idle usage alone already
+  # read as "70%+ utilized." CPU tracks actual request load cleanly (7%
+  # idle vs. 218% under generated load in the same test) and is the
+  # right signal for a request/response API like this one.
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }
+  behavior:
+    # Scale UP fast: traffic that's already crossed 70% needs capacity
+    # now, not after a long deliberation window. 60s stabilization
+    # (shortest Kubernetes allows meaningfully) plus "add up to 100% more
+    # pods per 60s" — doubling capacity per minute under sustained load
+    # without one single spike overreacting to a full maxReplicas jump.
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+    # Scale DOWN slow: this is what makes "closed when traffic is less"
+    # safe rather than flappy. A full 5-minute window of sustained
+    # lower load before removing any capacity — the same "don't react to
+    # a single low reading" reasoning as the 70% alert's own `for: 3m`
+    # in prometheus/alerts/high-load.rules.yml, just applied to the
+    # scale-down direction where flapping (repeatedly adding and
+    # removing pods) is the failure mode to avoid, not a missed alert.
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120

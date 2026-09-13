@@ -1,0 +1,30 @@
+# Non-secret env — same values docker-compose.yml's `backend` service
+# hardcodes for the same reason: fixed by this cluster's own topology
+# (the port this app listens on, the two paths its volumes mount into),
+# not environment-specific, so these stay in a plain ConfigMap rather
+# than round-tripping through SSM or a Secret.
+#
+# LOCAL_DATABASE_URL/LOCAL_REDIS_URL are deliberately NOT here even
+# though they're topology, not secrets, per se — both embed the
+# in-cluster Postgres/Redis passwords, so they live in
+# 21-backend-secret.example.yaml instead (see that file's own comment).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: use-backend
+data:
+  PORT: "3002"
+  KEK_KEYS_DIR: "/app/secrets/kek"
+  GEOIP_MAXMIND_DB_DIR: "/app/geoip-db"
+  # Required for horizontal scaling to be safe at all: with multiple
+  # backend replicas, each pod's local KEK key file storage is ephemeral
+  # (see 22-backend-deployment.yaml's volumes) — a pod that doesn't
+  # already have a given key locally (a freshly-scheduled replica, or
+  # one that scaled back up after scaling to zero) restores it from SSM
+  # instead of generating its own, which would leave it unable to
+  # decrypt credentials another replica sealed. See
+  # KekKeyStore.readOrRestoreKeyFile's own comment: "a fresh volume, a
+  # new host, or a key another replica generated" is precisely this
+  # scenario.
+  KEK_SSM_BACKUP_ENABLED: "true"
