@@ -1,0 +1,82 @@
+# The backend app itself. `replicas: 1` here is just the manifest's
+# static starting point — 30-backend-hpa.yaml's HorizontalPodAutoscaler
+# takes over managing this field the moment it's applied, scaling it up
+# under load and back down to `minReplicas` once load subsides. Never
+# hand-edit `replicas` on this Deployment after the HPA is applied; it
+# will just overwrite a manual change on its next reconcile.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: use-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: backend }
+  template:
+    metadata:
+      labels: { app: backend }
+    spec:
+      containers:
+        - name: backend
+          # Build+push via docker-publish.yml (see docker-compose.yml's
+          # own comment on the image:+build: contract) — for local
+          # smoke-testing against Docker Desktop's Kubernetes, build and
+          # load a local image instead (see k8s/README.md).
+          image: ghcr.io/alioskillers/united-services-backend:latest
+          ports: [{ containerPort: 3002 }]
+          envFrom:
+            - configMapRef: { name: backend-config }
+            - secretRef: { name: backend-secrets }
+          # Required for the HPA's CPU-utilization target to mean
+          # anything at all — "70% CPU" is 70% of `requests.cpu`, not of
+          # the node's total capacity. Without a request set, the
+          # metrics-server API reports a real usage number but the HPA
+          # has no denominator to compute a percentage against and
+          # simply never scales. Limits guard against one runaway pod
+          # starving its neighbors on the same node.
+          #
+          # memory request measured live at idle (no traffic): ~180-215Mi
+          # RSS just from Node/V8 baseline overhead, before this pod
+          # serves a single request. 300Mi leaves real headroom above
+          # that idle floor — see 30-backend-hpa.yaml's comment on why
+          # memory isn't used as an HPA scaling signal despite the
+          # request being sized correctly here.
+          resources:
+            requests: { cpu: "250m", memory: "300Mi" }
+            limits: { cpu: "1", memory: "512Mi" }
+          # /health is @Public()+@SkipThrottle() specifically so a
+          # probe polling it constantly is never mistaken for abusive
+          # traffic (see that controller's own comment) — the same
+          # property that makes it the correct liveness/readiness
+          # target here.
+          readinessProbe:
+            httpGet: { path: /api/v1/health, port: 3002 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /api/v1/health, port: 3002 }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          volumeMounts:
+            - { name: kek-keys, mountPath: /app/secrets/kek }
+            - { name: geoip-db, mountPath: /app/geoip-db }
+      volumes:
+        # emptyDir, deliberately NOT a PersistentVolumeClaim — a shared
+        # ReadWriteOnce PVC can only be mounted read-write by pods on one
+        # node at a time, which breaks the moment the HPA schedules a
+        # second replica onto a different node. Both paths are safe as
+        # ephemeral per-pod storage instead:
+        #   - kek-keys: KEK_SSM_BACKUP_ENABLED=true (20-backend-
+        #     configmap.yaml) means a pod with no local copy of a given
+        #     key restores it from SSM on first use instead of
+        #     generating its own — see KekKeyStore.readOrRestoreKeyFile.
+        #   - geoip-db: docker-entrypoint.sh already re-downloads this
+        #     idempotently on every container start regardless (see
+        #     docker-compose.yml's comment on this same path) — a fresh
+        #     empty directory per pod is exactly what that logic already
+        #     expects.
+        - name: kek-keys
+          emptyDir: {}
+        - name: geoip-db
+          emptyDir: {}
