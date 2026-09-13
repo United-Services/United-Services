@@ -7,13 +7,21 @@ import ErrorBanner from "../components/ErrorBanner"
 import { useReveal } from "../hooks/useReveal"
 import { axios } from "../lib/api"
 import { getErrorMessage } from "../lib/errors"
-import { LAYER_KEYS, LAYER_STYLE } from "../lib/pipelineLayers"
 import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY, PublicTag } from "../lib/publicTheme"
-import dynamic from "next/dynamic"
-// See views/About.tsx for why this is dynamic — same heavy, WebGL-only,
-// purely decorative dependency.
-const PipeCrossSection3D = dynamic(() => import("../components/three/PipeCrossSection3D"), { ssr: false })
 import { Skeleton } from "../components/Skeleton"
+
+// Real USE Liner® material/performance data (client-supplied GRE product
+// brochure) — fixed facts about the product itself, kept separate from
+// `Service.specs` (the short admin-editable pill badges) since these are
+// standing engineering specifications, not marketing copy.
+const GRE_TECH_SPECS = [
+  { label: "Liner Material", value: "Glass Reinforced Epoxy (GRE)" },
+  { label: "Resin System", value: "Amine-Cured Epoxy" },
+  { label: "Compression Ring", value: "Reinforced Nitrile Rubber" },
+  { label: "Flow Coefficient", value: "Hazen-Williams 150" },
+  { label: "Connections Supported", value: "T&C and Flush Joint (FJ)" },
+  { label: "Warranty", value: "12-Month Product Replacement" },
+] as const
 
 interface Props {
   onNavigate: (page: string) => void
@@ -94,44 +102,8 @@ export default function Services({ onNavigate, initialServices }: Props) {
       {}
       <section
         style={{
-          paddingTop: 68,
-          background: INK,
-          padding: "120px 28px 80px",
-        }}
-      >
-        <div style={{ maxWidth: 1260, margin: "0 auto" }}>
-          <h1
-            style={{
-              fontFamily: HEAD,
-              fontSize: "clamp(36px, 5vw, 64px)",
-              fontWeight: 700,
-              color: "#fff",
-              letterSpacing: "-0.02em",
-              marginBottom: 20,
-              maxWidth: 700,
-            }}
-          >
-            {t("title")}
-          </h1>
-          <p
-            style={{
-              fontSize: 17,
-              color: "#A9A9A9",
-              maxWidth: 540,
-              lineHeight: 1.7,
-            }}
-          >
-            {t("subtitle")}
-          </p>
-        </div>
-      </section>
-
-      {}
-      <section
-        style={{
           background: "#fff",
-          padding: "72px 28px",
-          borderBottom: "1px solid #E6E5E0",
+          padding: "88px 28px 64px",
         }}
       >
         <div
@@ -140,110 +112,81 @@ export default function Services({ onNavigate, initialServices }: Props) {
             maxWidth: 1260,
             margin: "0 auto",
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 72,
+            gridTemplateColumns: "1.3fr 1fr",
+            gap: 48,
             alignItems: "center",
           }}
         >
-          <div className="reveal-left">
-            <h2
+          <div>
+            <PublicTag>{t("eyebrow")}</PublicTag>
+            <h1
               style={{
                 fontFamily: HEAD,
-                fontSize: 32,
-                fontWeight: 600,
+                fontSize: "clamp(36px, 5vw, 64px)",
+                fontWeight: 700,
                 color: TEXT,
-                marginBottom: 12,
-                letterSpacing: "-0.01em",
+                letterSpacing: "-0.02em",
+                margin: "20px 0 20px",
+                maxWidth: 700,
               }}
             >
-              {t("diagram.title")}
-            </h2>
+              {t("title")}
+            </h1>
             <p
               style={{
-                fontSize: 14,
+                fontSize: 17,
                 color: MUTED,
+                maxWidth: 540,
                 lineHeight: 1.7,
-                marginBottom: 32,
               }}
             >
-              {t("diagram.body")}
+              {t("subtitle")}
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {LAYER_KEYS.map((key, i) => (
+          </div>
+          {(greService || otherServices.length > 0) && (
+            <div
+              style={{
+                border: "1px solid #E6E5E0",
+                borderRadius: 20,
+                padding: "8px 24px",
+              }}
+            >
+              {[...(greService ? [greService] : []), ...otherServices].map((svc, i, arr) => (
                 <div
-                  key={key}
+                  key={svc.id}
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 12,
-                    animation: `layerSlide 0.4s ease ${i * 0.1}s both`,
+                    gap: 16,
+                    padding: "16px 0",
+                    borderBottom: i < arr.length - 1 ? "1px solid #E6E5E0" : "none",
                   }}
                 >
-                  <div
-                    style={{
-                      width: 12,
-                      height: 12,
-                      borderRadius: 3,
-                      background: LAYER_STYLE[key].color,
-                      flexShrink: 0,
-                    }}
-                  />
                   <span
                     style={{
-                      fontSize: 13,
-                      color: TEXT,
-                      fontWeight: 500,
+                      fontFamily: "ui-monospace,monospace",
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      color: MUTED,
+                      flexShrink: 0,
                     }}
                   >
-                    {t(`diagram.layers.${key}.label` as any)}
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: HEAD,
+                      fontSize: 15,
+                      fontWeight: 600,
+                      color: TEXT,
+                    }}
+                  >
+                    {svc.name}
                   </span>
                 </div>
               ))}
             </div>
-          </div>
-          <div
-            className="reveal-right"
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 6,
-              justifyContent: "center",
-            }}
-          >
-            <div style={{ position: "relative", height: 220, marginBottom: 12 }}>
-              <PipeCrossSection3D />
-            </div>
-            {LAYER_KEYS.map((key) => (
-              <div
-                key={key}
-                style={{ display: "flex", alignItems: "center", gap: 8 }}
-              >
-                <div
-                  style={{
-                    height: 36,
-                    background: LAYER_STYLE[key].color,
-                    borderRadius: 6,
-                    width: LAYER_STYLE[key].width,
-                    display: "flex",
-                    alignItems: "center",
-                    paddingInlineStart: 12,
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: LAYER_STYLE[key].label,
-                      fontWeight: 700,
-                      letterSpacing: "0.06em",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {t(`diagram.layers.${key}.short` as any)}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+          )}
         </div>
       </section>
 
@@ -290,6 +233,19 @@ export default function Services({ onNavigate, initialServices }: Props) {
               >
                 {greService.shortDescription}
               </p>
+              {greService.longDescription && (
+                <p
+                  style={{
+                    margin: "14px 0 0",
+                    fontSize: 14,
+                    lineHeight: 1.75,
+                    color: "rgba(255,255,255,0.65)",
+                    maxWidth: 520,
+                  }}
+                >
+                  {greService.longDescription}
+                </p>
+              )}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 24 }}>
                 {greService.specs.map((sp) => (
                   <span
@@ -306,6 +262,43 @@ export default function Services({ onNavigate, initialServices }: Props) {
                   >
                     {sp}
                   </span>
+                ))}
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "14px 24px",
+                  marginTop: 28,
+                  paddingTop: 24,
+                  borderTop: "1px solid rgba(255,255,255,0.14)",
+                  maxWidth: 520,
+                }}
+              >
+                {GRE_TECH_SPECS.map((row) => (
+                  <div key={row.label}>
+                    <div
+                      style={{
+                        fontSize: 10.5,
+                        fontWeight: 600,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: "rgba(255,255,255,0.45)",
+                      }}
+                    >
+                      {row.label}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 13.5,
+                        fontWeight: 500,
+                        color: "#fff",
+                        marginTop: 3,
+                      }}
+                    >
+                      {row.value}
+                    </div>
+                  </div>
                 ))}
               </div>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 32 }}>
