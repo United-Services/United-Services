@@ -18,7 +18,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { ADMIN_ROLES } from '../common/constants/admin-roles';
 import { extractIp } from '../common/utils/extract-ip';
 import { TrackEventDto } from './dto/track-event.dto';
-import { Role, FileAccessStatus } from '../generated/prisma';
+import { Role, FileAccessStatus, type Prisma } from '../generated/prisma';
 import {
   AnalyticsEventType,
   AnalyticsEventTypePrefix,
@@ -87,21 +87,55 @@ export class AnalyticsController {
   // pooler connection per request. The response goes out the instant the
   // job is queued; the actual DB write happens on the worker's own
   // bounded schedule.
+  //
+  // A Redis outage must degrade this to "writes straight to Postgres
+  // again, briefly" — same safeCacheGet/safeCacheSet convention as
+  // overview()/geoOverview() below — never a 500 on a public,
+  // unauthenticated, fire-and-forget endpoint. Falling back to the
+  // original direct write (rather than just dropping the event) means no
+  // analytics data is lost during a Redis blip, only the pooler
+  // protection is briefly unavailable — an acceptable trade since a
+  // Redis outage is by definition rare and short (FailoverService fails
+  // Redis over to the local standby after 3 consecutive failed checks).
   @Public()
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Post('track')
   async track(@Body() dto: TrackEventDto, @Req() req: Request) {
     const country = this.geo.countryForIp(extractIp(req));
-    await this.writeQueue.add(
-      dto.eventType,
-      { eventType: dto.eventType, metadata: dto.metadata, country },
-      {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 5_000 },
-        removeOnComplete: { age: 3600 },
-        removeOnFail: { age: 86_400 },
-      },
-    );
+    try {
+      await this.writeQueue.add(
+        dto.eventType,
+        { eventType: dto.eventType, metadata: dto.metadata, country },
+        {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 5_000 },
+          removeOnComplete: { age: 3600 },
+          removeOnFail: { age: 86_400 },
+        },
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Failed to enqueue analytics event, falling back to a direct write: ${err}`,
+      );
+      try {
+        await this.prisma.analyticsEvent.create({
+          data: {
+            eventType: dto.eventType,
+            metadata: dto.metadata as unknown as Prisma.InputJsonValue,
+            country,
+          },
+        });
+      } catch (fallbackErr) {
+        // Neither Redis nor Postgres is reachable — analytics is
+        // explicitly best-effort (see class comment), so this drops the
+        // event rather than 500ing a public, unauthenticated endpoint
+        // over a non-critical write. Logged so the outage is visible in
+        // Betterstack even though the request itself succeeds.
+        this.logger.error(
+          `Analytics event lost — both queue enqueue and direct write failed: ${fallbackErr}`,
+        );
+      }
+    }
     return { received: true };
   }
 
