@@ -19,21 +19,31 @@ import { increment, decrement } from "./loadingBar"
 // doesn't exist in the browser.
 //
 // The browser branch deliberately does NOT use NEXT_PUBLIC_API_URL's
-// absolute host — nginx proxies both the frontend and /api/ under one
-// origin, so hardcoding a host (baked in at build time) breaks the
-// moment the page is loaded from anywhere else: a LAN IP, a different
-// port, a real domain. A request to the build-time host is then
-// cross-origin from wherever the browser actually is, which the CSP's
-// connect-src 'self' (scoped to the page's real origin) rejects outright
-// — confirmed live: every browser-side API call broke this way when the
-// app was opened via its LAN IP instead of localhost. A relative path
-// (just NEXT_PUBLIC_API_URL's pathname, e.g. "/api/v1") always resolves
-// against whatever origin the page actually loaded from, so it's
-// automatically same-origin and CSP-safe everywhere.
+// absolute host IN PRODUCTION — nginx proxies both the frontend and
+// /api/ under one origin there, so hardcoding a host (baked in at build
+// time) breaks the moment the page is loaded from anywhere else: a LAN
+// IP, a different port, a real domain. A request to the build-time host
+// is then cross-origin from wherever the browser actually is, which the
+// CSP's connect-src 'self' (scoped to the page's real origin) rejects
+// outright — confirmed live: every browser-side API call broke this way
+// when the app was opened via its LAN IP instead of localhost. A
+// relative path (just NEXT_PUBLIC_API_URL's pathname, e.g. "/api/v1")
+// always resolves against whatever origin the page actually loaded
+// from, so it's automatically same-origin and CSP-safe everywhere.
+//
+// In development, though, `npm run dev` (per frontend/AGENTS.md) runs
+// the frontend alone on :3000 with no nginx in front — a relative
+// "/api/v1" then resolves against the frontend's own dev server, which
+// has no such route and 404s on every API call (analytics/track,
+// geo/locale, services, ...). proxy.ts's CSP already carves out this
+// same dev-only exception for connect-src (`isDev ? "http://localhost:3002" : ""`);
+// mirror it here so the browser actually calls the backend directly.
 const baseURL =
   typeof window === "undefined"
     ? (process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL)
-    : new URL(process.env.NEXT_PUBLIC_API_URL ?? "/api/v1", "http://placeholder").pathname
+    : process.env.NODE_ENV !== "production"
+      ? (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3002/api/v1")
+      : new URL(process.env.NEXT_PUBLIC_API_URL ?? "/api/v1", "http://placeholder").pathname
 
 // Every backend call goes through this instance — no raw fetch. In the
 // browser, withCredentials carries the Clerk session cookie once the
