@@ -23,29 +23,14 @@ const SERVICES = [
     order: 1,
   },
   {
-    slug: 'external-wrapping',
-    name: 'External Wrapping',
-    shortDescription: 'ISO 21809 · Multi-Layer Tape Systems',
-    longDescription:
-      'Multi-layer cold-applied and heat-shrink tape systems for external pipeline protection against soil corrosion, mechanical damage, and UV degradation. USE external wrap systems are qualified to ISO 21809-3 and DIN 30672 for onshore buried pipelines and subsea risers across Egypt, Iraq, KSA, and UAE.',
-    iconKey: 'external-wrapping',
-    order: 2,
-  },
-  {
     slug: 'industrial-coating',
     name: 'Internal & External Coating',
     shortDescription: 'HB Liquid Phenolic Novolac Epoxy · Corrosion Protection',
     longDescription:
       "USE's internal and external pipe coating systems protect inner casing, tubing, ESP equipment, control lines, elbows, tees, and outer conductors against corrosion in new and brown wells. Applied at our facility using HB Liquid Phenolic Novolac Epoxy, fully holiday-tested to NACE SP0188.",
     iconKey: 'industrial-coating',
-    order: 3,
+    order: 2,
   },
-  // hdpe-lining is intentionally NOT part of the public "Additional
-  // Services" catalog (see frontend PUBLIC_ADDITIONAL_SERVICE_SLUGS) —
-  // client direction narrowed the public catalog to GRE (flagship) +
-  // internal/external coating + RTP + RTV. Left seeded (not deleted):
-  // the live row has a real client file + service request attached, and
-  // Service->ServiceFile is an onDelete: Cascade relation.
   {
     slug: 'hdpe-lining',
     name: 'HDPE Lining',
@@ -53,7 +38,7 @@ const SERVICES = [
     longDescription:
       'High-Density Polyethylene (HDPE) slip-lining and factory-installed liner systems for water injection pipelines and chemical transport lines, PE100 grade conforming to ASTM D3350 and ISO 4427.',
     iconKey: 'hdpe-lining',
-    order: 4,
+    order: 3,
   },
   {
     slug: 'rtp-systems',
@@ -62,7 +47,7 @@ const SERVICES = [
     longDescription:
       'Non-bonded flexible composite pipe developed to replace medium-pressure steel in corrosive onshore oil and gas service — an inner lining layer, a high-strength fiber reinforcement layer, and a UV- and abrasion-resistant outer layer, each independently engineered.',
     iconKey: 'rtp-systems',
-    order: 5,
+    order: 4,
   },
   {
     slug: 'rtv-insulator-coating',
@@ -71,7 +56,7 @@ const SERVICES = [
     longDescription:
       'One-part, hydrophobic, UV-resistant Room Temperature Vulcanising (RTV) coating that prevents conductive-layer formation on ceramic and glass insulators in polluted environments — for AC and DC systems up to 1200 kV. Eliminates flashovers and scheduled insulator washing.',
     iconKey: 'rtv-insulator',
-    order: 6,
+    order: 5,
   },
 ];
 

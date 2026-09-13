@@ -51,12 +51,13 @@ export default function Services({ onNavigate, initialServices }: Props) {
   // accordion (client direction: GRE is the flagship service, everything
   // else is secondary) — the same "Additional Services" split already
   // shipped on the homepage (views/Home.tsx).
-  // Public "Additional Services" catalog is an explicit allowlist, not
-  // "everything except GRE" — external-wrapping and hdpe-lining rows stay
-  // in the database (real client files/service requests are attached to
-  // them) but are intentionally no longer surfaced publicly.
+  // Public "Additional Services" catalog is an explicit allowlist (kept
+  // even though it now matches "everything except GRE") so a future
+  // draft/internal-only service added to the DB doesn't show up here
+  // just by existing.
   const PUBLIC_ADDITIONAL_SERVICE_SLUGS = [
     "industrial-coating",
+    "hdpe-lining",
     "rtp-systems",
     "rtv-insulator-coating",
   ]
