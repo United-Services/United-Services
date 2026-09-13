@@ -15,7 +15,7 @@ const prisma = new PrismaClient({ adapter });
 const SERVICES = [
   {
     slug: 'gre-tubular-lining',
-    name: 'GRE Tubular Lining',
+    name: 'USE Liner® GRE Tubular Lining',
     shortDescription: 'USE Liner® · Holiday-Free · Sour Service Corrosion Barrier',
     longDescription:
       "USE Liner® glass-reinforced epoxy (GRE) tubing and casing linings guard against corrosion damage and OD wear in corrosive injection, acid gas, salt-water disposal, and production wells. Holiday-free tested and matching the tensile strength of the host steel, USE Liner® is proven technology backed by decades of service in sour and aggressive environments. Our field crew supervises every installation — seating the compression ring, inspecting the connection, and drift-testing each joint before it is tripped into the well.",
