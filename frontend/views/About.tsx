@@ -12,7 +12,10 @@ import dynamic from "next/dynamic"
 // equivalent to render anyway.
 const ParticleField = dynamic(() => import("../components/three/ParticleField"), { ssr: false })
 const worldImg = "/images/LD-02.png"
-const weldImg = "/images/bp-plant.jpg"
+// Real photo of USE's own GRE/HDPE lining yard (New Maadi, Cairo), sourced
+// from the client's company profile — replaces a generic stock plant photo
+// that was captioned as USE's facility.
+const facilityYardImg = "/images/use-gre-hdpe-yard.jpg"
 
 interface Props {
   onNavigate: (page: string) => void
@@ -279,8 +282,8 @@ export default function About({ onNavigate }: Props) {
             }}
           >
             <Image
-              src={weldImg}
-              alt="Interior of the USE manufacturing facility with process piping and equipment"
+              src={facilityYardImg}
+              alt="USE's GRE/HDPE lining yard in New Maadi, Cairo, with tubing racks and yard equipment"
               fill
               sizes="(max-width: 900px) 100vw, 50vw"
               style={{ objectFit: "cover" }}

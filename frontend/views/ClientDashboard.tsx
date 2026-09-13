@@ -17,7 +17,7 @@ import {
   IconUser,
   IconLogout,
 } from "../components/NavIcons"
-import { axios, authHeader } from "../lib/api"
+import { axios, authHeader, socketOrigin } from "../lib/api"
 import { FileAccessStatus } from "../enums/status.enums"
 import ErrorBanner from "../components/ErrorBanner"
 import { getErrorMessage } from "../lib/errors"
@@ -174,7 +174,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
   // by the backend's DB transaction regardless of this — this socket is
   // purely a UX signal to refetch, not a source of truth.
   useEffect(() => {
-    const socket = io("/appointments")
+    const socket = io(`${socketOrigin()}/appointments`)
     socket.on("slots:changed", () => {
       refetchSlots().catch(() => {
         // Best-effort — the next real fetch (page load, or the
@@ -319,14 +319,6 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
             }}
           >
             <Logo variant="light" size={28} tagline={false} />
-            <div className="sidebar-label">
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
-                {t("portalLabel")}
-              </div>
-              <div style={{ fontSize: 10, color: "#475569" }}>
-                United Services Egypt
-              </div>
-            </div>
           </button>
         </div>
         <nav
@@ -604,6 +596,11 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                             disabled={requestingId === s.id}
                             style={{
                               width: "100%",
+                              boxSizing: "border-box",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 6,
                               padding: "9px",
                               background: "#4B5563",
                               color: "#fff",
@@ -611,13 +608,14 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                               borderRadius: 9999,
                               fontWeight: 600,
                               fontSize: 13,
+                              textAlign: "center",
                               cursor: "pointer",
                               fontFamily: "Poppins, sans-serif",
                             }}
                           >
                             {requestingId === s.id ? (
                               <>
-                                <InlineSpinner size={13} />{" "}
+                                <InlineSpinner size={13} />
                                 {t("services.requesting")}
                               </>
                             ) : (
@@ -662,6 +660,10 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                             onClick={() => downloadSpec(s.id)}
                             style={{
                               width: "100%",
+                              boxSizing: "border-box",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
                               padding: "9px",
                               background: palette.accent,
                               color: palette.navy,
@@ -669,6 +671,7 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
                               borderRadius: 9999,
                               fontWeight: 700,
                               fontSize: 13,
+                              textAlign: "center",
                               cursor: "pointer",
                               fontFamily: "Poppins, sans-serif",
                             }}

@@ -90,7 +90,7 @@ export default function LanguageSwitcher() {
                   width: "100%",
                   textAlign: "start",
                   background: l === locale ? palette.accentLight : "#fff",
-                  color: l === locale ? palette.accent : palette.slate,
+                  color: l === locale ? palette.navy : palette.slate,
                   border: "none",
                   padding: "10px 16px",
                   fontSize: 13,

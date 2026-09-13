@@ -19,7 +19,10 @@ import { INK, PAPER, TEXT, MUTED, LIME, HEAD, BODY, PublicTag } from "../lib/pub
 // LD-01's dark interior-tunnel shot (moody, but no visible layering) that
 // sat here before.
 const layerFigImg = "/images/LD-03.png"
-const facilityImg = "/images/dc-welder-portrait.jpg"
+// Real photo of USE's own GRE/HDPE lining yard (New Maadi, Cairo), sourced
+// from the client's company profile — replaces a generic stock welder
+// portrait that was captioned as a USE technician.
+const facilityImg = "/images/use-gre-hdpe-yard.jpg"
 // Real USE Liner product/facility photography (client-supplied brochure +
 // company profile), not stock — used only in the GRE spotlight section
 // below since that's the one place authenticity matters most.
@@ -161,11 +164,10 @@ export default function Home({ onNavigate, initialServices }: Props) {
   // GRE Tubular Lining gets its own dedicated spotlight section above —
   // leaving it in this carousel too would repeat the same service right
   // after its full-page treatment, so the carousel covers only the rest.
-  // Explicit allowlist (mirrors Services.tsx): external-wrapping and
-  // hdpe-lining stay in the database (real client files/service requests
-  // attached) but are no longer surfaced publicly.
+  // Explicit allowlist, kept in sync with Services.tsx's identical list.
   const PUBLIC_ADDITIONAL_SERVICE_SLUGS = [
     "industrial-coating",
+    "hdpe-lining",
     "rtp-systems",
     "rtv-insulator-coating",
   ]
@@ -461,6 +463,138 @@ export default function Home({ onNavigate, initialServices }: Props) {
           </div>
         </section>
 
+        {/* Separator band so the two adjacent INK sections (USE Liner
+            spotlight, Additional Services) don't visually fuse together. */}
+        <div
+          style={{
+            background: PAPER,
+            padding: "36px 40px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 20,
+          }}
+        >
+          <span style={{ flex: 1, maxWidth: 200, height: 1, background: "#D8D6CF" }} />
+          <span
+            style={{
+              fontFamily: "ui-monospace,monospace",
+              fontSize: 12.5,
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: MUTED,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Beyond USE Liner®
+          </span>
+          <span style={{ flex: 1, maxWidth: 200, height: 1, background: "#D8D6CF" }} />
+        </div>
+
+        {}
+        <section
+          style={{
+            position: "relative",
+            background: INK,
+            minHeight: "92vh",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            overflow: "hidden",
+            padding: "56px 48px",
+          }}
+        >
+          {otherServices.map((s, i) => (
+            <div
+              key={s.id}
+              style={{
+                position: "absolute",
+                inset: 0,
+                opacity: i === svcIndex % Math.max(svcCount, 1) ? 1 : 0,
+                transition: "opacity 0.6s ease",
+                pointerEvents: "none",
+              }}
+            >
+              <img
+                src={s.imageUrl || SVC_PHOTOS[i % SVC_PHOTOS.length]}
+                alt=""
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            </div>
+          ))}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(to top, rgba(8,8,10,0.88) 0%, rgba(8,8,10,0.35) 45%, rgba(8,8,10,0.25) 100%)",
+              pointerEvents: "none",
+            }}
+          />
+          <div style={{ position: "relative" }}>
+            <PublicTag>Additional Services</PublicTag>
+          </div>
+          <div style={{ position: "relative", display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 48, alignItems: "center", padding: "64px 0" }}>
+            <div style={{ fontFamily: HEAD, fontWeight: 700, fontSize: "clamp(36px, 4.5vw, 58px)", color: "#fff" }}>
+              (<span>{String(svcIndex + 1).padStart(2, "0")}</span>
+              <span style={{ color: "rgba(255,255,255,0.45)" }}>/{String(svcCount).padStart(2, "0")}</span>)
+            </div>
+            <div style={{ maxWidth: 660 }}>
+              {activeSvc && (
+                <>
+                  <div style={{ fontFamily: "ui-monospace,monospace", fontSize: 12.5, letterSpacing: "0.06em", color: LIME, marginBottom: 14, textTransform: "uppercase" }}>
+                    {activeSvc.shortDescription}
+                  </div>
+                  <h2 style={{ margin: 0, fontFamily: HEAD, fontWeight: 600, fontSize: "clamp(32px, 4vw, 54px)", lineHeight: 1.08, letterSpacing: "-0.01em", color: "#fff" }}>
+                    {activeSvc.name}
+                  </h2>
+                  <p style={{ margin: "22px 0 0", fontSize: 14.5, lineHeight: 1.75, color: "rgba(255,255,255,0.85)", maxWidth: 640 }}>
+                    {activeSvc.longDescription ?? activeSvc.shortDescription}
+                  </p>
+                </>
+              )}
+              {!activeSvc && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div className="us-skeleton" style={{ height: 12, width: 160, borderRadius: 4, opacity: 0.25 }} />
+                  <div className="us-skeleton" style={{ height: 40, width: "70%", borderRadius: 6, opacity: 0.25 }} />
+                  <div className="us-skeleton" style={{ height: 12, width: "90%", borderRadius: 4, opacity: 0.2, marginTop: 8 }} />
+                  <div className="us-skeleton" style={{ height: 12, width: "60%", borderRadius: 4, opacity: 0.2 }} />
+                </div>
+              )}
+            </div>
+          </div>
+          <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 28 }}>
+            <div style={{ flex: 1, height: 2, background: "rgba(255,255,255,0.25)", borderRadius: 2, overflow: "hidden" }}>
+              <div
+                style={{
+                  height: "100%",
+                  width: "100%",
+                  background: "#fff",
+                  transformOrigin: "left",
+                  transform: `scaleX(${svcCount > 0 ? ((svcIndex % svcCount) + 1) / svcCount : 0})`,
+                  transition: "transform 0.5s ease",
+                }}
+              />
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => step(-1)}
+                aria-label={t("aria.previousService")}
+                style={{ width: 44, height: 44, borderRadius: 9999, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(14,14,16,0.6)", color: "#fff", fontSize: 16, cursor: "pointer" }}
+              >
+                ←
+              </button>
+              <button
+                onClick={() => step(1)}
+                aria-label={t("aria.nextService")}
+                style={{ width: 44, height: 44, borderRadius: 9999, border: "none", background: LIME, color: TEXT, fontSize: 16, cursor: "pointer" }}
+              >
+                →
+              </button>
+            </div>
+          </div>
+        </section>
+
         {}
         <section style={{ background: PAPER, padding: "110px 40px" }}>
           <div style={{ maxWidth: 1280, margin: "0 auto" }}>
@@ -630,7 +764,7 @@ export default function Home({ onNavigate, initialServices }: Props) {
               >
                 <Image
                   src={facilityImg}
-                  alt="United Services Egypt technician welding in the Cairo facility"
+                  alt="United Services Egypt's GRE/HDPE lining yard in New Maadi, Cairo"
                   fill
                   sizes="(max-width: 900px) 100vw, 50vw"
                   style={{ objectFit: "cover" }}
@@ -926,109 +1060,6 @@ export default function Home({ onNavigate, initialServices }: Props) {
                   </button>
                 </div>
               )}
-            </div>
-          </div>
-        </section>
-
-        {}
-        <section
-          style={{
-            position: "relative",
-            background: INK,
-            minHeight: "92vh",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-            overflow: "hidden",
-            padding: "56px 48px",
-          }}
-        >
-          {otherServices.map((s, i) => (
-            <div
-              key={s.id}
-              style={{
-                position: "absolute",
-                inset: 0,
-                opacity: i === svcIndex % Math.max(svcCount, 1) ? 1 : 0,
-                transition: "opacity 0.6s ease",
-                pointerEvents: "none",
-              }}
-            >
-              <img
-                src={s.imageUrl || SVC_PHOTOS[i % SVC_PHOTOS.length]}
-                alt=""
-                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            </div>
-          ))}
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: "linear-gradient(to top, rgba(8,8,10,0.88) 0%, rgba(8,8,10,0.35) 45%, rgba(8,8,10,0.25) 100%)",
-              pointerEvents: "none",
-            }}
-          />
-          <div style={{ position: "relative" }}>
-            <PublicTag>Additional Services</PublicTag>
-          </div>
-          <div style={{ position: "relative", display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 48, alignItems: "center", padding: "64px 0" }}>
-            <div style={{ fontFamily: HEAD, fontWeight: 700, fontSize: "clamp(36px, 4.5vw, 58px)", color: "#fff" }}>
-              (<span>{String(svcIndex + 1).padStart(2, "0")}</span>
-              <span style={{ color: "rgba(255,255,255,0.45)" }}>/{String(svcCount).padStart(2, "0")}</span>)
-            </div>
-            <div style={{ maxWidth: 660 }}>
-              {activeSvc && (
-                <>
-                  <div style={{ fontFamily: "ui-monospace,monospace", fontSize: 12.5, letterSpacing: "0.06em", color: LIME, marginBottom: 14, textTransform: "uppercase" }}>
-                    {activeSvc.shortDescription}
-                  </div>
-                  <h2 style={{ margin: 0, fontFamily: HEAD, fontWeight: 600, fontSize: "clamp(32px, 4vw, 54px)", lineHeight: 1.08, letterSpacing: "-0.01em", color: "#fff" }}>
-                    {activeSvc.name}
-                  </h2>
-                  <p style={{ margin: "22px 0 0", fontSize: 14.5, lineHeight: 1.75, color: "rgba(255,255,255,0.85)", maxWidth: 640 }}>
-                    {activeSvc.longDescription ?? activeSvc.shortDescription}
-                  </p>
-                </>
-              )}
-              {!activeSvc && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  <div className="us-skeleton" style={{ height: 12, width: 160, borderRadius: 4, opacity: 0.25 }} />
-                  <div className="us-skeleton" style={{ height: 40, width: "70%", borderRadius: 6, opacity: 0.25 }} />
-                  <div className="us-skeleton" style={{ height: 12, width: "90%", borderRadius: 4, opacity: 0.2, marginTop: 8 }} />
-                  <div className="us-skeleton" style={{ height: 12, width: "60%", borderRadius: 4, opacity: 0.2 }} />
-                </div>
-              )}
-            </div>
-          </div>
-          <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 28 }}>
-            <div style={{ flex: 1, height: 2, background: "rgba(255,255,255,0.25)", borderRadius: 2, overflow: "hidden" }}>
-              <div
-                style={{
-                  height: "100%",
-                  width: "100%",
-                  background: "#fff",
-                  transformOrigin: "left",
-                  transform: `scaleX(${svcCount > 0 ? ((svcIndex % svcCount) + 1) / svcCount : 0})`,
-                  transition: "transform 0.5s ease",
-                }}
-              />
-            </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                onClick={() => step(-1)}
-                aria-label={t("aria.previousService")}
-                style={{ width: 44, height: 44, borderRadius: 9999, border: "1px solid rgba(255,255,255,0.3)", background: "rgba(14,14,16,0.6)", color: "#fff", fontSize: 16, cursor: "pointer" }}
-              >
-                ←
-              </button>
-              <button
-                onClick={() => step(1)}
-                aria-label={t("aria.nextService")}
-                style={{ width: 44, height: 44, borderRadius: 9999, border: "none", background: LIME, color: TEXT, fontSize: 16, cursor: "pointer" }}
-              >
-                →
-              </button>
             </div>
           </div>
         </section>
