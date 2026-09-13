@@ -72,7 +72,9 @@ export class KekRotationService {
     const raw = process.env.KEK_ROTATION_MAX_AGE_DAYS;
     if (raw === undefined || raw === '') return DEFAULT_MAX_AGE_DAYS;
     const parsed = parseInt(raw, 10);
-    return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_MAX_AGE_DAYS;
+    return Number.isFinite(parsed) && parsed >= 0
+      ? parsed
+      : DEFAULT_MAX_AGE_DAYS;
   }
 
   private get keysDir(): string {
@@ -146,9 +148,7 @@ export class KekRotationService {
       }
     }
 
-    this.logger.warn(
-      `KEK rotation run complete: ${JSON.stringify(summary)}`,
-    );
+    this.logger.warn(`KEK rotation run complete: ${JSON.stringify(summary)}`);
     return summary;
   }
 
@@ -173,7 +173,11 @@ export class KekRotationService {
           data: { status: 'retiring' },
         }),
         this.prisma.kekRegistry.create({
-          data: { keyId, publicKey: sodium.to_base64(publicKey), status: 'active' },
+          data: {
+            keyId,
+            publicKey: sodium.to_base64(publicKey),
+            status: 'active',
+          },
         }),
       ]);
     } catch (err) {
@@ -269,7 +273,9 @@ export class KekRotationService {
       targetType: 'KekRegistry',
       targetId: keyId,
     });
-    this.logger.warn(`Retired KEK "${keyId}" and shredded its private key file`);
+    this.logger.warn(
+      `Retired KEK "${keyId}" and shredded its private key file`,
+    );
     return true;
   }
 

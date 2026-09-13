@@ -86,7 +86,10 @@ describe('CandidatesController', () => {
     // makes it safe against two concurrent decide() calls racing on the
     // same application (see the 'race condition' tests below). The
     // returned record comes from a follow-up findUnique.
-    function mockSuccessfulDecision(prisma: PrismaService, finalStatus: ApplicationStatus) {
+    function mockSuccessfulDecision(
+      prisma: PrismaService,
+      finalStatus: ApplicationStatus,
+    ) {
       (prisma.candidateApplication.updateMany as jest.Mock).mockResolvedValue({
         count: 1,
       });

@@ -186,10 +186,7 @@ describe('TicketArchiveService', () => {
     it('archives every resolved ticket found in a single under-batch-size page', async () => {
       const { service, prisma } = makeService();
       (prisma.ticket.findMany as jest.Mock)
-        .mockResolvedValueOnce([
-          ticket({ id: 't-a' }),
-          ticket({ id: 't-b' }),
-        ])
+        .mockResolvedValueOnce([ticket({ id: 't-a' }), ticket({ id: 't-b' })])
         .mockImplementation(() => Promise.resolve([]));
       (prisma.ticket.findUnique as jest.Mock).mockImplementation(({ where }) =>
         Promise.resolve(ticket({ id: where.id })),

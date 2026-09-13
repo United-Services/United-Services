@@ -127,7 +127,9 @@ export class FailoverReconciliationService {
         tableName: entry.tableName,
         primaryKeyId: entry.primaryKey,
         localPayload: entry.payload as object,
-        primaryPayload: (primaryPayload ?? { note: 'not found on primary' }) as object,
+        primaryPayload: (primaryPayload ?? {
+          note: 'not found on primary',
+        }) as object,
       },
     });
     this.logger.error(

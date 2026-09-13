@@ -395,7 +395,10 @@ describe('FileAccessController', () => {
     // repo-wide admin -> super_admin broadening exists to close in every
     // ownership check, not just @Roles()-decorated routes.
     it('lets a super_admin download any approved request regardless of owner too', async () => {
-      const superAdmin = { id: 'super-admin-1', role: Role.super_admin } as User;
+      const superAdmin = {
+        id: 'super-admin-1',
+        role: Role.super_admin,
+      } as User;
       const { controller } = makeController({
         findUnique: jest.fn().mockResolvedValue({
           id: 'req-1',

@@ -81,7 +81,9 @@ describe('AuditLogArchiveWorker', () => {
     // no route depends on this queue.
     it('does not reject onModuleInit when upsertJobScheduler fails, so app bootstrap is never blocked by this queue', async () => {
       const failingQueue = {
-        upsertJobScheduler: jest.fn().mockRejectedValue(new Error('ERR max requests limit exceeded')),
+        upsertJobScheduler: jest
+          .fn()
+          .mockRejectedValue(new Error('ERR max requests limit exceeded')),
       };
       const freshWorker = new AuditLogArchiveWorker(
         archiveService as unknown as AuditLogArchiveService,

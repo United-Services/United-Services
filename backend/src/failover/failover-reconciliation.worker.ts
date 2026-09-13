@@ -78,22 +78,25 @@ export class FailoverReconciliationWorker
       },
     );
 
-    this.worker.on('failed', (job: Job<FailoverReconcileJobData> | undefined, error: Error) => {
-      if (!job) return;
-      const exhausted = job.attemptsMade >= (job.opts.attempts ?? 1);
-      if (!exhausted) return;
+    this.worker.on(
+      'failed',
+      (job: Job<FailoverReconcileJobData> | undefined, error: Error) => {
+        if (!job) return;
+        const exhausted = job.attemptsMade >= (job.opts.attempts ?? 1);
+        if (!exhausted) return;
 
-      this.logger.error(
-        `Reconciliation job permanently failed after ${job.attemptsMade} attempts, moving to DLQ: ${error.message}`,
-      );
-      this.dlq
-        .add(job.name, job.data, { removeOnComplete: { age: 604_800 } })
-        .catch((dlqError: Error) => {
-          this.logger.error(
-            `Failed to write to reconciliation DLQ: ${dlqError.message}`,
-          );
-        });
-    });
+        this.logger.error(
+          `Reconciliation job permanently failed after ${job.attemptsMade} attempts, moving to DLQ: ${error.message}`,
+        );
+        this.dlq
+          .add(job.name, job.data, { removeOnComplete: { age: 604_800 } })
+          .catch((dlqError: Error) => {
+            this.logger.error(
+              `Failed to write to reconciliation DLQ: ${dlqError.message}`,
+            );
+          });
+      },
+    );
   }
 
   async onModuleDestroy() {

@@ -19,7 +19,9 @@ jest.mock('bullmq', () => ({
   }),
 }));
 
-jest.mock('ioredis', () => jest.fn().mockImplementation(() => ({ on: jest.fn() })));
+jest.mock('ioredis', () =>
+  jest.fn().mockImplementation(() => ({ on: jest.fn() })),
+);
 
 describe('DbMirrorSyncWorker', () => {
   let syncService: { syncAll: jest.Mock };
@@ -61,7 +63,9 @@ describe('DbMirrorSyncWorker', () => {
   // depends on this queue.
   it('does not reject onModuleInit when upsertJobScheduler fails, so app bootstrap is never blocked by this queue', async () => {
     const failingQueue = {
-      upsertJobScheduler: jest.fn().mockRejectedValue(new Error('ERR max requests limit exceeded')),
+      upsertJobScheduler: jest
+        .fn()
+        .mockRejectedValue(new Error('ERR max requests limit exceeded')),
     };
     const freshWorker = new DbMirrorSyncWorker(
       syncService as unknown as DbMirrorSyncService,

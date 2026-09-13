@@ -35,9 +35,7 @@ describe('FailOpenThrottlerStorage', () => {
       increment: jest.fn().mockResolvedValue(blocked),
     };
 
-    const result = await new FailOpenThrottlerStorage(inner).increment(
-      ...args,
-    );
+    const result = await new FailOpenThrottlerStorage(inner).increment(...args);
     expect(result.isBlocked).toBe(true);
   });
 

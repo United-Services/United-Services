@@ -121,7 +121,9 @@ export class KekKeyStore implements OnModuleInit {
     await fs.mkdir(path.dirname(keyPath), { recursive: true });
     await fs.writeFile(keyPath, fromBackup, { mode: 0o400 });
     await fs.chmod(keyPath, 0o400);
-    this.logger.warn(`KEK "${keyId}" private key restored from SSM to ${keyPath}`);
+    this.logger.warn(
+      `KEK "${keyId}" private key restored from SSM to ${keyPath}`,
+    );
     return fromBackup;
   }
 
@@ -132,7 +134,8 @@ export class KekKeyStore implements OnModuleInit {
   // what a rotation on another replica produces — was deferred, and
   // encrypt failed closed for a key that was sitting on disk.)
   private async reloadForMiss(keyId: string): Promise<void> {
-    const withinWindow = Date.now() - this.lastReloadAt < RELOAD_MIN_INTERVAL_MS;
+    const withinWindow =
+      Date.now() - this.lastReloadAt < RELOAD_MIN_INTERVAL_MS;
     if (withinWindow && this.missedSinceReload.has(keyId)) return;
     await this.reload();
     if (!this.privateKeys.has(keyId)) this.missedSinceReload.add(keyId);

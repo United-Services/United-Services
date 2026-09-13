@@ -29,13 +29,10 @@ function rolesMetadataOnAllMethods(
 ) {
   const results: { method: string; roles: Role[] | undefined }[] = [];
   const classRoles = Reflect.getMetadata(ROLES_KEY, ControllerClass) as
-    | Role[]
-    | undefined;
+    Role[] | undefined;
   if (classRoles) results.push({ method: '(class)', roles: classRoles });
 
-  for (const method of Object.getOwnPropertyNames(
-    ControllerClass.prototype,
-  )) {
+  for (const method of Object.getOwnPropertyNames(ControllerClass.prototype)) {
     if (method === 'constructor') continue;
     const roles = Reflect.getMetadata(
       ROLES_KEY,

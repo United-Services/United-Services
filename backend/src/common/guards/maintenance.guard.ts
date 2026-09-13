@@ -54,7 +54,9 @@ export class MaintenanceGuard implements CanActivate {
     }
     if (!active) return true;
 
-    http.getResponse<Response>().setHeader('Retry-After', String(RETRY_AFTER_SECONDS));
+    http
+      .getResponse<Response>()
+      .setHeader('Retry-After', String(RETRY_AFTER_SECONDS));
     throw new ServiceUnavailableException({
       statusCode: 503,
       error: 'Service Unavailable',

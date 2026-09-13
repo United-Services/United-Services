@@ -15,7 +15,10 @@ jest.mock('@clerk/backend', () =>
   require('./utils/clerk-mock').mockClerkBackend(),
 );
 
-async function verifiedSuperAdmin(prisma: PrismaService, app: INestApplication) {
+async function verifiedSuperAdmin(
+  prisma: PrismaService,
+  app: INestApplication,
+) {
   const user = await createUser(prisma, {
     role: Role.super_admin,
     mfaEnrolled: true,

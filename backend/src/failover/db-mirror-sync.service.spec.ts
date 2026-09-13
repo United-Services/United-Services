@@ -96,7 +96,10 @@ describe('DbMirrorSyncService', () => {
 
     primaryUserModel = { findMany: jest.fn().mockResolvedValue([]) };
     primaryKekRegistryModel = { findMany: jest.fn().mockResolvedValue([]) };
-    primaryReader = { user: primaryUserModel, kekRegistry: primaryKekRegistryModel };
+    primaryReader = {
+      user: primaryUserModel,
+      kekRegistry: primaryKekRegistryModel,
+    };
     for (const m of OTHER_MODELS) primaryReader[m] = makeInertModel();
 
     localUserModel = {
@@ -109,9 +112,13 @@ describe('DbMirrorSyncService', () => {
       upsert: jest.fn(),
       deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     };
-    localTransactionMock = jest.fn((ops: Promise<unknown>[]) => Promise.all(ops));
+    localTransactionMock = jest.fn((ops: Promise<unknown>[]) =>
+      Promise.all(ops),
+    );
 
-    service = new DbMirrorSyncService(primaryReader as unknown as PrismaService);
+    service = new DbMirrorSyncService(
+      primaryReader as unknown as PrismaService,
+    );
   });
 
   describe('ensureLocalSchema', () => {

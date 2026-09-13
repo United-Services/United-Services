@@ -19,7 +19,9 @@ jest.mock('bullmq', () => ({
   }),
 }));
 
-jest.mock('ioredis', () => jest.fn().mockImplementation(() => ({ on: jest.fn() })));
+jest.mock('ioredis', () =>
+  jest.fn().mockImplementation(() => ({ on: jest.fn() })),
+);
 
 describe('FailoverReconciliationWorker', () => {
   let reconciliationService: { reconcileAll: jest.Mock };
@@ -32,7 +34,9 @@ describe('FailoverReconciliationWorker', () => {
     jest.clearAllMocks();
     capturedProcessor = undefined;
     capturedHandlers.clear();
-    reconciliationService = { reconcileAll: jest.fn().mockResolvedValue({ replayed: 0, conflicts: 0 }) };
+    reconciliationService = {
+      reconcileAll: jest.fn().mockResolvedValue({ replayed: 0, conflicts: 0 }),
+    };
     failover = new EventEmitter();
     queue = { add: jest.fn().mockResolvedValue(undefined) };
     dlq = { add: jest.fn().mockResolvedValue(undefined) };

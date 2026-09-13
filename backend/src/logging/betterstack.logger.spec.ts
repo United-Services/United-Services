@@ -84,7 +84,9 @@ describe('BetterstackLogger', () => {
       const shipped = JSON.parse(body.message);
       expect(shipped.name).toBe('Error');
       expect(shipped.message).toBe('database connection refused');
-      expect(shipped.stack).toEqual(expect.stringContaining('Error: database connection refused'));
+      expect(shipped.stack).toEqual(
+        expect.stringContaining('Error: database connection refused'),
+      );
     });
 
     it('error() with a bare Error as the message (no stack/context args) still ships the real message, not {}', async () => {
@@ -106,7 +108,7 @@ describe('BetterstackLogger', () => {
       // Mirrors IncidentAlertService's `logger.error('msg', err as Error)`
       // call shape — Nest's Logger types `stack?: string`, but nothing
       // enforces that at a call site.
-      logger.error('Failed to trigger incident alert', err as unknown as string);
+      logger.error('Failed to trigger incident alert', err);
 
       await logger.flush();
       const body = JSON.parse(fetchMock.mock.calls[0][1].body)[0];

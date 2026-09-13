@@ -28,7 +28,9 @@ describe('AuditLogArchiveService', () => {
       auditLogArchive: {
         createMany: jest.fn(),
       },
-      $transaction: jest.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
+      $transaction: jest.fn(async (ops: Promise<unknown>[]) =>
+        Promise.all(ops),
+      ),
     } as unknown as PrismaService;
     return { service: new AuditLogArchiveService(prisma), prisma };
   }
@@ -75,8 +77,14 @@ describe('AuditLogArchiveService', () => {
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(prisma.auditLogArchive.createMany).toHaveBeenCalledWith({
       data: [
-        expect.objectContaining({ originalId: 'log-1', action: 'user.disabled' }),
-        expect.objectContaining({ originalId: 'log-2', action: 'user.disabled' }),
+        expect.objectContaining({
+          originalId: 'log-1',
+          action: 'user.disabled',
+        }),
+        expect.objectContaining({
+          originalId: 'log-2',
+          action: 'user.disabled',
+        }),
       ],
       skipDuplicates: true,
     });
@@ -132,7 +140,7 @@ describe('AuditLogArchiveService', () => {
     );
   });
 
-  it('preserves a null metadata value as undefined (matching AuditLogService.record\'s own optional field)', async () => {
+  it("preserves a null metadata value as undefined (matching AuditLogService.record's own optional field)", async () => {
     const { service, prisma } = makeService();
     (prisma.auditLog.findMany as jest.Mock).mockResolvedValueOnce([
       row('log-no-meta', { metadata: null }),
@@ -147,7 +155,9 @@ describe('AuditLogArchiveService', () => {
 
   it('propagates a transaction failure instead of silently swallowing it (so BullMQ retries the job)', async () => {
     const { service, prisma } = makeService();
-    (prisma.auditLog.findMany as jest.Mock).mockResolvedValueOnce([row('log-1')]);
+    (prisma.auditLog.findMany as jest.Mock).mockResolvedValueOnce([
+      row('log-1'),
+    ]);
     (prisma.$transaction as jest.Mock).mockRejectedValueOnce(
       new Error('connection reset'),
     );

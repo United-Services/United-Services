@@ -22,12 +22,7 @@ import { DecideFileAccessRequestDto } from './dto/decide-file-access-request.dto
 import { fuzzyMatch, searchableText } from '../common/utils/fuzzy-match';
 import { SEARCH_SCAN_LIMIT } from '../common/constants/search-scan-limit';
 import { DEFAULT_PAGE_SIZE, paginate } from '../common/utils/paginate';
-import {
-  FileAccessStatus,
-  Prisma,
-  Role,
-  type User,
-} from '../generated/prisma';
+import { FileAccessStatus, Prisma, Role, type User } from '../generated/prisma';
 
 const DOWNLOAD_URL_TTL_SECONDS = 300;
 

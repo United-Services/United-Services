@@ -9,7 +9,7 @@ import { createFailoverRedisConnection } from '../failover/failover-redis-connec
     {
       provide: RedisService,
       useFactory: (failover: FailoverService) =>
-        createFailoverRedisConnection(failover) as unknown as RedisService,
+        createFailoverRedisConnection(failover),
       inject: [FailoverService],
     },
   ],

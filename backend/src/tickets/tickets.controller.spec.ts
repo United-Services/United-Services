@@ -362,10 +362,26 @@ describe('TicketsController', () => {
       const { controller, prisma } = makeController();
       // What the newest-first scan actually hands back.
       const rows = [
-        ticket({ id: 'newest-non-technical', type: 'non_technical', createdAt: new Date('2026-01-04') }),
-        ticket({ id: 'newer-technical', type: 'technical', createdAt: new Date('2026-01-03') }),
-        ticket({ id: 'disabled', type: 'disabled_account', createdAt: new Date('2026-01-02') }),
-        ticket({ id: 'oldest-technical', type: 'technical', createdAt: new Date('2026-01-01') }),
+        ticket({
+          id: 'newest-non-technical',
+          type: 'non_technical',
+          createdAt: new Date('2026-01-04'),
+        }),
+        ticket({
+          id: 'newer-technical',
+          type: 'technical',
+          createdAt: new Date('2026-01-03'),
+        }),
+        ticket({
+          id: 'disabled',
+          type: 'disabled_account',
+          createdAt: new Date('2026-01-02'),
+        }),
+        ticket({
+          id: 'oldest-technical',
+          type: 'technical',
+          createdAt: new Date('2026-01-01'),
+        }),
       ];
       (prisma.ticket.findMany as jest.Mock).mockResolvedValue(rows);
 

@@ -52,12 +52,10 @@ describe('RolesGuard', () => {
   // this exact guard, not just the underlying array semantics in theory.
   it('allows either role in a multi-role @Roles(...ADMIN_ROLES)-style list', () => {
     const guard = guardRequiring(['admin', 'super_admin']);
-    expect(
-      guard.canActivate(contextWithUser({ role: 'admin' })),
-    ).toBe(true);
-    expect(
-      guard.canActivate(contextWithUser({ role: 'super_admin' })),
-    ).toBe(true);
+    expect(guard.canActivate(contextWithUser({ role: 'admin' }))).toBe(true);
+    expect(guard.canActivate(contextWithUser({ role: 'super_admin' }))).toBe(
+      true,
+    );
   });
 
   it('rejects a role not present in a multi-role list', () => {
@@ -72,15 +70,15 @@ describe('RolesGuard', () => {
   // alone — not ADMIN_ROLES — must still reject a plain admin.
   it('rejects a plain admin on a route requiring exactly super_admin', () => {
     const guard = guardRequiring(['super_admin']);
-    expect(() =>
-      guard.canActivate(contextWithUser({ role: 'admin' })),
-    ).toThrow(ForbiddenException);
+    expect(() => guard.canActivate(contextWithUser({ role: 'admin' }))).toThrow(
+      ForbiddenException,
+    );
   });
 
   it('allows super_admin on a route requiring exactly super_admin', () => {
     const guard = guardRequiring(['super_admin']);
-    expect(
-      guard.canActivate(contextWithUser({ role: 'super_admin' })),
-    ).toBe(true);
+    expect(guard.canActivate(contextWithUser({ role: 'super_admin' }))).toBe(
+      true,
+    );
   });
 });

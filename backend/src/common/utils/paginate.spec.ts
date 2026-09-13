@@ -14,12 +14,20 @@ describe('paginate', () => {
 
   it('returns the requested slice with hasMore=true when more remain', () => {
     const result = paginate(items, 0, 2, scanned);
-    expect(result).toEqual({ items: ['a', 'b'], hasMore: true, truncated: false });
+    expect(result).toEqual({
+      items: ['a', 'b'],
+      hasMore: true,
+      truncated: false,
+    });
   });
 
   it('returns the last page with hasMore=false when the slice reaches the end exactly', () => {
     const result = paginate(items, 3, 2, scanned);
-    expect(result).toEqual({ items: ['d', 'e'], hasMore: false, truncated: false });
+    expect(result).toEqual({
+      items: ['d', 'e'],
+      hasMore: false,
+      truncated: false,
+    });
   });
 
   it('skip beyond the total length returns an empty page, not an error', () => {
@@ -86,6 +94,10 @@ describe('paginate', () => {
     // mean "return nothing," so a caller sending take=-1 gets all but
     // one item back, silently, instead of a 400 or an empty page.
     const result = paginate(items, 0, -1, scanned);
-    expect(result).toEqual({ items: ['a', 'b', 'c', 'd'], hasMore: true, truncated: false });
+    expect(result).toEqual({
+      items: ['a', 'b', 'c', 'd'],
+      hasMore: true,
+      truncated: false,
+    });
   });
 });
