@@ -1,0 +1,93 @@
+# High-load alerting rules — see the README's "How this detects traffic,
+# and why 70%" section for the full reasoning. Summary:
+#
+#   - Threshold: 70% CPU AND/OR 70% memory, SUSTAINED for 3 consecutive
+#     scrape intervals (`for: 3m` at this file's 1m evaluation interval)
+#     rather than instantaneous. A single 15s spike crossing 70% is
+#     normal (a GC pause, a burst of concurrent requests finishing
+#     together) and must not fire an alert on its own — only sustained
+#     saturation is a real signal.
+#   - Traffic corroboration: HighHardwareLoad fires on hardware alone.
+#     HighTrafficLoad additionally requires the app's own request rate to
+#     be elevated at the same time — this is what tells apart "real
+#     traffic is driving this" from "something else on the host is
+#     eating CPU" (a backup job, a neighboring process, a runaway cron).
+#     Only HighTrafficLoad is the signal that should ever be wired to an
+#     actual scale-out action (see README) — HighHardwareLoad alone is
+#     "go look," not "go scale."
+groups:
+  - name: high-load
+    interval: 1m
+    rules:
+      # --- Recording rules: cheap to re-query from Grafana/alerts ---
+      - record: instance:cpu_utilization:ratio
+        expr: 1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[1m]))
+
+      - record: instance:memory_utilization:ratio
+        expr: |
+          1 - (
+            node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes
+          )
+
+      - record: backend:http_request_rate:sum
+        expr: sum(rate(http_requests_total[1m]))
+
+      - record: backend:http_p95_latency_seconds
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_request_duration_seconds_bucket[5m]))
+          )
+
+      # --- Alerts ---
+      - alert: HighHardwareLoad
+        expr: instance:cpu_utilization:ratio > 0.70 or instance:memory_utilization:ratio > 0.70
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host {{ $labels.instance }} sustained >70% CPU or memory for 3+ minutes"
+          description: >
+            CPU or memory utilization has stayed above the 70% threshold
+            for at least 3 consecutive minutes. This alone does not mean
+            traffic is the cause — check HighTrafficLoad and the
+            "Requests/sec" panel on the dashboard before concluding a
+            scale-out is warranted.
+
+      - alert: HighTrafficLoad
+        expr: |
+          (instance:cpu_utilization:ratio > 0.70 or instance:memory_utilization:ratio > 0.70)
+          and backend:http_request_rate:sum > (2 * backend:http_request_rate:sum offset 1h)
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Sustained hardware load AND request rate is 2x+ above baseline"
+          description: >
+            Hardware is above 70% AND the app's own request rate is at
+            least double what it was an hour ago, sustained for 3+
+            minutes. This is the specific condition the scale-out runbook
+            (see prometheus/README.md) is written against — hardware
+            saturation corroborated by an actual traffic increase, not a
+            coincidental host-level spike.
+
+      # A queue backing up is a distinct, earlier warning sign than
+      # hardware saturation — see AnalyticsWriteWorker's bounded
+      # concurrency/limiter (backend/src/analytics/analytics-write.worker.ts):
+      # a growing `waiting` count there means the queue's own rate limit
+      # (20/s) is the bottleneck, which raising replica count would not
+      # fix (it's a deliberate ceiling protecting Supabase, not a
+      # capacity limit) — this alert exists to stop that being confused
+      # with a hardware-driven scale-out trigger.
+      - alert: QueueBacklogGrowing
+        expr: bullmq_queue_depth{state="waiting"} > 500
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Queue {{ $labels.queue }} has 500+ waiting jobs for 5+ minutes"
+          description: >
+            {{ $labels.queue }}'s waiting job count has stayed above 500
+            for 5+ minutes. For analytics-write specifically, this means
+            the worker's own rate limiter is the bottleneck, not host
+            capacity — check AnalyticsWriteWorker's limiter config before
+            assuming a scale-out would help.

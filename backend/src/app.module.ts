@@ -35,6 +35,7 @@ import { AlertingModule } from './alerting/alerting.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { AllowedOriginsModule } from './allowed-origins/allowed-origins.module';
 import { FailoverModule } from './failover/failover.module';
+import { MetricsModule } from './metrics/metrics.module';
 
 @Module({
   imports: [
@@ -44,6 +45,9 @@ import { FailoverModule } from './failover/failover.module';
     FailoverModule,
     RedisModule,
     QueueModule,
+    // After QueueModule — QueueMetricsPoller injects every standing
+    // queue token QueueModule exports.
+    MetricsModule,
     // Reuses the same RedisService connection RedisModule already manages
     // (services-list caching etc.) instead of opening a second, separate
     // ioredis connection just for throttler storage.
