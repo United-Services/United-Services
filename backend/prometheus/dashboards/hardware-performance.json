@@ -1,0 +1,249 @@
+{
+  "title": "USE Backend — Hardware & Performance",
+  "uid": "use-backend-hw-perf",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "time": { "from": "now-3h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {}
+      }
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "name": "Alerts",
+        "datasource": "${datasource}",
+        "enable": true,
+        "iconColor": "red",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "CPU Utilization",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": "${datasource}",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 0.7 },
+              { "color": "red", "value": 0.9 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "instance:cpu_utilization:ratio",
+          "legendFormat": "{{instance}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Memory Utilization",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": "${datasource}",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 0.7 },
+              { "color": "red", "value": 0.9 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "instance:memory_utilization:ratio",
+          "legendFormat": "{{instance}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Disk Usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": "${datasource}",
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit", "max": 1, "min": 0 }
+      },
+      "targets": [
+        {
+          "expr": "1 - (node_filesystem_avail_bytes{fstype!=\"tmpfs\"} / node_filesystem_size_bytes{fstype!=\"tmpfs\"})",
+          "legendFormat": "{{instance}} {{mountpoint}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Load Average (1m / 5m / 15m)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": "${datasource}",
+      "targets": [
+        { "expr": "node_load1", "legendFormat": "1m" },
+        { "expr": "node_load5", "legendFormat": "5m" },
+        { "expr": "node_load15", "legendFormat": "15m" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "HTTP Requests / sec (by route)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": "${datasource}",
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [
+        {
+          "expr": "sum by (route) (rate(http_requests_total[1m]))",
+          "legendFormat": "{{route}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "HTTP p50 / p95 / p99 Latency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": "${datasource}",
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "HTTP Error Rate (5xx / total)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "datasource": "${datasource}",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 0.01 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{status_code=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))",
+          "legendFormat": "error rate"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Requests In Flight",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "datasource": "${datasource}",
+      "targets": [
+        { "expr": "http_requests_in_flight", "legendFormat": "in-flight" }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "BullMQ Queue Depth (waiting)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "datasource": "${datasource}",
+      "description": "A growing 'waiting' count on analytics-write means its own rate limiter is the bottleneck, not hardware — see AnalyticsWriteWorker.",
+      "targets": [
+        {
+          "expr": "bullmq_queue_depth{state=\"waiting\"}",
+          "legendFormat": "{{queue}}"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Node.js Event Loop Lag",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "datasource": "${datasource}",
+      "description": "Rises before host CPU necessarily crosses any threshold — an earlier signal that the process itself (not just the host) is under load.",
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        {
+          "expr": "nodejs_eventloop_lag_seconds",
+          "legendFormat": "event loop lag"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Process Memory (RSS / Heap)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+      "datasource": "${datasource}",
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes",
+          "legendFormat": "RSS"
+        },
+        {
+          "expr": "nodejs_heap_size_used_bytes",
+          "legendFormat": "heap used"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Traffic vs. 1h-Ago Baseline",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 },
+      "datasource": "${datasource}",
+      "description": "The ratio HighTrafficLoad's alert condition checks — sustained above 2x is the traffic-corroboration half of the scale-out trigger.",
+      "fieldConfig": { "defaults": { "unit": "none" } },
+      "targets": [
+        {
+          "expr": "backend:http_request_rate:sum / (backend:http_request_rate:sum offset 1h)",
+          "legendFormat": "current / 1h-ago"
+        }
+      ]
+    }
+  ]
+}

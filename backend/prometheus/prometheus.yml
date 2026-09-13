@@ -1,0 +1,61 @@
+# United Services Egypt backend — hardware + application monitoring.
+#
+# Two scrape targets, deliberately separate concerns:
+#   - `node` (node_exporter, :9100): host-level hardware — CPU, memory,
+#     disk, network, load average. Answers "is the machine itself
+#     saturated."
+#   - `backend` (this NestJS app, :3002/api/v1/metrics): per-route HTTP
+#     latency/throughput, BullMQ queue depth, Node process internals
+#     (heap, event loop lag). Answers "is the app itself under load" —
+#     which can be true (rising queue backlog, climbing p95 latency)
+#     before host CPU/memory ever crosses a hardware threshold, and is
+#     what actually distinguishes "real traffic" from "something else is
+#     eating this machine's CPU" (a backup job, a neighboring process).
+#
+# See dashboards/hardware-performance.json for the Grafana dashboard
+# built on these two jobs, and alerts/high-load.rules.yml for the 70%
+# sustained-load alerting rules.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+          # Fill in once Alertmanager is deployed (see the README's
+          # "Wiring alerts to an action" section for why this repo
+          # doesn't ship a running Alertmanager by default).
+
+rule_files:
+  - "alerts/high-load.rules.yml"
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Host hardware — run node_exporter alongside this stack (see
+  # docker-compose.monitoring.yml, or `brew services start node_exporter`
+  # for bare-metal local dev). No auth: node_exporter has none built in,
+  # so this must only ever bind to localhost/an internal network — never
+  # port-mapped to a public interface.
+  - job_name: "node"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+        labels:
+          service: "backend-host"
+
+  # The NestJS app's own /metrics — see src/metrics/. Gated by
+  # MetricsTokenGuard (a static bearer token, not a Clerk session —
+  # Prometheus's scrape config only supports a static credential, not an
+  # interactive auth flow). METRICS_TOKEN here must match the backend
+  # process's own METRICS_TOKEN env var exactly.
+  - job_name: "backend"
+    metrics_path: "/api/v1/metrics"
+    authorization:
+      credentials_file: "/run/secrets/metrics_token"
+    static_configs:
+      - targets: ["host.docker.internal:3002"]
+        labels:
+          service: "backend-app"

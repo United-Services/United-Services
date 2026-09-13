@@ -1,0 +1,14 @@
+# The raw Prometheus server binary/release artifacts (prometheus,
+# promtool, LICENSE, NOTICE) — these came from downloading and
+# extracting the upstream release tarball directly into this directory,
+# not something this repo should vendor. docker-compose.monitoring.yml
+# runs Prometheus from the official prom/prometheus image instead; a
+# local bare-metal binary is only needed for running it outside Docker,
+# and should be (re-)downloaded from
+# https://prometheus.io/download/ rather than committed here.
+/prometheus
+/promtool
+/LICENSE
+/NOTICE
+/console_libraries/
+/consoles/

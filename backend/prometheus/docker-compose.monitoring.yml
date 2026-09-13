@@ -1,0 +1,81 @@
+# Standalone monitoring stack — deliberately separate from the repo
+# root's docker-compose.yml (which runs the actual app and needs live
+# AWS SSM secrets). This has none of that: `docker compose -f
+# prometheus/docker-compose.monitoring.yml up -d` from backend/ is
+# enough to get Prometheus + Grafana + node_exporter running against
+# whatever backend is already listening on :3002 (host-run dev, or the
+# real compose stack), local or not.
+#
+# METRICS_TOKEN must be set in the environment (or a sibling .env this
+# compose file's `env_file:` picks up) to the same value the backend
+# process itself uses — see src/metrics/metrics-token.guard.ts.
+services:
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    restart: unless-stopped
+    # Host-level metrics need the host's own filesystem/proc/sys visible
+    # inside the container — read-only mounts, standard node_exporter
+    # setup for a containerized deployment.
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+)($$|/)"
+    networks: [monitoring]
+
+  prometheus:
+    image: prom/prometheus:v3.0.1
+    restart: unless-stopped
+    depends_on: [node-exporter]
+    ports:
+      # Loopback-only — this dashboard is for operators on the box (or
+      # via an SSH tunnel), never meant to be reachable from the public
+      # internet. Prometheus itself has no auth of its own.
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./alerts:/etc/prometheus/alerts:ro
+      - prometheus-data:/prometheus
+    secrets:
+      - metrics_token
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    networks: [monitoring]
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    restart: unless-stopped
+    depends_on: [prometheus]
+    ports:
+      # Also loopback-only by default — tunnel in, or explicitly change
+      # this if Grafana needs to be reachable elsewhere (and put real
+      # auth in front of it if so; GF_SECURITY_ADMIN_PASSWORD below is
+      # not a substitute for that).
+      - "127.0.0.1:3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana-provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./dashboards:/var/lib/grafana/dashboards:ro
+    networks: [monitoring]
+
+networks:
+  monitoring:
+
+volumes:
+  prometheus-data:
+  grafana-data:
+
+secrets:
+  metrics_token:
+    environment: METRICS_TOKEN
