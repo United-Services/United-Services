@@ -14,8 +14,8 @@ export GRAFANA_ADMIN_PASSWORD=<pick one>
 docker compose -f docker-compose.monitoring.yml up -d
 ```
 
-- Prometheus: http://localhost:9090 (targets: http://localhost:9090/targets)
-- Grafana: http://localhost:3001 (admin / $GRAFANA_ADMIN_PASSWORD) — the
+- Prometheus: <http://localhost:9090> (targets: <http://localhost:9090/targets>)
+- Grafana: <http://localhost:3001> (admin / $GRAFANA_ADMIN_PASSWORD) — the
   "USE Backend — Hardware & Performance" dashboard is auto-provisioned,
   nothing to import manually.
 
