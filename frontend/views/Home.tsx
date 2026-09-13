@@ -464,6 +464,35 @@ export default function Home({ onNavigate, initialServices }: Props) {
           </div>
         </section>
 
+        {/* Separator band so the two adjacent INK sections (USE Liner
+            spotlight, Additional Services) don't visually fuse together. */}
+        <div
+          style={{
+            background: PAPER,
+            padding: "36px 40px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 20,
+          }}
+        >
+          <span style={{ flex: 1, maxWidth: 200, height: 1, background: "#D8D6CF" }} />
+          <span
+            style={{
+              fontFamily: "ui-monospace,monospace",
+              fontSize: 12.5,
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: MUTED,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Beyond USE Liner®
+          </span>
+          <span style={{ flex: 1, maxWidth: 200, height: 1, background: "#D8D6CF" }} />
+        </div>
+
         {}
         <section
           style={{
