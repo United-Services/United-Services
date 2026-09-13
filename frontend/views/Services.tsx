@@ -437,25 +437,26 @@ function AccordionRow({
 function AdditionalServicesAccordion({
   otherServices,
   loading,
-  loadError,
-  setLoadError,
-  load,
+  loadState,
   onNavigate,
-  t,
-  tNav,
-  tCommon,
+  translations,
 }: {
   otherServices: Service[]
   loading: boolean
-  loadError: string | null
-  setLoadError: (msg: string | null) => void
-  load: () => void
+  loadState: {
+    error: string | null
+    clearError: (msg: string | null) => void
+    retry: () => void
+  }
   onNavigate: (page: string) => void
-  t: ReturnType<typeof useTranslations>
-  tNav: ReturnType<typeof useTranslations>
-  tCommon: ReturnType<typeof useTranslations>
+  translations: {
+    t: ReturnType<typeof useTranslations>
+    tNav: ReturnType<typeof useTranslations>
+    tCommon: ReturnType<typeof useTranslations>
+  }
 }) {
   const [active, setActive] = useState<number | null>(null)
+  const { t, tNav, tCommon } = translations
 
   return (
     <section style={{ padding: "80px 28px" }}>
@@ -472,10 +473,10 @@ function AdditionalServicesAccordion({
           <PublicTag>{t("additional")}</PublicTag>
         </div>
         <ErrorBanner
-          message={loadError}
-          onDismiss={() => setLoadError(null)}
+          message={loadState.error}
+          onDismiss={() => loadState.clearError(null)}
           dismissLabel={tCommon("errors.dismiss")}
-          onRetry={load}
+          onRetry={loadState.retry}
           retryLabel={tCommon("errors.retry")}
         />
         {loading &&
@@ -673,13 +674,9 @@ export default function Services({ onNavigate, initialServices }: Props) {
       <AdditionalServicesAccordion
         otherServices={otherServices}
         loading={loading}
-        loadError={loadError}
-        setLoadError={setLoadError}
-        load={load}
+        loadState={{ error: loadError, clearError: setLoadError, retry: load }}
         onNavigate={onNavigate}
-        t={t}
-        tNav={tNav}
-        tCommon={tCommon}
+        translations={{ t, tNav, tCommon }}
       />
 
       <PublicFooter onNavigate={onNavigate} />
