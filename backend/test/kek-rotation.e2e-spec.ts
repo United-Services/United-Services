@@ -31,7 +31,8 @@ describe('KekRotationService — end-to-end rotation (e2e)', () => {
   });
 
   afterAll(async () => {
-    if (originalMaxAge === undefined) delete process.env.KEK_ROTATION_MAX_AGE_DAYS;
+    if (originalMaxAge === undefined)
+      delete process.env.KEK_ROTATION_MAX_AGE_DAYS;
     else process.env.KEK_ROTATION_MAX_AGE_DAYS = originalMaxAge;
     await app.close();
   });
@@ -47,7 +48,10 @@ describe('KekRotationService — end-to-end rotation (e2e)', () => {
     });
 
     // A confirmed TOTP credential sealed under the current active key.
-    const admin = await createUser(prisma, { role: Role.admin, mfaEnrolled: true });
+    const admin = await createUser(prisma, {
+      role: Role.admin,
+      mfaEnrolled: true,
+    });
     try {
       const secret = 'JBSWY3DPEHPK3PXP';
       const envelope = await crypto.encryptSecret(secret);
@@ -112,7 +116,10 @@ describe('KekRotationService — end-to-end rotation (e2e)', () => {
         orderBy: { createdAt: 'desc' },
         take: 2,
       });
-      expect(audits.map((a) => a.action).sort()).toEqual(['kek.retired', 'kek.rotated']);
+      expect(audits.map((a) => a.action).sort()).toEqual([
+        'kek.retired',
+        'kek.rotated',
+      ]);
     } finally {
       await prisma.totpCredential.deleteMany({ where: { userId: admin.id } });
       await prisma.user.delete({ where: { id: admin.id } });

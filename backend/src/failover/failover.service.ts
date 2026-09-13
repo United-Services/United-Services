@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { EventEmitter } from 'events';
 import { PrismaPg } from '@prisma/adapter-pg';
 import IORedis from 'ioredis';
@@ -96,7 +101,10 @@ export class FailoverService
       () => void this.checkPostgres(),
       CHECK_INTERVAL_MS,
     );
-    this.redisTimer = setInterval(() => void this.checkRedis(), CHECK_INTERVAL_MS);
+    this.redisTimer = setInterval(
+      () => void this.checkRedis(),
+      CHECK_INTERVAL_MS,
+    );
   }
 
   async onModuleDestroy() {
@@ -158,17 +166,20 @@ export class FailoverService
     // A fresh, short-lived connection per check rather than a persistent
     // ping connection — simpler and avoids reasoning about reconnecting
     // a connection that's already in a broken state after a failure.
-    const client = new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
-      maxRetriesPerRequest: 1,
-      connectTimeout: PING_TIMEOUT_MS,
-      // connectTimeout bounds only the handshake. Without this, a Redis
-      // that accepted the connection and then stalled left ping() —
-      // and this check's reentrancy flag — hanging, same latch as the
-      // Postgres side.
-      commandTimeout: PING_TIMEOUT_MS,
-      lazyConnect: true,
-      retryStrategy: () => null,
-    });
+    const client = new IORedis(
+      process.env.REDIS_URL ?? 'redis://localhost:6379',
+      {
+        maxRetriesPerRequest: 1,
+        connectTimeout: PING_TIMEOUT_MS,
+        // connectTimeout bounds only the handshake. Without this, a Redis
+        // that accepted the connection and then stalled left ping() —
+        // and this check's reentrancy flag — hanging, same latch as the
+        // Postgres side.
+        commandTimeout: PING_TIMEOUT_MS,
+        lazyConnect: true,
+        retryStrategy: () => null,
+      },
+    );
     // Without this, ioredis prints "[ioredis] Unhandled error event: ..."
     // straight to the real console on every failed check — bypassing
     // BetterstackLogger entirely. The catch block below already does the

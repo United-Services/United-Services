@@ -414,7 +414,9 @@ describe('AdminUsersController.disable', () => {
           role: Role.super_admin,
         }),
       ).rejects.toThrow(
-        new ForbiddenException('Only a super_admin can grant the super_admin role'),
+        new ForbiddenException(
+          'Only a super_admin can grant the super_admin role',
+        ),
       );
       expect(createUserMock).not.toHaveBeenCalled();
     });
@@ -453,9 +455,7 @@ describe('AdminUsersController.disable', () => {
         role: Role.super_admin,
       });
 
-      await expect(
-        controller.disable(admin, superAdmin.id),
-      ).rejects.toThrow(
+      await expect(controller.disable(admin, superAdmin.id)).rejects.toThrow(
         new ForbiddenException(
           "Only a super_admin can modify another super_admin's account",
         ),
@@ -476,9 +476,7 @@ describe('AdminUsersController.disable', () => {
 
       await expect(
         controller.disable(superAdmin, 'super-admin-2'),
-      ).resolves.toEqual(
-        expect.objectContaining({ id: 'super-admin-2' }),
-      );
+      ).resolves.toEqual(expect.objectContaining({ id: 'super-admin-2' }));
     });
 
     it('refuses a plain admin enabling an existing super_admin account', async () => {
@@ -505,9 +503,9 @@ describe('AdminUsersController.disable', () => {
         disabledAt: new Date(),
       });
 
-      await expect(
-        controller.disable(admin, 'admin-2'),
-      ).resolves.toEqual(expect.objectContaining({ id: 'admin-2' }));
+      await expect(controller.disable(admin, 'admin-2')).resolves.toEqual(
+        expect.objectContaining({ id: 'admin-2' }),
+      );
     });
 
     it('refuses a plain admin promoting an ordinary user to super_admin via updateRole', async () => {
@@ -521,7 +519,9 @@ describe('AdminUsersController.disable', () => {
       await expect(
         controller.updateRole(admin, 'user-1', { role: Role.super_admin }),
       ).rejects.toThrow(
-        new ForbiddenException('Only a super_admin can grant the super_admin role'),
+        new ForbiddenException(
+          'Only a super_admin can grant the super_admin role',
+        ),
       );
       expect(prisma.user.update).not.toHaveBeenCalled();
     });
@@ -560,9 +560,7 @@ describe('AdminUsersController.disable', () => {
         controller.updateRole(superAdmin, 'user-1', {
           role: Role.super_admin,
         }),
-      ).resolves.toEqual(
-        expect.objectContaining({ role: Role.super_admin }),
-      );
+      ).resolves.toEqual(expect.objectContaining({ role: Role.super_admin }));
     });
 
     it('lets a super_admin change another existing super_admin account role', async () => {

@@ -3,7 +3,9 @@ import { createFailoverRedisConnection } from './failover-redis-connection';
 import type { FailoverService } from './failover.service';
 
 function makeFailover(mode: 'primary' | 'local' = 'primary') {
-  return { getRedisMode: jest.fn().mockReturnValue(mode) } as unknown as FailoverService;
+  return {
+    getRedisMode: jest.fn().mockReturnValue(mode),
+  } as unknown as FailoverService;
 }
 
 // lazyConnect + no retry: these tests only need to inspect the returned
@@ -24,12 +26,18 @@ describe('createFailoverRedisConnection', () => {
   // build a broken fallback client instead — which is exactly what broke
   // every request in production before this was added.
   it('passes an instanceof IORedis check, so consumers that branch on it use this connection rather than constructing their own', () => {
-    const connection = createFailoverRedisConnection(makeFailover(), NO_CONNECT_OPTIONS);
+    const connection = createFailoverRedisConnection(
+      makeFailover(),
+      NO_CONNECT_OPTIONS,
+    );
     expect(connection instanceof IORedis).toBe(true);
   });
 
   it('still forwards ordinary property/method access after the getPrototypeOf trap is added', () => {
-    const connection = createFailoverRedisConnection(makeFailover(), NO_CONNECT_OPTIONS);
+    const connection = createFailoverRedisConnection(
+      makeFailover(),
+      NO_CONNECT_OPTIONS,
+    );
     expect(typeof connection.get).toBe('function');
     expect(typeof connection.status).toBe('string');
   });
@@ -69,15 +77,23 @@ describe('createFailoverRedisConnection', () => {
   // up front regardless of which is active when it's called.
   it('defines a custom command on both underlying connections, not just whichever is active when defineCommand is called', () => {
     const failoverPrimary = makeFailover('primary');
-    const connection = createFailoverRedisConnection(failoverPrimary, NO_CONNECT_OPTIONS);
+    const connection = createFailoverRedisConnection(
+      failoverPrimary,
+      NO_CONNECT_OPTIONS,
+    );
 
-    connection.defineCommand('echoTest', { numberOfKeys: 0, lua: "return 'ok'" });
+    connection.defineCommand('echoTest', {
+      numberOfKeys: 0,
+      lua: "return 'ok'",
+    });
 
     // Switching the reported mode to 'local' after defineCommand was
     // called (while mode was 'primary') simulates the exact failover
     // ordering that broke in production — the command must still be
     // present on whichever connection becomes active afterward.
     (failoverPrimary.getRedisMode as jest.Mock).mockReturnValue('local');
-    expect(typeof (connection as unknown as Record<string, unknown>).echoTest).toBe('function');
+    expect(
+      typeof (connection as unknown as Record<string, unknown>).echoTest,
+    ).toBe('function');
   });
 });

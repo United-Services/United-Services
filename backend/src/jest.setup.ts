@@ -11,6 +11,5 @@
 // command, so what these point at doesn't matter, only that something
 // is set. Only applied if the environment (e.g. the real e2e job in
 // ci.yml, which sets its own) hasn't already set one.
-process.env.LOCAL_DATABASE_URL ??=
-  'postgresql://test:test@localhost:5432/test';
+process.env.LOCAL_DATABASE_URL ??= 'postgresql://test:test@localhost:5432/test';
 process.env.LOCAL_REDIS_URL ??= 'redis://localhost:6379';

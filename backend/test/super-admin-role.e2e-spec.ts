@@ -18,7 +18,11 @@ jest.mock('@clerk/backend', () =>
 // Real HTTP, real Prisma, the real @Roles(...ADMIN_ROLES)/@Roles(Role.super_admin)
 // decorators on the real controllers — not a mocked Reflector like the
 // guard unit tests use. See docs/BUSINESS_RULES.md rule 17.
-async function verifiedAdmin(prisma: PrismaService, app: INestApplication, role: Role) {
+async function verifiedAdmin(
+  prisma: PrismaService,
+  app: INestApplication,
+  role: Role,
+) {
   const user = await createUser(prisma, { role, mfaEnrolled: true });
   await app.get(MfaService).markSessionVerified(sessionIdFor(user.clerkId));
   return user;

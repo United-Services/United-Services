@@ -16,24 +16,34 @@ function contextFor(method: string) {
 
 describe('MaintenanceGuard', () => {
   it('lets every request through when the flag is not set', async () => {
-    const redis = { get: jest.fn().mockResolvedValue(null) } as unknown as RedisService;
+    const redis = {
+      get: jest.fn().mockResolvedValue(null),
+    } as unknown as RedisService;
     const guard = new MaintenanceGuard(redis);
     for (const method of ['GET', 'POST', 'PATCH', 'DELETE']) {
-      await expect(guard.canActivate(contextFor(method).context)).resolves.toBe(true);
+      await expect(guard.canActivate(contextFor(method).context)).resolves.toBe(
+        true,
+      );
     }
   });
 
   it('rejects mutating requests with 503 + Retry-After while the flag is set, but never reads', async () => {
-    const redis = { get: jest.fn().mockResolvedValue('1') } as unknown as RedisService;
+    const redis = {
+      get: jest.fn().mockResolvedValue('1'),
+    } as unknown as RedisService;
     const guard = new MaintenanceGuard(redis);
 
     for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
       const { context, setHeader } = contextFor(method);
-      await expect(guard.canActivate(context)).rejects.toBeInstanceOf(ServiceUnavailableException);
+      await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
+      );
       expect(setHeader).toHaveBeenCalledWith('Retry-After', '120');
     }
     for (const method of ['GET', 'HEAD', 'OPTIONS']) {
-      await expect(guard.canActivate(contextFor(method).context)).resolves.toBe(true);
+      await expect(guard.canActivate(contextFor(method).context)).resolves.toBe(
+        true,
+      );
     }
     expect(redis.get).toHaveBeenCalledWith(MAINTENANCE_FLAG_KEY);
   });

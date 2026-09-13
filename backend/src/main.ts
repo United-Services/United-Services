@@ -22,7 +22,8 @@ import { configureApp } from './configure-app';
 // (see the comment above) and this has to run before any of that module
 // graph starts executing.
 if (process.env.NODE_ENV !== 'production') {
-  process.env.REDIS_URL = process.env.LOCAL_REDIS_URL ?? 'redis://localhost:6379';
+  process.env.REDIS_URL =
+    process.env.LOCAL_REDIS_URL ?? 'redis://localhost:6379';
 }
 
 // How long a graceful shutdown may take before the process exits
@@ -106,7 +107,7 @@ async function bootstrap() {
 
   configureApp(app);
 
-  const server = app.getHttpServer() as import('node:http').Server;
+  const server = app.getHttpServer();
   server.keepAliveTimeout = KEEP_ALIVE_TIMEOUT_MS;
   server.headersTimeout = HEADERS_TIMEOUT_MS;
 

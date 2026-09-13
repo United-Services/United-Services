@@ -48,7 +48,9 @@ const MIRRORED_MODELS = [
 // is `keyId` (see schema.prisma) — upsertModel/deleteStaleLocalRows read
 // this to know which field to cursor/order/upsert on instead of assuming
 // `id` everywhere.
-const PRIMARY_KEY_FIELD: Partial<Record<(typeof MIRRORED_MODELS)[number], string>> = {
+const PRIMARY_KEY_FIELD: Partial<
+  Record<(typeof MIRRORED_MODELS)[number], string>
+> = {
   kekRegistry: 'keyId',
 };
 function primaryKeyField(model: (typeof MIRRORED_MODELS)[number]): string {
@@ -112,13 +114,18 @@ export class DbMirrorSyncService {
     });
   }
 
-  async syncAll(): Promise<{ model: string; upserted: number; deleted: number }[]> {
+  async syncAll(): Promise<
+    { model: string; upserted: number; deleted: number }[]
+  > {
     await this.ensureLocalSchema();
 
     // Phase 1 — upsert every model in MIRRORED_MODELS's own (parent-
     // before-child) order, so a row's foreign keys always already exist
     // locally by the time it's written.
-    const upsertResults = new Map<string, { upserted: number; primaryIds: Set<string> }>();
+    const upsertResults = new Map<
+      string,
+      { upserted: number; primaryIds: Set<string> }
+    >();
     for (const model of MIRRORED_MODELS) {
       upsertResults.set(model, await this.upsertModel(model));
     }
@@ -132,7 +139,7 @@ export class DbMirrorSyncService {
       deletedByModel.set(
         model,
         await this.deleteStaleLocalRows(
-          this.getLocalWriter() as unknown as Record<string, any>,
+          this.getLocalWriter(),
           model,
           primaryIds,
         ),

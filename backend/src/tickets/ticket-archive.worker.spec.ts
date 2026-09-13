@@ -19,7 +19,9 @@ jest.mock('bullmq', () => ({
   }),
 }));
 
-jest.mock('ioredis', () => jest.fn().mockImplementation(() => ({ on: jest.fn() })));
+jest.mock('ioredis', () =>
+  jest.fn().mockImplementation(() => ({ on: jest.fn() })),
+);
 
 function makeJob(overrides: Partial<Job<any>> = {}): Job<any> {
   return {
@@ -32,7 +34,10 @@ function makeJob(overrides: Partial<Job<any>> = {}): Job<any> {
 }
 
 describe('TicketArchiveWorker', () => {
-  let archiveService: { archiveTicket: jest.Mock; archiveAllResolved: jest.Mock };
+  let archiveService: {
+    archiveTicket: jest.Mock;
+    archiveAllResolved: jest.Mock;
+  };
   let failover: { getRedisMode: jest.Mock };
   let queue: { upsertJobScheduler: jest.Mock };
   let dlq: { add: jest.Mock };
@@ -72,7 +77,9 @@ describe('TicketArchiveWorker', () => {
   // depends on this queue.
   it('does not reject onModuleInit when upsertJobScheduler fails, so app bootstrap is never blocked by this queue', async () => {
     const failingQueue = {
-      upsertJobScheduler: jest.fn().mockRejectedValue(new Error('ERR max requests limit exceeded')),
+      upsertJobScheduler: jest
+        .fn()
+        .mockRejectedValue(new Error('ERR max requests limit exceeded')),
     };
     const freshWorker = new TicketArchiveWorker(
       archiveService as unknown as TicketArchiveService,
@@ -94,7 +101,9 @@ describe('TicketArchiveWorker', () => {
     });
 
     it('calls archiveAllResolved() for the periodic sweep job (no ticketId)', async () => {
-      await capturedProcessor!(makeJob({ name: 'sweep-resolved-tickets', data: {} }));
+      await capturedProcessor!(
+        makeJob({ name: 'sweep-resolved-tickets', data: {} }),
+      );
 
       expect(archiveService.archiveAllResolved).toHaveBeenCalledTimes(1);
       expect(archiveService.archiveTicket).not.toHaveBeenCalled();

@@ -1,6 +1,15 @@
-import { Body, Controller, Get, Logger, Post, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  Logger,
+  Post,
+  Req,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { Throttle } from '@nestjs/throttler';
+import type { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { GeoService } from '../geo/geo.service';
@@ -9,11 +18,15 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { ADMIN_ROLES } from '../common/constants/admin-roles';
 import { extractIp } from '../common/utils/extract-ip';
 import { TrackEventDto } from './dto/track-event.dto';
-import { Role, FileAccessStatus, type Prisma } from '../generated/prisma';
+import { Role, FileAccessStatus } from '../generated/prisma';
 import {
   AnalyticsEventType,
   AnalyticsEventTypePrefix,
 } from './analytics-event-type.enums';
+import {
+  ANALYTICS_WRITE_QUEUE,
+  type AnalyticsWriteJobData,
+} from '../queue/queue.tokens';
 
 // Both admin-overview endpoints below run 10-11 aggregate/count/groupBy
 // queries apiece and are hit on every admin dashboard load — this data
@@ -31,6 +44,8 @@ export class AnalyticsController {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly geo: GeoService,
+    @Inject(ANALYTICS_WRITE_QUEUE)
+    private readonly writeQueue: Queue<AnalyticsWriteJobData>,
   ) {}
 
   // A Redis outage must degrade the admin dashboard to "slightly
@@ -64,18 +79,29 @@ export class AnalyticsController {
   // client could otherwise report any country it likes, which would
   // corrupt the admin world map (docs/BUSINESS_RULES.md: never trust
   // client-supplied data for anything that feeds an admin-facing report).
+  //
+  // Enqueued rather than written to Postgres inline — see
+  // AnalyticsWriteWorker's class comment for why this specific endpoint:
+  // highest-volume, lowest-per-write-criticality write in the app, so
+  // it's the safest one to buffer in Redis instead of opening a Supabase
+  // pooler connection per request. The response goes out the instant the
+  // job is queued; the actual DB write happens on the worker's own
+  // bounded schedule.
   @Public()
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Post('track')
   async track(@Body() dto: TrackEventDto, @Req() req: Request) {
     const country = this.geo.countryForIp(extractIp(req));
-    await this.prisma.analyticsEvent.create({
-      data: {
-        eventType: dto.eventType,
-        metadata: dto.metadata as unknown as Prisma.InputJsonValue,
-        country,
+    await this.writeQueue.add(
+      dto.eventType,
+      { eventType: dto.eventType, metadata: dto.metadata, country },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5_000 },
+        removeOnComplete: { age: 3600 },
+        removeOnFail: { age: 86_400 },
       },
-    });
+    );
     return { received: true };
   }
 

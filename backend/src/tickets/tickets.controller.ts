@@ -33,12 +33,7 @@ import {
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { PresignTicketScreenshotDto } from './dto/presign-ticket-screenshot.dto';
 import { UpdateTicketStatusDto } from './dto/update-ticket-status.dto';
-import {
-  Role,
-  TicketStatus,
-  TicketType,
-  type User,
-} from '../generated/prisma';
+import { Role, TicketStatus, TicketType, type User } from '../generated/prisma';
 
 const ALLOWED_SCREENSHOT_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',

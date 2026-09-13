@@ -2,6 +2,8 @@ import { AnalyticsController } from './analytics.controller';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { RedisService } from '../redis/redis.service';
 import type { GeoService } from '../geo/geo.service';
+import type { Queue } from 'bullmq';
+import type { AnalyticsWriteJobData } from '../queue/queue.tokens';
 
 describe('AnalyticsController', () => {
   function makeController(country: string | null = 'EG') {
@@ -29,11 +31,15 @@ describe('AnalyticsController', () => {
     const geo = {
       countryForIp: jest.fn().mockReturnValue(country),
     } as unknown as GeoService;
+    const writeQueue = {
+      add: jest.fn().mockResolvedValue({}),
+    } as unknown as Queue<AnalyticsWriteJobData>;
     return {
-      controller: new AnalyticsController(prisma, redis, geo),
+      controller: new AnalyticsController(prisma, redis, geo, writeQueue),
       prisma,
       redis,
       geo,
+      writeQueue,
     };
   }
 
@@ -41,25 +47,30 @@ describe('AnalyticsController', () => {
     ({ headers: { 'x-forwarded-for': ip }, socket: {} }) as any;
 
   describe('track', () => {
-    it('records the event type and metadata as given', async () => {
-      const { controller, prisma } = makeController();
+    it('enqueues the event type and metadata as given, rather than writing to Postgres inline', async () => {
+      const { controller, prisma, writeQueue } = makeController();
       const result = await controller.track(
         { eventType: 'cta_click_hero', metadata: { page: 'home' } },
         fakeReq(),
       );
 
-      expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
-        data: {
+      expect(writeQueue.add).toHaveBeenCalledWith(
+        'cta_click_hero',
+        {
           eventType: 'cta_click_hero',
           metadata: { page: 'home' },
           country: 'EG',
         },
-      });
+        expect.objectContaining({ attempts: 3 }),
+      );
+      // The whole point of queuing is that the hot path never talks to
+      // Postgres directly — that's AnalyticsWriteWorker's job.
+      expect(prisma.analyticsEvent.create).not.toHaveBeenCalled();
       expect(result).toEqual({ received: true });
     });
 
     it('always resolves country server-side from the request IP, never from client input', async () => {
-      const { controller, prisma, geo } = makeController('DE');
+      const { controller, geo, writeQueue } = makeController('DE');
       // Even if a caller tried to smuggle a country into metadata, only
       // GeoService's server-side resolution is ever persisted as `country`.
       await controller.track(
@@ -68,19 +79,13 @@ describe('AnalyticsController', () => {
       );
 
       expect(geo.countryForIp).toHaveBeenCalledWith('198.51.100.1');
-      expect(
-        (prisma.analyticsEvent.create as jest.Mock).mock.calls[0][0].data
-          .country,
-      ).toBe('DE');
+      expect((writeQueue.add as jest.Mock).mock.calls[0][1].country).toBe('DE');
     });
 
     it('stores a null country when geo resolution fails (no mmdb loaded)', async () => {
-      const { controller, prisma } = makeController(null);
+      const { controller, writeQueue } = makeController(null);
       await controller.track({ eventType: 'page_view' }, fakeReq());
-      expect(
-        (prisma.analyticsEvent.create as jest.Mock).mock.calls[0][0].data
-          .country,
-      ).toBeNull();
+      expect((writeQueue.add as jest.Mock).mock.calls[0][1].country).toBeNull();
     });
   });
 

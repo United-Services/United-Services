@@ -61,6 +61,24 @@ export const KEK_ROTATION_DLQ_NAME = 'kek-rotation-dlq';
 // are retiring, is read fresh from KekRegistry on each run.
 export type KekRotationJobData = Record<string, never>;
 
+export const ANALYTICS_WRITE_QUEUE = 'ANALYTICS_WRITE_QUEUE';
+export const ANALYTICS_WRITE_DLQ = 'ANALYTICS_WRITE_DLQ';
+
+export const ANALYTICS_WRITE_QUEUE_NAME = 'analytics-write';
+export const ANALYTICS_WRITE_DLQ_NAME = 'analytics-write-dlq';
+
+// One job per tracked event. AnalyticsController.track() enqueues this
+// instead of writing to Postgres inline — see AnalyticsWriteWorker for
+// why: it's the highest-volume, least-critical write in the app (every
+// page view/CTA click, fire-and-forget from the frontend already), so
+// it's the safest place to absorb a traffic burst in Redis instead of
+// opening a Supabase connection per request.
+export interface AnalyticsWriteJobData {
+  eventType: string;
+  metadata: unknown;
+  country: string | null;
+}
+
 export const TICKET_ARCHIVE_QUEUE = 'TICKET_ARCHIVE_QUEUE';
 export const TICKET_ARCHIVE_DLQ = 'TICKET_ARCHIVE_DLQ';
 

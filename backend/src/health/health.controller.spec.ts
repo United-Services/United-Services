@@ -3,19 +3,28 @@ import type { PrismaService } from '../prisma/prisma.service';
 import type { FailoverService } from '../failover/failover.service';
 
 describe('HealthController', () => {
-  function makeController(overrides: {
-    postgres?: string;
-    redis?: string;
-    queryRaw?: jest.Mock;
-  } = {}) {
+  function makeController(
+    overrides: {
+      postgres?: string;
+      redis?: string;
+      queryRaw?: jest.Mock;
+    } = {},
+  ) {
     const prisma = {
-      $queryRaw: overrides.queryRaw ?? jest.fn().mockResolvedValue([{ '?column?': 1 }]),
+      $queryRaw:
+        overrides.queryRaw ?? jest.fn().mockResolvedValue([{ '?column?': 1 }]),
     } as unknown as PrismaService;
     const failover = {
-      getPostgresMode: jest.fn().mockReturnValue(overrides.postgres ?? 'primary'),
+      getPostgresMode: jest
+        .fn()
+        .mockReturnValue(overrides.postgres ?? 'primary'),
       getRedisMode: jest.fn().mockReturnValue(overrides.redis ?? 'primary'),
     } as unknown as FailoverService;
-    return { controller: new HealthController(prisma, failover), prisma, failover };
+    return {
+      controller: new HealthController(prisma, failover),
+      prisma,
+      failover,
+    };
   }
 
   it('returns ok with both modes reported as primary in the normal case', async () => {
@@ -34,7 +43,10 @@ describe('HealthController', () => {
   });
 
   it('reports Postgres and Redis modes independently', async () => {
-    const { controller } = makeController({ postgres: 'local', redis: 'primary' });
+    const { controller } = makeController({
+      postgres: 'local',
+      redis: 'primary',
+    });
     const result = await controller.check();
     expect(result.failover).toEqual({ postgres: 'local', redis: 'primary' });
   });

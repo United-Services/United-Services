@@ -3,6 +3,10 @@ import { Queue } from 'bullmq';
 import { FailoverService } from '../failover/failover.service';
 import { createFailoverRedisConnection } from '../failover/failover-redis-connection';
 import {
+  ANALYTICS_WRITE_DLQ,
+  ANALYTICS_WRITE_DLQ_NAME,
+  ANALYTICS_WRITE_QUEUE,
+  ANALYTICS_WRITE_QUEUE_NAME,
   AUDIT_ARCHIVE_DLQ,
   AUDIT_ARCHIVE_DLQ_NAME,
   AUDIT_ARCHIVE_QUEUE,
@@ -41,7 +45,9 @@ import {
 // is what makes every one of these queues transparently follow
 // FailoverService's Redis mode — see that function's own comment.
 function createBullConnection(failover: FailoverService) {
-  return createFailoverRedisConnection(failover, { maxRetriesPerRequest: null });
+  return createFailoverRedisConnection(failover, {
+    maxRetriesPerRequest: null,
+  });
 }
 
 // @Global so any module can inject TRANSLATION_QUEUE without adding
@@ -68,6 +74,22 @@ function createBullConnection(failover: FailoverService) {
       provide: TRANSLATION_DLQ,
       useFactory: (failover: FailoverService) =>
         new Queue(TRANSLATION_DLQ_NAME, {
+          connection: createBullConnection(failover),
+        }),
+      inject: [FailoverService],
+    },
+    {
+      provide: ANALYTICS_WRITE_QUEUE,
+      useFactory: (failover: FailoverService) =>
+        new Queue(ANALYTICS_WRITE_QUEUE_NAME, {
+          connection: createBullConnection(failover),
+        }),
+      inject: [FailoverService],
+    },
+    {
+      provide: ANALYTICS_WRITE_DLQ,
+      useFactory: (failover: FailoverService) =>
+        new Queue(ANALYTICS_WRITE_DLQ_NAME, {
           connection: createBullConnection(failover),
         }),
       inject: [FailoverService],
@@ -154,6 +176,8 @@ function createBullConnection(failover: FailoverService) {
     },
   ],
   exports: [
+    ANALYTICS_WRITE_QUEUE,
+    ANALYTICS_WRITE_DLQ,
     TRANSLATION_QUEUE,
     TRANSLATION_DLQ,
     AUDIT_ARCHIVE_QUEUE,

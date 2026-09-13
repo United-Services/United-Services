@@ -101,7 +101,9 @@ export class AllowedOriginsService implements OnModuleInit {
       // lastRefreshedAt intentionally isn't bumped on failure, so the
       // very next request retries rather than waiting out the full
       // interval again.
-      this.logger.warn(`Allowed-origins refresh failed, using stale set: ${err}`);
+      this.logger.warn(
+        `Allowed-origins refresh failed, using stale set: ${err}`,
+      );
     }
   }
 
