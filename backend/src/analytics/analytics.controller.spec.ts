@@ -87,6 +87,51 @@ describe('AnalyticsController', () => {
       await controller.track({ eventType: 'page_view' }, fakeReq());
       expect((writeQueue.add as jest.Mock).mock.calls[0][1].country).toBeNull();
     });
+
+    // A Redis outage must degrade this public, unauthenticated,
+    // fire-and-forget endpoint to "writes straight to Postgres again,"
+    // never a 500 — same convention as overview()/geoOverview()'s
+    // safeCacheGet/safeCacheSet just above it.
+    it('falls back to a direct Postgres write when the queue enqueue fails', async () => {
+      const { controller, prisma, writeQueue } = makeController();
+      (writeQueue.add as jest.Mock).mockRejectedValue(
+        new Error('ECONNREFUSED'),
+      );
+
+      const result = await controller.track(
+        { eventType: 'cta_click_hero', metadata: { page: 'home' } },
+        fakeReq(),
+      );
+
+      expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
+        data: {
+          eventType: 'cta_click_hero',
+          metadata: { page: 'home' },
+          country: 'EG',
+        },
+      });
+      expect(result).toEqual({ received: true });
+    });
+
+    // Neither Redis nor Postgres reachable: analytics is explicitly
+    // best-effort, so the event is dropped rather than 500ing the
+    // request — but this must never throw back to the caller.
+    it('still responds normally (event dropped) when both the queue and the direct write fail', async () => {
+      const { controller, prisma, writeQueue } = makeController();
+      (writeQueue.add as jest.Mock).mockRejectedValue(
+        new Error('ECONNREFUSED'),
+      );
+      (prisma.analyticsEvent.create as jest.Mock).mockRejectedValue(
+        new Error('Postgres unreachable'),
+      );
+
+      const result = await controller.track(
+        { eventType: 'page_view' },
+        fakeReq(),
+      );
+
+      expect(result).toEqual({ received: true });
+    });
   });
 
   it('overview derives companyCount from the distinct company names returned, not a raw count', async () => {
