@@ -319,14 +319,6 @@ export default function ClientDashboard({ onLogout, onNavigate }: Props) {
             }}
           >
             <Logo variant="light" size={28} tagline={false} />
-            <div className="sidebar-label">
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
-                {t("portalLabel")}
-              </div>
-              <div style={{ fontSize: 10, color: "#475569" }}>
-                United Services Egypt
-              </div>
-            </div>
           </button>
         </div>
         <nav
