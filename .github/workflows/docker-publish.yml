@@ -43,8 +43,8 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/alioskillers/united-services-backend:latest
-            ghcr.io/alioskillers/united-services-backend:${{ github.sha }}
+            ghcr.io/united-services/united-services-backend:latest
+            ghcr.io/united-services/united-services-backend:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -83,8 +83,8 @@ jobs:
             aws_region=/tmp/aws_region
             app_env=/tmp/app_env
           tags: |
-            ghcr.io/alioskillers/united-services-frontend:latest
-            ghcr.io/alioskillers/united-services-frontend:${{ github.sha }}
+            ghcr.io/united-services/united-services-frontend:latest
+            ghcr.io/united-services/united-services-frontend:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

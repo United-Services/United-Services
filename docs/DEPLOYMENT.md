@@ -93,7 +93,7 @@ Postgres+Redis, real migrations + KEK bootstrap, real nginx routing both
    docker compose up -d
    ```
    `backend`/`frontend` both pull prebuilt images from
-   `ghcr.io/alioskillers/united-services-{backend,frontend}:latest` —
+   `ghcr.io/united-services/united-services-{backend,frontend}:latest` —
    `.github/workflows/docker-publish.yml` builds and pushes those on every
    merge to `main`. This gives you:
    - `postgres` + `redis` containers (or point `DATABASE_URL`/`REDIS_URL`

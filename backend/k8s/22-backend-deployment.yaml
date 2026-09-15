@@ -23,7 +23,7 @@ spec:
           # own comment on the image:+build: contract) — for local
           # smoke-testing against Docker Desktop's Kubernetes, build and
           # load a local image instead (see k8s/README.md).
-          image: ghcr.io/alioskillers/united-services-backend:latest
+          image: ghcr.io/united-services/united-services-backend:latest
           ports: [{ containerPort: 3002 }]
           envFrom:
             - configMapRef: { name: backend-config }
