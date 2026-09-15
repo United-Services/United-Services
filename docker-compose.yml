@@ -99,7 +99,7 @@ services:
     # `build:` stays for local dev (`docker compose up -d --build`) and
     # for docker-publish.yml, which builds+pushes this exact tag on every
     # merge to main. See docs/DEPLOYMENT.md's "Deploying an update" section.
-    image: ghcr.io/alioskillers/united-services-backend:latest
+    image: ghcr.io/united-services/united-services-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -146,7 +146,7 @@ services:
 
   frontend:
     # Same image:+build: contract as backend above.
-    image: ghcr.io/alioskillers/united-services-frontend:latest
+    image: ghcr.io/united-services/united-services-frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
