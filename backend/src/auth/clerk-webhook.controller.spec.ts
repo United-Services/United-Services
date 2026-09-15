@@ -75,21 +75,19 @@ describe('ClerkWebhookController', () => {
   });
 
   it('creates a client-role user on user.created with no public_metadata.role', async () => {
-    const rawBody = Buffer.from(
-      JSON.stringify({
-        type: 'user.created',
-        data: {
-          id: 'clerk-1',
-          email_addresses: [{ id: 'em1', email_address: 'client@co.com' }],
-          primary_email_address_id: 'em1',
-          first_name: 'Ann',
-          last_name: 'Client',
-          unsafe_metadata: { companyName: 'Acme' },
-        },
-      }),
-    );
+    verifyMock.mockReturnValue({
+      type: 'user.created',
+      data: {
+        id: 'clerk-1',
+        email_addresses: [{ id: 'em1', email_address: 'client@co.com' }],
+        primary_email_address_id: 'em1',
+        first_name: 'Ann',
+        last_name: 'Client',
+        unsafe_metadata: { companyName: 'Acme' },
+      },
+    });
 
-    await controller.handle({ rawBody }, headers);
+    await controller.handle({ rawBody: Buffer.from('{}') }, headers);
 
     expect(prisma.user.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -103,21 +101,19 @@ describe('ClerkWebhookController', () => {
   });
 
   it('assigns admin role only when Clerk public_metadata explicitly says so', async () => {
-    const rawBody = Buffer.from(
-      JSON.stringify({
-        type: 'user.created',
-        data: {
-          id: 'clerk-2',
-          email_addresses: [{ id: 'em1', email_address: 'admin@use-eg.com' }],
-          primary_email_address_id: 'em1',
-          first_name: 'Ad',
-          last_name: 'Min',
-          public_metadata: { role: Role.admin },
-        },
-      }),
-    );
+    verifyMock.mockReturnValue({
+      type: 'user.created',
+      data: {
+        id: 'clerk-2',
+        email_addresses: [{ id: 'em1', email_address: 'admin@use-eg.com' }],
+        primary_email_address_id: 'em1',
+        first_name: 'Ad',
+        last_name: 'Min',
+        public_metadata: { role: Role.admin },
+      },
+    });
 
-    await controller.handle({ rawBody }, headers);
+    await controller.handle({ rawBody: Buffer.from('{}') }, headers);
 
     expect(prisma.user.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -127,50 +123,47 @@ describe('ClerkWebhookController', () => {
   });
 
   it('never re-derives role on user.updated — update payload has no role field at all', async () => {
-    const rawBody = Buffer.from(
-      JSON.stringify({
-        type: 'user.updated',
-        data: {
-          id: 'clerk-1',
-          email_addresses: [{ id: 'em1', email_address: 'client@co.com' }],
-          primary_email_address_id: 'em1',
-          first_name: 'Ann',
-          last_name: 'Client',
-          public_metadata: { role: Role.admin }, // even if present, must be ignored on update
-        },
-      }),
-    );
+    verifyMock.mockReturnValue({
+      type: 'user.updated',
+      data: {
+        id: 'clerk-1',
+        email_addresses: [{ id: 'em1', email_address: 'client@co.com' }],
+        primary_email_address_id: 'em1',
+        first_name: 'Ann',
+        last_name: 'Client',
+        public_metadata: { role: Role.admin }, // even if present, must be ignored on update
+      },
+    });
 
-    await controller.handle({ rawBody }, headers);
+    await controller.handle({ rawBody: Buffer.from('{}') }, headers);
 
     const updatePayload = prisma.user.upsert.mock.calls[0][0].update;
     expect(updatePayload).not.toHaveProperty('role');
   });
 
   it('rejects when the Clerk payload has no primary email', async () => {
-    const rawBody = Buffer.from(
-      JSON.stringify({
-        type: 'user.created',
-        data: {
-          id: 'clerk-3',
-          email_addresses: [],
-          primary_email_address_id: 'missing',
-          first_name: '',
-          last_name: '',
-        },
-      }),
-    );
+    verifyMock.mockReturnValue({
+      type: 'user.created',
+      data: {
+        id: 'clerk-3',
+        email_addresses: [],
+        primary_email_address_id: 'missing',
+        first_name: '',
+        last_name: '',
+      },
+    });
 
-    await expect(controller.handle({ rawBody }, headers)).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(
+      controller.handle({ rawBody: Buffer.from('{}') }, headers),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it('ignores event types other than user.created/user.updated without touching the DB', async () => {
-    const rawBody = Buffer.from(
-      JSON.stringify({ type: 'session.created', data: {} }),
+    verifyMock.mockReturnValue({ type: 'session.created', data: {} });
+    const result = await controller.handle(
+      { rawBody: Buffer.from('{}') },
+      headers,
     );
-    const result = await controller.handle({ rawBody }, headers);
     expect(result).toEqual({ received: true });
     expect(prisma.user.upsert).not.toHaveBeenCalled();
   });

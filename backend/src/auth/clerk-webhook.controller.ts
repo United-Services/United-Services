@@ -55,19 +55,12 @@ export class ClerkWebhookController {
       // same try/catch as verify() below, not before it, or a bad
       // CLERK_WEBHOOK_SECRET turns into an unhandled 500 instead of a
       // clean 400.
-      // svix v2's Webhook.verify() only validates the signature (throws
-      // on failure) and no longer returns the parsed payload — v1 did.
-      // Parse it ourselves once verify() confirms it's genuine.
       const webhook = new Webhook(secret);
-      webhook.verify(req.rawBody, {
+      event = webhook.verify(req.rawBody, {
         'svix-id': headers['svix-id'],
         'svix-timestamp': headers['svix-timestamp'],
         'svix-signature': headers['svix-signature'],
-      });
-      event = JSON.parse(req.rawBody.toString('utf8')) as {
-        type: string;
-        data: ClerkUserPayload;
-      };
+      }) as { type: string; data: ClerkUserPayload };
     } catch {
       throw new BadRequestException('Invalid webhook signature');
     }
