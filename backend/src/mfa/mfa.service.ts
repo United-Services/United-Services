@@ -15,7 +15,7 @@ import {
 } from '@simplewebauthn/server';
 import type {
   AuthenticationResponseJSON,
-  AuthenticatorTransportFuture,
+  AuthenticatorTransport,
   PublicKeyCredentialCreationOptionsJSON,
   PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON,
@@ -35,7 +35,7 @@ const RP_NAME = 'United Services Egypt';
 // once at the boundary to @simplewebauthn's stricter literal-union type
 // rather than sprinkling `as any` at every call site.
 const asTransports = (transports: string[]) =>
-  transports as AuthenticatorTransportFuture[];
+  transports as AuthenticatorTransport[];
 
 @Injectable()
 export class MfaService {
