@@ -27,6 +27,7 @@ interface Props {
 }
 export default function WorldMap({ data, noDataLabel, requestsLabel }: Props) {
   const [hovered, setHovered] = useState<{
+    key: string
     name: string
     count: number
     x: number
@@ -68,7 +69,8 @@ export default function WorldMap({ data, noDataLabel, requestsLabel }: Props) {
                   geography={geo}
                   onMouseEnter={(evt: React.MouseEvent) => {
                     setHovered({
-                      name: geo.properties.name,
+                      key: geo.rsmKey,
+                      name: geo.properties?.name ?? alpha2 ?? "?",
                       count,
                       x: evt.clientX,
                       y: evt.clientY,
@@ -81,25 +83,11 @@ export default function WorldMap({ data, noDataLabel, requestsLabel }: Props) {
                   }}
                   onMouseLeave={() => setHovered(null)}
                   style={{
-                    default: {
-                      fill: colorFor(count),
-                      stroke: "#fff",
-                      strokeWidth: 0.5,
-                      outline: "none",
-                    },
-                    hover: {
-                      fill: palette.accentDark,
-                      stroke: "#fff",
-                      strokeWidth: 0.5,
-                      outline: "none",
-                      cursor: "pointer",
-                    },
-                    pressed: {
-                      fill: palette.accentDark,
-                      stroke: "#fff",
-                      strokeWidth: 0.5,
-                      outline: "none",
-                    },
+                    fill: hovered?.key === geo.rsmKey ? palette.accentDark : colorFor(count),
+                    stroke: "#fff",
+                    strokeWidth: 0.5,
+                    outline: "none",
+                    cursor: "pointer",
                   }}
                 />
               )
