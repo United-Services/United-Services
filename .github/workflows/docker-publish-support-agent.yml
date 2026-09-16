@@ -1,0 +1,82 @@
+name: Docker publish (support-agent)
+
+# Same purpose as docker-publish.yml, for the two custom-built images in
+# support-agent/ (its FastAPI backend and the Airflow+PySpark ingestion
+# image) — neither is published anywhere today, so support-agent's own
+# docker-compose.yml only ever builds from source locally. Path-filtered
+# to support-agent/** (unlike docker-publish.yml, which rebuilds on every
+# push regardless) since the Airflow image in particular is heavy to
+# build (JDK + PySpark's ~300MB wheel) and has no reason to rebuild for a
+# change to, say, the main frontend.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "support-agent/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  backend:
+    name: Build & push support-agent backend image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # Same linux/amd64+arm64 reasoning as docker-publish.yml — an
+      # amd64-only image silently fails to pull on Apple Silicon.
+      - uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # No build-time secrets needed — this Dockerfile only installs
+      # deps and copies source; every secret it needs is read from env
+      # at container start (env_file in docker-compose.yml), same
+      # boundary as the main backend's docker-entrypoint.sh.
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: ./support-agent/backend
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/united-services/support-agent-backend:latest
+            ghcr.io/united-services/support-agent-backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  airflow:
+    name: Build & push support-agent Airflow image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Build context is the support-agent/ root, not airflow/ — the
+      # Dockerfile COPYs ingestion/requirements.txt from one level up
+      # (see airflow/Dockerfile), matching how docker-compose.yml's own
+      # `context: .` for this same image is already set up.
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: ./support-agent
+          file: ./support-agent/airflow/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/united-services/support-agent-airflow:latest
+            ghcr.io/united-services/support-agent-airflow:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+# Same registry-growth note as docker-publish.yml: every push tags a new
+# :<sha> image and nothing here prunes old versions. Deliberately not
+# addressed here either, for the same reason — see that file's own NOTE.
