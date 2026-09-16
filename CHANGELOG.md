@@ -2,6 +2,125 @@
 
 All notable changes to this project are documented here.
 
+## [3.0.0]
+
+112 commits since `v2.0.0`. Tagged as a major version for the new
+support-agent subsystem, automatic database/cache failover, and the
+on-demand Kubernetes autoscaler — all new operational capability, not
+just fixes. No breaking API/schema changes for existing deployments;
+migrations remain additive.
+
+### Support Agent — AI Documentation Chatbot (new)
+
+- A new standalone service (`support-agent/`): a FastAPI backend +
+  Airflow/PySpark ingestion pipeline that scrapes the live site,
+  embeds it (Hugging Face-hosted inference), and stores it in Qdrant
+  for retrieval-augmented answers, exposed to the main site's chat
+  widget over a streaming API. Own Postgres (+ Alembic migrations),
+  Redis, and now its own GHCR-published Docker images (backend +
+  Airflow, multi-arch), mirroring the main stack's build+push pattern.
+- Live-verified end-to-end with its first automated test suite; 15
+  Dependabot alerts and several real security findings (infra
+  hardening + code fixes) cleared shortly after first landing —
+  including a leaked-into-this-container secrets bug (the wrong `.env`
+  gave this service every production credential in the whole platform,
+  not just the four it actually uses) and an unauthenticated Qdrant/
+  Postgres/Redis exposure on the local network.
+- CORS/CSP wiring so the chat widget's cross-origin streaming requests
+  and `Authorization` header actually work in dev and prod; Betterstack
+  log shipping added to match the main backend.
+
+### Reliability — Automatic Database & Cache Failover (new)
+
+- `FailoverService`: the backend now automatically fails over from
+  Supabase/Upstash to an always-on local standby Postgres + Redis (see
+  `docker-compose.yml`) on an outage, and reconciles queued writes back
+  once the primary recovers — `DbMirrorSyncWorker`,
+  `FailoverReconciliationWorker`, continuous mirror-sync, and a
+  BullMQ-driven write-ahead log for the reconciliation path.
+- Fixed three real crash/outage bugs found standing this up: a
+  foreign-key-violation crash in `DbMirrorSyncWorker` that hit in
+  production, BullMQ commands not propagating across failover Redis
+  connections (causing an OOM crash loop), and the entire HTTP API
+  blocking at boot on Redis-dependent job-scheduler registration.
+- The local standby's Postgres/Redis now require real generated
+  passwords — previously defaulted to a known, committed password
+  (Postgres) or no password at all (Redis), reachable from the local
+  network even though never port-mapped to the host directly.
+
+### Observability & On-Demand Scaling (new)
+
+- Prometheus + Grafana hardware/performance dashboard
+  (`backend/prometheus/`): HTTP request-rate/latency/error metrics, a
+  70%-sustained-load alert that requires corroborating traffic (not
+  just a coincidental hardware spike) before firing, queue-depth and
+  event-loop-lag panels.
+- A Kubernetes orchestrator (`backend/k8s/`) closes the gap the
+  dashboard's alert couldn't act on alone: a `HorizontalPodAutoscaler`
+  scales the stateless backend 1↔5 replicas on real CPU load — fast
+  scale-up, slow scale-down to avoid flapping — verified live end-to-
+  end on a local cluster (idle → 4 replicas under load → back to 1).
+  CPU-only by design: memory was tried and dropped after a live test
+  showed Node/V8's baseline RSS reads as permanent overload regardless
+  of actual traffic.
+- A Redis-backed write queue now sits in front of every analytics-event
+  write to Supabase (rate-limited, with a direct-write fallback if the
+  queue itself is unavailable) — burst protection against the shared
+  connection-pooler's limits without needing a second database.
+- Real, sandboxed load testing (10 → 100,000 concurrent requests,
+  distinct-IP-simulated, resource-capped in Docker) confirmed the rate
+  limiter and existing performance work hold up under sustained load.
+
+### Security & Access Control
+
+- `super_admin` role added, with exactly two extra permissions (audit
+  log access, ticket management) beyond `admin` — never inferred from a
+  Clerk claim, always re-checked against the local `User.role` column.
+- BullMQ-driven audit-log archival with DLQ retries and 90-day
+  retention, so the live audit log table doesn't grow unbounded.
+- Fixed a TOCTOU race in the candidate/RFQ/file-access decide-style
+  endpoints (a decision could be made twice under concurrent requests).
+- A large CI/CD security-scanning buildout: Codacy, Snyk, CodeQL,
+  Semgrep (running on every PR), njsscan, OSSAR, and gitleaks secret
+  scanning all added; several non-viable/paid/broken scanners (Fortify,
+  Xanitizer, EthicalCheck, CodeScan) evaluated and removed again once
+  confirmed unworkable (trial-only, sales-contact-gated, or the
+  underlying Action no longer existing). Branch protection now gates
+  merge on CI's actual conclusion rather than GitHub's native
+  required-checks list.
+- Fixed the GHCR publish workflow silently failing on every push since
+  an org transfer — images had been pushing to a personal-account
+  namespace no longer authorized for this repo, so `:latest` was stale
+  for days with no visible error until this was traced down.
+
+### Public Website
+
+- Services catalog refreshed with real client copy, narrowed the
+  public listing to the 4 services actually offered; GRE Tubular Lining
+  given its own homepage and Services-page spotlight; USE Liner
+  branding pass.
+- About, Vision, Contact, and Careers redesigned for less text, more
+  real iconography, matching the Home/Services visual language.
+- New wordmark+tagline logo (replacing the icon-only mark that was
+  invisible on dark backgrounds).
+- Fixed a Next.js 16.3.3 dev-server bug causing constant `not-found.tsx`
+  recompiles, a layout-thrash animation bug in the signup step
+  progress bar, and 2 high-severity `npm audit` findings in frontend
+  deps.
+
+### Dependencies
+
+- Routine Dependabot updates throughout (GitHub Actions, backend, and
+  frontend groups). Two group bumps in this window needed real fixes
+  rather than a straight merge: `react-simple-maps` v5's rewritten
+  style/props API (`WorldMap.tsx` updated accordingly, plus holding
+  `eslint`/`typescript`/`vitest` back from versions the lint/build
+  toolchain doesn't support yet), and `svix` v2's breaking
+  `Webhook.verify()` change plus its move to an ESM-only build that
+  breaks this project's CommonJS Jest e2e runner — both `@nestjs/*`
+  and `svix` held at their prior major versions pending upstream/
+  toolchain support.
+
 ## [2.0.0]
 
 60 commits since `v1.0.0`. No breaking API/schema changes for existing
